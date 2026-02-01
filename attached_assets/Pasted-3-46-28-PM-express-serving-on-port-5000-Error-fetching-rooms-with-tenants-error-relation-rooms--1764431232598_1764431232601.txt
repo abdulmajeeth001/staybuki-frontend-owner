@@ -1,0 +1,77 @@
+3:46:28 PM [express] serving on port 5000
+Error fetching rooms with tenants: error: relation "rooms" does not exist
+    at file:///home/runner/workspace/node_modules/@neondatabase/serverless/index.mjs:1345:74
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async NeonPreparedQuery.execute (/home/runner/workspace/node_modules/src/neon-serverless/session.ts:102:18)
+    at async DatabaseStorage.getAllRoomsWithTenants (/home/runner/workspace/server/storage.ts:230:22)
+    at async <anonymous> (/home/runner/workspace/server/routes.ts:283:32) {
+  length: 105,
+  severity: 'ERROR',
+  code: '42P01',
+  detail: undefined,
+  hint: undefined,
+  position: '111',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '1449',
+  routine: 'parserOpenTable'
+}
+3:46:35 PM [express] GET /api/rooms 200 in 194ms :: []
+Error fetching rooms with tenants: error: relation "rooms" does not exist
+    at file:///home/runner/workspace/node_modules/@neondatabase/serverless/index.mjs:1345:74
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async NeonPreparedQuery.execute (/home/runner/workspace/node_modules/src/neon-serverless/session.ts:102:18)
+    at async DatabaseStorage.getAllRoomsWithTenants (/home/runner/workspace/server/storage.ts:230:22)
+    at async <anonymous> (/home/runner/workspace/server/routes.ts:283:32) {
+  length: 105,
+  severity: 'ERROR',
+  code: '42P01',
+  detail: undefined,
+  hint: undefined,
+  position: '111',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '1449',
+  routine: 'parserOpenTable'
+}
+3:46:35 PM [express] GET /api/rooms 200 in 155ms :: []
+Seed error: error: relation "rooms" does not exist
+    at file:///home/runner/workspace/node_modules/@neondatabase/serverless/index.mjs:1345:74
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async NeonPreparedQuery.execute (/home/runner/workspace/node_modules/src/neon-serverless/session.ts:102:18)
+    at async DatabaseStorage.createRoom (/home/runner/workspace/server/storage.ts:202:20)
+    at async DatabaseStorage.seedInitialRooms (/home/runner/workspace/server/storage.ts:280:7)
+    at async <anonymous> (/home/runner/workspace/server/routes.ts:293:7) {
+  length: 104,
+  severity: 'ERROR',
+  code: '42P01',
+  detail: undefined,
+  hint: undefined,
+  position: '13',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '1449',
+  routine: 'parserOpenTable'
+}
+3:46:42 PM [express] POST /api/rooms/seed 400 in 2178ms :: {"error":"Failed to seed rooms","details":"relation \"rooms\" does not exist"}

@@ -1,0 +1,53 @@
+4:27:03 PM [express] serving on port 5000
+Error fetching rooms with tenants: error: column "tenant_ids" does not exist
+    at file:///home/runner/workspace/node_modules/@neondatabase/serverless/index.mjs:1345:74
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async NeonPreparedQuery.execute (/home/runner/workspace/node_modules/src/neon-serverless/session.ts:102:18)
+    at async DatabaseStorage.getAllRoomsWithTenants (/home/runner/workspace/server/storage.ts:248:22)
+    at async <anonymous> (/home/runner/workspace/server/routes.ts:294:32) {
+  length: 172,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: 'Perhaps you meant to reference the column "rooms.tenant_id".',
+  position: '57',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_relation.c',
+  line: '3729',
+  routine: 'errorMissingColumn'
+}
+4:27:12 PM [express] GET /api/rooms 200 in 2133ms :: []
+4:27:38 PM [vite] (client) hmr update /src/pages/EditRoom.tsx, /src/index.css
+Seed error: error: column "tenant_ids" of relation "rooms" does not exist
+    at file:///home/runner/workspace/node_modules/@neondatabase/serverless/index.mjs:1345:74
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async NeonPreparedQuery.execute (/home/runner/workspace/node_modules/src/neon-serverless/session.ts:102:18)
+    at async DatabaseStorage.createRoom (/home/runner/workspace/server/storage.ts:220:20)
+    at async DatabaseStorage.seedInitialRooms (/home/runner/workspace/server/storage.ts:301:7)
+    at async <anonymous> (/home/runner/workspace/server/routes.ts:304:7) {
+  length: 128,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '71',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_target.c',
+  line: '1066',
+  routine: 'checkInsertTargets'
+}
+4:28:04 PM [express] POST /api/rooms/seed 400 in 142ms :: {"error":"Failed to seed rooms","details":"column \"tenant_ids\" of relation \"rooms\" does not exist"}
