@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import MobileLayout from "@/components/layout/MobileLayout";
+import DesktopLayout from "@/components/layout/DesktopLayout";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,7 +12,8 @@ import {
   Lightbulb,
   AlertCircle,
 } from "lucide-react";
-import { api } from "@/apiClient";
+import { tenantApi } from "@/api/tenantApi";
+import { getApiErrorMessage } from "@/utils/apiError";
 
 export default function TenantDashboard() {
   const [, navigate] = useLocation();
@@ -22,34 +24,57 @@ export default function TenantDashboard() {
     checkOnboardingStatus();
   }, []);
 
-  const checkOnboardingStatus = async () => {
-    try {
-      const res = await api.get("/api/tenant/onboarding-status");
-      const data = res.data;
-      if (!data.isOnboarded) {
-        navigate("/tenant-search-pgs");
-        return;
-      }
-      fetchTenantData();
-    } catch (err: any) {
-      console.error("Failed to check onboarding status:", err);
-      setLoading(false);
-    }
-  };
+  const checkOnboardingStatus = async (): Promise<void> => {
+  try {
+    setLoading(true);
 
-  const fetchTenantData = async () => {
-    try {
-      const res = await api.get("/api/tenant/dashboard");
-      setTenantData(res.data);
-    } catch (err: any) {
-      console.error("Failed to fetch tenant data:", err);
-    } finally {
-      setLoading(false);
+    const data = await tenantApi.getOnboardingStatus();
+
+    if (!data.isOnboarded) {
+      navigate("/tenant-search-pgs", { replace: true });
+      return;
     }
-  };
+
+    await fetchTenantData();
+  } catch (error: unknown) {
+    console.error("Failed to check onboarding status:", error);
+    const message = getApiErrorMessage(error);
+
+    // optional UX
+    // toast.error(message);
+  } finally {
+    setLoading(false);
+  }
+};
+  
+  const fetchTenantData = async (): Promise<void> => {
+  try {
+    setLoading(true);
+
+    const data = await tenantApi.getDashboard();
+    setTenantData(data);
+  } catch (error: unknown) {
+    console.error("Failed to fetch tenant dashboard:", error);
+    const message = getApiErrorMessage(error);
+    // toast.error(message);
+  } finally {
+    setLoading(false);
+  }
+};
 
   if (loading) {
-    return <MobileLayout title="Dashboard">Loading...</MobileLayout>;
+    return (
+      <>
+        <div className="hidden lg:block">
+          <DesktopLayout title="Dashboard" showNav={false}>
+            <div className="flex items-center justify-center h-64">Loading...</div>
+          </DesktopLayout>
+        </div>
+        <div className="lg:hidden">
+          <MobileLayout title="Dashboard">Loading...</MobileLayout>
+        </div>
+      </>
+    );
   }
 
   const menuItems = [
@@ -92,13 +117,32 @@ export default function TenantDashboard() {
   ];
 
   return (
-    <MobileLayout title="Dashboard">
+    <>
+      <div className="hidden lg:block">
+        <DesktopLayout title="Dashboard" showNav={false}>
+          <DashboardContent tenantData={tenantData} menuItems={menuItems} isDesktop={true} />
+        </DesktopLayout>
+      </div>
+      <div className="lg:hidden">
+        <MobileLayout title="Dashboard">
+          <DashboardContent tenantData={tenantData} menuItems={menuItems} isDesktop={false} />
+        </MobileLayout>
+      </div>
+    </>
+  );
+}
+
+function DashboardContent({ tenantData, menuItems, isDesktop }: { tenantData: any, menuItems: any[], isDesktop: boolean }) {
+  const [, navigate] = useLocation();
+
+  return (
+    <>
       {/* Hero Welcome Section with Gradient */}
-      <div className="relative -mx-4 -mt-6 mb-6 overflow-hidden">
+      <div className={isDesktop ? "relative -mx-6 -mt-6 mb-8 overflow-hidden rounded-b-3xl" : "relative -mx-4 -mt-6 mb-6 overflow-hidden"}>
         <div className="absolute inset-0 bg-gradient-to-br from-purple-600 via-blue-600 to-purple-700" />
         <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAwIDEwIEwgNDAgMTAgTSAxMCAwIEwgMTAgNDAgTSAwIDIwIEwgNDAgMjAgTSAyMCAwIEwgMjAgNDAgTSAwIDMwIEwgNDAgMzAgTSAzMCAwIEwgMzAgNDAiIGZpbGw9Im5vbmUiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS1vcGFjaXR5PSIwLjAzIiBzdHJva2Utd2lkdGg9IjEiLz48L3BhdHRlcm4+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjZ3JpZCkiLz48L3N2Zz4=')] opacity-20" />
         
-        <div className="relative px-6 py-8 text-white">
+        <div className={isDesktop ? "relative px-8 py-10 text-white" : "relative px-6 py-8 text-white"}>
           <div className="mb-6">
             <p className="text-white/80 text-sm mb-2">Welcome back,</p>
             <h2 className="text-3xl font-bold tracking-tight mb-2">{tenantData?.name}</h2>
@@ -110,7 +154,7 @@ export default function TenantDashboard() {
 
           {/* Rent Quick Info */}
           {tenantData?.monthlyRent && (
-            <Card className="backdrop-blur-sm bg-white/95 border-white/20 shadow-2xl">
+            <Card className="backdrop-blur-sm bg-white/95 border-white/20 shadow-2xl max-w-md">
               <CardContent className="p-5">
                 <div className="flex items-center justify-between">
                   <div>
@@ -134,7 +178,7 @@ export default function TenantDashboard() {
       {/* Quick Actions Grid */}
       <div className="space-y-4">
         <h3 className="text-lg font-bold text-gray-800">Quick Actions</h3>
-        <div className="grid grid-cols-2 gap-4">
+        <div className={`grid ${isDesktop ? "grid-cols-3 lg:grid-cols-4" : "grid-cols-2"} gap-4`}>
           {menuItems.map((item, index) => (
             <div
               key={item.href}
@@ -155,6 +199,6 @@ export default function TenantDashboard() {
           ))}
         </div>
       </div>
-    </MobileLayout>
+    </>
   );
 }

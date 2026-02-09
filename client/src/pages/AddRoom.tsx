@@ -38,7 +38,7 @@ export default function AddRoom() {
   useEffect(() => {
     const fetchTenants = async () => {
       try {
-        const res = await api.get("/api/available-tenants");
+        const res = await api.get("/api/tenants/available-tenants");
         setTenants(res.data);
       } catch (err) {
         console.error("Error fetching tenants:", err);

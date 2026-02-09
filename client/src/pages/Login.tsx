@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { api } from "@/apiClient";
+import { AuthResponse } from '../types/login/auth';
+
 export default function Login() {
   const [, setLocation] = useLocation();
   const [isLoading, setIsLoading] = useState(false);
@@ -17,31 +19,89 @@ export default function Login() {
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState("");
 
-  const handleLogin = async (e: React.FormEvent) => {
+const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setIsLoading(true);
-    
+
     try {
-      const response = await api.post("/api/auth/login", { email, password, rememberMe });
-      const data = response.data;
-          
-      // Check if password reset is required (newly created tenants)
-      if (data.passwordResetRequired) {
-        setLocation("/tenant-reset-password");
-        return;
+      // 1. Call API with the Interface generic <AuthResponse>
+      const response = await api.post<AuthResponse>("/api/auth/login", { 
+        email, 
+        password, 
+        rememberMe 
+      });
+
+      const data = response.data; // 'data' is now strictly typed
+
+      // 2. Switch based on the "Action" code from Java
+      switch (data.action) {
+        
+        case "RESET_PASSWORD":
+          setLocation("/tenant-reset-password");
+          return;
+
+        case "COMPLETE_ONBOARDING":
+          // Route to specific setup pages based on role
+          if (data.user.userType === "tenant") {
+             setLocation("/tenant/setup-profile");
+          } else {
+             setLocation("/onboarding"); // or "/owner/add-pg"
+          }
+          return;
+
+        case "WAIT_FOR_APPROVAL":
+          // User exists but PG is pending. 
+          // You can redirect to a status page OR just show an error message.
+          setError("Your account is currently pending admin approval.");
+          return;
+
+        case "RESOLVE_REJECTION":
+          // Show the specific reason the admin rejected them
+          setError(data.message || "Your account was rejected. Please contact support.");
+          return;
+
+        case "ACCOUNT_DEACTIVATED":
+          setError("Your account has been deactivated.");
+          return;
+
+        case "GO_TO_DASHBOARD":
+          // 3. Handle Successful Login Routing
+          const userType = (data.user?.userType || "").toLowerCase().trim(); 
+          console.log("Normalized User Type:", userType); // Debugging line
+          if (userType === "tenant") {
+            setLocation("/tenant-dashboard");
+          } else if (userType === "applicant") {
+            setLocation("/tenant-search-pgs");
+          } else if (userType === "admin") {
+            setLocation("/admin-dashboard");
+          } else {
+            // Default for Owners
+            setLocation("/dashboard");
+          }
+          return;
+
+        default:
+          // Fallback if backend sends a new action frontend doesn't know yet
+          console.warn("Unknown login action:", data.action);
+          setLocation("/dashboard");
       }
 
-      // Otherwise use redirect URL or default to dashboard
-      setLocation("/dashboard");
     } catch (err: any) {
-      // Axios wraps the error response in `err.response.data`
-      const message = err.response?.data?.error || err.message || "Login failed";
-      setError(message);
+      console.error("Login failed", err);
+
+      // Handle actual Network/Server errors (401, 500)
+      const errorMessage = 
+        err.response?.data?.message || 
+        err.response?.data?.error || 
+        err.message || 
+        "Login failed. Please check your credentials.";
+        
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
-  };
+};
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 max-w-md mx-auto">
