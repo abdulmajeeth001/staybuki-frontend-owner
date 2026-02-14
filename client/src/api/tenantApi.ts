@@ -5,19 +5,19 @@ import {
 } from "@/types/tenant";
 
 export const tenantApi = {
-  /** Onboarding status */
-  getOnboardingStatus: async (): Promise<TenantOnboardingStatusResponse> => {
-    const response = await api.get<TenantOnboardingStatusResponse>(
+  /** Get onboarding status */
+  getOnboardingStatus: async () => {
+    const { data } = await api.get<TenantOnboardingStatusResponse>(
       "/api/tenant/onboarding-status"
     );
-    return response.data;
+    return data;
   },
 
-  /** Tenant dashboard */
-  getDashboard: async (): Promise<TenantDashboardResponse> => {
-    const response = await api.get<TenantDashboardResponse>(
+  /** Get tenant dashboard */
+  getDashboard: async () => {
+    const { data } = await api.get<TenantDashboardResponse>(
       "/api/tenant/dashboard"
     );
-    return response.data;
+    return data;
   },
 };

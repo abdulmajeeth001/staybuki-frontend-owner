@@ -1,38 +1,57 @@
 import { useState } from "react";
-import { useLocation } from "wouter";
-import { Link } from "wouter";
+import { useLocation, Link } from "wouter";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 import { motion } from "framer-motion";
-import { Eye, EyeOff, Check } from "lucide-react";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { api } from "@/apiClient";
-import { AuthResponse } from '../types/login/auth';
+import { authService } from "@/services/authService";
+import type { LoginRequest } from "@/types/auth";
+
+const loginSchema = z.object({
+  email: z.string().email("Please enter a valid email address"),
+  password: z.string().min(1, "Password is required"),
+  rememberMe: z.boolean().default(false),
+});
+
+type LoginFormValues = z.infer<typeof loginSchema>;
 
 export default function Login() {
   const [, setLocation] = useLocation();
-  const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState("");
 
-const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const form = useForm<LoginFormValues>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+      rememberMe: false,
+    },
+  });
+
+  const { register, handleSubmit, formState: { isSubmitting, errors }, setValue, watch } = form;
+  const rememberMe = watch("rememberMe");
+
+  const onSubmit = async (values: LoginFormValues) => {
     setError("");
-    setIsLoading(true);
 
     try {
-      // 1. Call API with the Interface generic <AuthResponse>
-      const response = await api.post<AuthResponse>("/api/auth/login", { 
-        email, 
-        password, 
-        rememberMe 
-      });
+      // Explicitly map form values to the strict LoginRequest type.
+      // If the backend API changes (e.g., adds a new required field), TypeScript will error here.
+      const requestBody: LoginRequest = {
+        email: values.email,
+        password: values.password,
+        rememberMe: values.rememberMe,
+      };
 
-      const data = response.data; // 'data' is now strictly typed
+      // 1. Call API with the Interface generic <AuthResponse>
+      const data = await authService.login(requestBody); // 'data' is now strictly typed
 
       // 2. Switch based on the "Action" code from Java
       switch (data.action) {
@@ -99,12 +118,12 @@ const handleLogin = async (e: React.FormEvent) => {
         
       setError(errorMessage);
     } finally {
-      setIsLoading(false);
+      // Loading state is handled by react-hook-form's isSubmitting
     }
-};
+  };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 max-w-md mx-auto">
+    <div className="min-h-[100dvh] bg-background flex flex-col items-center justify-center p-4 max-w-md mx-auto">
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -115,7 +134,9 @@ const handleLogin = async (e: React.FormEvent) => {
           <img 
             src="/logo.png"
             alt="StayBuki Logo" 
-            className="h-32 w-auto mx-auto"
+            className="h-24 sm:h-32 w-auto mx-auto object-contain"
+            width={128}
+            height={128}
           />
           <p className="text-muted-foreground mt-4">Manage your PG smarter, not harder.</p>
         </div>
@@ -126,7 +147,7 @@ const handleLogin = async (e: React.FormEvent) => {
             <CardDescription>Enter your credentials to access your dashboard</CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleLogin} className="space-y-4">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               {error && (
                 <div className="p-3 bg-red-100 text-red-700 rounded-lg text-sm" data-testid="error-message">
                   {error}
@@ -138,12 +159,15 @@ const handleLogin = async (e: React.FormEvent) => {
                   id="email" 
                   type="email" 
                   placeholder="owner@example.com" 
-                  required 
+                  autoComplete="email"
+                  inputMode="email"
+                  enterKeyHint="next"
                   className="h-12 bg-background/50"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  disabled={isSubmitting}
+                  {...register("email")}
                   data-testid="input-login-email"
                 />
+                {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
@@ -152,41 +176,41 @@ const handleLogin = async (e: React.FormEvent) => {
                     id="password" 
                     type={showPassword ? "text" : "password"} 
                     placeholder="••••••••" 
-                    required 
+                    autoComplete="current-password"
+                    enterKeyHint="go"
                     className="h-12 bg-background/50 pr-10"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    disabled={isSubmitting}
+                    {...register("password")}
                     data-testid="input-login-password"
                   />
                   <button 
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
                   >
                     {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
                 </div>
+                {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
               </div>
               <div className="flex items-center justify-between text-sm">
-                <label 
-                  className="flex items-center gap-2 cursor-pointer select-none"
-                  onClick={() => setRememberMe(!rememberMe)}
-                  data-testid="label-remember-me"
-                >
-                  <div className={`w-4 h-4 border rounded flex items-center justify-center transition-colors ${
-                    rememberMe 
-                      ? 'bg-primary border-primary' 
-                      : 'border-muted-foreground/50 hover:border-primary/50'
-                  }`}>
-                    {rememberMe && <Check className="w-3 h-3 text-primary-foreground" />}
-                  </div>
-                  <span className="text-muted-foreground">Remember me</span>
-                </label>
+                <div className="flex items-center space-x-2">
+                  <Checkbox 
+                    id="rememberMe" 
+                    checked={rememberMe}
+                    onCheckedChange={(checked) => setValue("rememberMe", checked as boolean)}
+                    disabled={isSubmitting}
+                  />
+                  <Label htmlFor="rememberMe" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer">
+                    Remember me
+                  </Label>
+                </div>
                 <Link href="/forgot-password" className="text-primary font-medium hover:underline" data-testid="link-forgot-password">Forgot password?</Link>
               </div>
-              <Button type="submit" className="w-full h-12 text-base font-medium" disabled={isLoading} data-testid="button-login-submit">
-                {isLoading ? (
-                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              <Button type="submit" className="w-full h-12 text-base font-medium" disabled={isSubmitting} data-testid="button-login-submit">
+                {isSubmitting ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
                 ) : (
                   "Sign In"
                 )}

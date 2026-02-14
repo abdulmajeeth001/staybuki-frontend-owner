@@ -12,7 +12,8 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useUser } from "@/hooks/use-user";
 import { usePG } from "@/hooks/use-pg";
 import { useLocation } from "wouter";
-import { useQueryClient, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
+import { useLogout } from "@/hooks/use-logout";
 import { useState } from "react";
 import {
   AlertDialog,
@@ -28,9 +29,8 @@ export function UserProfileMenu() {
   const { user } = useUser();
   const { pg } = usePG();
   const [, navigate] = useLocation();
-  const queryClient = useQueryClient();
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const { logout, isLoggingOut } = useLogout();
 
   const isOwner = user?.userType === "owner";
   const isAdmin = user?.userType === "admin";
@@ -75,17 +75,8 @@ export function UserProfileMenu() {
   };
 
   const handleLogout = async () => {
-    setIsLoggingOut(true);
-    try {
-      await api.post("/api/auth/logout");
-      queryClient.clear();
-      navigate("/");
-    } catch (err) {
-      console.error("Logout failed:", err);
-    } finally {
-      setIsLoggingOut(false);
-      setShowLogoutConfirm(false);
-    }
+    await logout();
+    setShowLogoutConfirm(false);
   };
 
   const handleProfileClick = () => {

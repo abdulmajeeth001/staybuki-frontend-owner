@@ -1,19 +1,46 @@
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
-import { Users, Building2, TrendingUp, Lock } from "lucide-react";
+import { Users, Building2, TrendingUp, Lock, Download } from "lucide-react";
+import { useEffect, useState } from "react";
 
 export default function Home() {
   const [, navigate] = useLocation();
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e: Event) => {
+      // Prevent Chrome 67 and earlier from automatically showing the prompt
+      e.preventDefault();
+      // Stash the event so it can be triggered later.
+      setDeferredPrompt(e);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        setDeferredPrompt(null);
+      }
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/10 via-background to-primary/5">
       {/* Navigation */}
       <nav className="border-b border-border/50 bg-card/50 backdrop-blur-sm sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center">
+          <div className="flex items-center shrink-0">
             <img 
               src="/logo.png"
               alt="StayBuki" 
-              className="h-14 w-auto"
+              className="h-10 sm:h-14 w-auto object-contain"
+              width={180}
+              height={56}
             />
           </div>
           <div className="flex gap-3">
@@ -41,11 +68,19 @@ export default function Home() {
               </p>
             </div>
 
-            <div className="flex gap-4 pt-4">
-              <Button onClick={() => navigate("/register")} size="lg" className="text-lg px-8" data-testid="button-hero-register">
+            <div className="flex flex-col sm:flex-row gap-4 pt-4">
+              {deferredPrompt && (
+                <Button onClick={handleInstallClick} size="lg" className="text-lg px-8 gap-2 shadow-lg animate-pulse" data-testid="button-hero-install">
+                  <Download className="w-5 h-5" />
+                  Install App
+                </Button>
+              )}
+              
+              <Button onClick={() => navigate("/register")} size="lg" variant={deferredPrompt ? "secondary" : "default"} className="text-lg px-8 shadow-md" data-testid="button-hero-register">
                 Get Started
               </Button>
-              <Button onClick={() => navigate("/login")} size="lg" variant="outline" className="text-lg px-8" data-testid="button-hero-login">
+              
+              <Button onClick={() => navigate("/login")} size="lg" variant="outline" className="text-lg px-8 bg-background/50" data-testid="button-hero-login">
                 Login
               </Button>
             </div>

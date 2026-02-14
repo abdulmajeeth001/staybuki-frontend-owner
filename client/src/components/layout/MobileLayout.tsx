@@ -8,7 +8,8 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useUser } from "@/hooks/use-user";
 import { usePG } from "@/hooks/use-pg";
 import { PGSwitcher } from "@/components/PGSwitcher";
-import { useQueryClient, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
+import { useLogout } from "@/hooks/use-logout";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -35,10 +36,9 @@ export default function MobileLayout({
   action
 }: MobileLayoutProps) {
   const [location, navigate] = useLocation();
-  const queryClient = useQueryClient();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const { logout, isLoggingOut } = useLogout();
   const { user, isTenantOnboarded, isApplicant } = useUser();
   const { pg } = usePG();
   
@@ -80,19 +80,8 @@ export default function MobileLayout({
   }, [location]);
 
   const handleLogout = async () => {
-    setIsLoggingOut(true);
-    try {
-      await api.post("/api/auth/logout");
-      
-      // Clear all cached queries to prevent stale data across sessions
-      queryClient.clear();
-      navigate("/");
-    } catch (err) {
-      console.error("Logout failed:", err);
-    } finally {
-      setIsLoggingOut(false);
-      setShowLogoutConfirm(false);
-    }
+    await logout();
+    setShowLogoutConfirm(false);
   };
 
   // Owner navigation items

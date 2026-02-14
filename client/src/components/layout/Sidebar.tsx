@@ -6,7 +6,8 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useUser } from "@/hooks/use-user";
 import { usePG } from "@/hooks/use-pg";
 import { PGSwitcher } from "@/components/PGSwitcher";
-import { useQueryClient, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
+import { useLogout } from "@/hooks/use-logout";
 import { useState } from "react";
 import {
   AlertDialog,
@@ -58,11 +59,10 @@ const adminNavItems = [
 
 export default function Sidebar() {
   const [location, navigate] = useLocation();
-  const queryClient = useQueryClient();
   const { user } = useUser();
   const { pg } = usePG();
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const { logout, isLoggingOut } = useLogout();
 
   const navItems = user?.userType === "admin" ? adminNavItems : user?.userType === "tenant" ? tenantNavItems : ownerNavItems;
   const isOwner = user?.userType === "owner";
@@ -98,19 +98,8 @@ export default function Sidebar() {
   const avatarFallback = getAvatarFallback();
 
   const handleLogout = async () => {
-    setIsLoggingOut(true);
-    try {
-      await api.post("/api/auth/logout");
-      
-      // Clear all cached queries to prevent stale data across sessions
-      queryClient.clear();
-      navigate("/");
-    } catch (err) {
-      console.error("Logout failed:", err);
-    } finally {
-      setIsLoggingOut(false);
-      setShowLogoutConfirm(false);
-    }
+    await logout();
+    setShowLogoutConfirm(false);
   };
 
   return (

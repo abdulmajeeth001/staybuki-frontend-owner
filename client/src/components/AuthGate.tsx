@@ -13,7 +13,14 @@ export function AuthGate({ children }: AuthGateProps) {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const res = await api.get("/api/auth/me");
+        // Add headers to prevent browser caching of the auth check
+        const res = await api.get("/api/auth/me", {
+          headers: {
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Pragma": "no-cache",
+            "Expires": "0",
+          }
+        });
         const data = res.data;
 
           const currentPath = window.location.pathname;
