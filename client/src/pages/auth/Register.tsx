@@ -21,6 +21,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { api } from "@/apiClient";
+import { authService } from "@/services/authService";
+import type { RegisterRequest, VerifyOtpRequest } from "@/types/auth";
 
 export default function Register() {
   const [, setLocation] = useLocation();
@@ -32,6 +34,8 @@ export default function Register() {
   const [amenities, setAmenities] = useState<any[]>([]);
   const [isUploadingRegistration, setIsUploadingRegistration] = useState(false);
   const [isUploadingFssai, setIsUploadingFssai] = useState(false);
+  const [registrationFile, setRegistrationFile] = useState<File | null>(null);
+  const [fssaiFile, setFssaiFile] = useState<File | null>(null);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -59,8 +63,8 @@ export default function Register() {
   useEffect(() => {
     const fetchAmenities = async () => {
       try {
-        const response = await api.get("/api/amenities");
-        setAmenities(response.data.filter((a: any) => a.isActive));
+        const data = await authService.getAmenities();
+        setAmenities(data.filter((a) => a.isActive));
       } catch (error) {
         console.error("Failed to fetch amenities:", error);
       }
@@ -86,7 +90,7 @@ export default function Register() {
     });
   };
 
-  const handleRegistrationDocumentUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleRegistrationDocumentUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -95,23 +99,12 @@ export default function Register() {
       return;
     }
 
-    setIsUploadingRegistration(true);
-    try {
-      const formDataToSend = new FormData();
-      formDataToSend.append("file", file);
-
-      const response = await api.post("/api/pg/upload-registration-document", formDataToSend);
-      const data = response.data;
-      setFormData((prev) => ({ ...prev, registrationDocumentUrl: data.url }));
-      toast.success("Registration document uploaded");
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || "Failed to upload registration document");
-    } finally {
-      setIsUploadingRegistration(false);
-    }
+    setRegistrationFile(file);
+    // Clear any previously uploaded URL if a new file is selected
+    setFormData((prev) => ({ ...prev, registrationDocumentUrl: "" }));
   };
 
-  const handleFssaiCertificateUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFssaiCertificateUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -120,20 +113,8 @@ export default function Register() {
       return;
     }
 
-    setIsUploadingFssai(true);
-    try {
-      const formDataToSend = new FormData();
-      formDataToSend.append("file", file);
-
-      const response = await api.post("/api/pg/upload-fssai-certificate", formDataToSend);
-      const data = response.data;
-      setFormData((prev) => ({ ...prev, fssaiCertificateUrl: data.url }));
-      toast.success("FSSAI certificate uploaded");
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || "Failed to upload FSSAI certificate");
-    } finally {
-      setIsUploadingFssai(false);
-    }
+    setFssaiFile(file);
+    setFormData((prev) => ({ ...prev, fssaiCertificateUrl: "" }));
   };
 
   const handleOtpChange = (index: number, value: string) => {
@@ -159,6 +140,7 @@ export default function Register() {
         setError("Please select your gender");
         return;
       }
+
       setStep(3);
     } else if (step === 3) {
       if (formData.password !== formData.confirmPassword) {
@@ -168,32 +150,68 @@ export default function Register() {
 
       setIsLoading(true);
       try {
-        await api.post("/api/auth/register", {
-            name: formData.name,
-            email: formData.email,
-            mobile: formData.mobile,
-            gender: formData.gender || undefined,
-            userType: formData.userType,
-            password: formData.password,
+        // Handle file uploads immediately before registration
+        let currentRegUrl = formData.registrationDocumentUrl;
+        let currentFssaiUrl = formData.fssaiCertificateUrl;
+
+        if (formData.userType === "owner") {
+          if (registrationFile) {
+            setIsUploadingRegistration(true);
+            const formDataToSend = new FormData();
+            formDataToSend.append("file", registrationFile);
+            const data = await authService.uploadRegistrationDocument(formDataToSend);
+            currentRegUrl = data.url;
+            setRegistrationFile(null); // Clear file to prevent re-upload on retry
+            setFormData(prev => ({ ...prev, registrationDocumentUrl: data.url }));
+            toast.success("Registration document uploaded");
+          }
+
+          if (fssaiFile) {
+            setIsUploadingFssai(true);
+            const formDataToSend = new FormData();
+            formDataToSend.append("file", fssaiFile);
+            const data = await authService.uploadFssaiCertificate(formDataToSend);
+            currentFssaiUrl = data.url;
+            setFssaiFile(null);
+            setFormData(prev => ({ ...prev, fssaiCertificateUrl: data.url }));
+            toast.success("FSSAI certificate uploaded");
+          }
+        }
+
+        const registerData: RegisterRequest = {
+          name: formData.name,
+          email: formData.email,
+          mobile: formData.mobile,
+          gender: formData.gender || undefined,
+          userType: formData.userType,
+          password: formData.password,
+        };
+
+        if (formData.userType === "owner") {
+          registerData.pgDetails = {
             pgName: formData.pgName,
             pgAddress: formData.pgAddress,
             pgLocation: formData.pgLocation,
-            latitude: formData.latitude,
-            longitude: formData.longitude,
-            imageUrl: formData.imageUrl,
-            totalRooms: formData.totalRooms ? parseInt(formData.totalRooms) : 0,
+            latitude: formData.latitude ? parseFloat(formData.latitude) : undefined,
+            longitude: formData.longitude ? parseFloat(formData.longitude) : undefined,
+            totalRooms: formData.totalRooms ? parseInt(formData.totalRooms) : undefined,
             pgType: formData.pgType,
             registrationNumber: formData.registrationNumber,
-            registrationDocumentUrl: formData.registrationDocumentUrl,
-            fssaiCertificateUrl: formData.fssaiCertificateUrl,
+            registrationDocumentUrl: currentRegUrl,
+            fssaiCertificateUrl: currentFssaiUrl,
             amenityIds: formData.amenityIds,
-        });
+          };
+        }
+
+        await authService.register(registerData);
 
         setIsLoading(false);
         setStep(4);
       } catch (err: any) {
         setError(err.response?.data?.error || err.message || "Registration failed");
         setIsLoading(false);
+        setIsUploadingRegistration(false);
+        setIsUploadingFssai(false);
       }
     } else if (step === 4) {
       const otpCode = otp.join("");
@@ -204,10 +222,12 @@ export default function Register() {
 
       setIsLoading(true);
       try {
-        await api.post("/api/auth/verify-otp", {
-            email: formData.email,
-            code: otpCode,
-        });
+        const verifyData: VerifyOtpRequest = {
+          email: formData.email,
+          otp: otpCode,
+        };
+
+        await authService.verifyOtp(verifyData);
 
         setIsLoading(false);
         setLocation("/dashboard");
@@ -569,32 +589,32 @@ export default function Register() {
                               <div className="flex items-center gap-2">
                                 <Button
                                   type="button"
-                                  variant={formData.registrationDocumentUrl ? "secondary" : "outline"}
+                                  variant={registrationFile || formData.registrationDocumentUrl ? "secondary" : "outline"}
                                   className="flex-1 h-10"
                                   onClick={() => document.getElementById('registrationDocument')?.click()}
                                   disabled={isUploadingRegistration}
                                   data-testid="button-register-upload-registration"
                                 >
                                   <Upload className="h-4 w-4 mr-2" />
-                                  {isUploadingRegistration ? "Uploading..." : formData.registrationDocumentUrl ? "Change Document" : "Upload Document"}
+                                  {registrationFile || formData.registrationDocumentUrl ? "Change Document" : "Upload Document"}
                                 </Button>
-                                {formData.registrationDocumentUrl && (
+                                {(registrationFile || formData.registrationDocumentUrl) && (
                                   <Button
                                     type="button"
                                     variant="outline"
                                     size="icon"
                                     className="h-10 w-10"
-                                    onClick={() => window.open(formData.registrationDocumentUrl, '_blank')}
+                                    onClick={() => window.open(registrationFile ? URL.createObjectURL(registrationFile) : formData.registrationDocumentUrl, '_blank')}
                                     data-testid="button-register-view-registration"
                                   >
                                     <Eye className="h-4 w-4" />
                                   </Button>
                                 )}
                               </div>
-                              {formData.registrationDocumentUrl && (
+                              {(registrationFile || formData.registrationDocumentUrl) && (
                                 <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
                                   <FileText className="h-3 w-3" />
-                                  Document uploaded successfully
+                                  {registrationFile ? `${registrationFile.name} selected` : "Document uploaded successfully"}
                                 </p>
                               )}
                             </Card>
@@ -688,32 +708,32 @@ export default function Register() {
                                   <div className="flex items-center gap-2">
                                     <Button
                                       type="button"
-                                      variant={formData.fssaiCertificateUrl ? "secondary" : "default"}
+                                      variant={fssaiFile || formData.fssaiCertificateUrl ? "secondary" : "default"}
                                       className="flex-1 h-10"
                                       onClick={() => document.getElementById('fssaiCertificate')?.click()}
                                       disabled={isUploadingFssai}
                                       data-testid="button-register-upload-fssai"
                                     >
                                       <Upload className="h-4 w-4 mr-2" />
-                                      {isUploadingFssai ? "Uploading..." : formData.fssaiCertificateUrl ? "Change Certificate" : "Upload Certificate"}
+                                      {fssaiFile || formData.fssaiCertificateUrl ? "Change Certificate" : "Upload Certificate"}
                                     </Button>
-                                    {formData.fssaiCertificateUrl && (
+                                    {(fssaiFile || formData.fssaiCertificateUrl) && (
                                       <Button
                                         type="button"
                                         variant="outline"
                                         size="icon"
                                         className="h-10 w-10"
-                                        onClick={() => window.open(formData.fssaiCertificateUrl, '_blank')}
+                                        onClick={() => window.open(fssaiFile ? URL.createObjectURL(fssaiFile) : formData.fssaiCertificateUrl, '_blank')}
                                         data-testid="button-register-view-fssai"
                                       >
                                         <Eye className="h-4 w-4" />
                                       </Button>
                                     )}
                                   </div>
-                                  {formData.fssaiCertificateUrl && (
+                                  {(fssaiFile || formData.fssaiCertificateUrl) && (
                                     <p className="text-xs text-green-700 dark:text-green-400 mt-2 flex items-center gap-1">
                                       <Check className="h-3 w-3" />
-                                      Certificate uploaded successfully
+                                      {fssaiFile ? `${fssaiFile.name} selected` : "Certificate uploaded successfully"}
                                     </p>
                                   )}
                                 </Card>
@@ -726,8 +746,8 @@ export default function Register() {
                   </div>
 
                   <div className="pt-4">
-                    <Button type="submit" className="w-full h-12 text-base" data-testid="button-details-next">
-                      Next <ArrowRight className="ml-2 w-4 h-4" />
+                    <Button type="submit" className="w-full h-12 text-base" disabled={isLoading} data-testid="button-details-next">
+                      {isLoading ? "Processing..." : <>Next <ArrowRight className="ml-2 w-4 h-4" /></>}
                     </Button>
                   </div>
                 </>

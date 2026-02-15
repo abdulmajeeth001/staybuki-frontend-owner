@@ -1932,6 +1932,29 @@ export interface components {
             confirmedTime?: string;
             notes?: string;
         };
+        PgCreateRequestDto: {
+            pgName?: string;
+            pgAddress?: string;
+            pgLocation?: string;
+            latitude?: number;
+            longitude?: number;
+            /** Format: int32 */
+            totalRooms?: number;
+            /** Format: int32 */
+            rentPaymentDate?: number;
+            registrationNumber?: string;
+            registrationDocumentUrl?: string;
+            fssaiCertificateUrl?: string;
+            pgType?: string;
+            hasFood?: boolean;
+            hasParking?: boolean;
+            hasAC?: boolean;
+            hasCCTV?: boolean;
+            hasWifi?: boolean;
+            hasLaundry?: boolean;
+            hasGym?: boolean;
+            amenityIds?: number[];
+        };
         UserRequestDto: {
             name: string;
             email: string;
@@ -1939,10 +1962,7 @@ export interface components {
             password?: string;
             userType?: string;
             gender?: string;
-            pgAddress?: string;
-            pgLocation?: string;
-            googleId?: string;
-            upiId?: string;
+            pgDetails?: components["schemas"]["PgCreateRequestDto"];
         };
         TenantProfileDto: {
             name?: string;
@@ -2072,29 +2092,6 @@ export interface components {
             created?: number;
             /** Format: int32 */
             failed?: number;
-        };
-        PgCreateRequestDto: {
-            pgName?: string;
-            pgAddress?: string;
-            pgLocation?: string;
-            latitude?: number;
-            longitude?: number;
-            /** Format: int32 */
-            totalRooms?: number;
-            /** Format: int32 */
-            rentPaymentDate?: number;
-            registrationNumber?: string;
-            registrationDocumentUrl?: string;
-            fssaiCertificateUrl?: string;
-            pgType?: string;
-            hasFood?: boolean;
-            hasParking?: boolean;
-            hasAC?: boolean;
-            hasCCTV?: boolean;
-            hasWifi?: boolean;
-            hasLaundry?: boolean;
-            hasGym?: boolean;
-            amenityIds?: number[];
         };
         PgFileUploadResponseDto: {
             url?: string;
@@ -4143,9 +4140,7 @@ export interface operations {
     };
     logout: {
         parameters: {
-            query: {
-                userRq: components["schemas"]["UserRequestDto"];
-            };
+            query?: never;
             header?: never;
             path?: never;
             cookie?: never;

@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { authService } from "@/services/authService";
+import { ROUTES, LOGIN_ACTIONS, USER_TYPES } from "@/constants/routes";
 import type { LoginRequest } from "@/types/auth";
 
 const loginSchema = z.object({
@@ -56,54 +57,54 @@ export default function Login() {
       // 2. Switch based on the "Action" code from Java
       switch (data.action) {
         
-        case "RESET_PASSWORD":
-          setLocation("/tenant-reset-password");
+        case LOGIN_ACTIONS.RESET_PASSWORD:
+          setLocation(ROUTES.AUTH.TENANT_RESET_PASSWORD);
           return;
 
-        case "COMPLETE_ONBOARDING":
+        case LOGIN_ACTIONS.COMPLETE_ONBOARDING:
           // Route to specific setup pages based on role
-          if (data.user.userType === "tenant") {
-             setLocation("/tenant/setup-profile");
+          if (data.user.userType === USER_TYPES.TENANT) {
+             setLocation(ROUTES.TENANT.SETUP_PROFILE);
           } else {
-             setLocation("/onboarding"); // or "/owner/add-pg"
+             setLocation(ROUTES.OWNER.ONBOARDING);
           }
           return;
 
-        case "WAIT_FOR_APPROVAL":
+        case LOGIN_ACTIONS.WAIT_FOR_APPROVAL:
           // User exists but PG is pending. 
           // You can redirect to a status page OR just show an error message.
           setError("Your account is currently pending admin approval.");
           return;
 
-        case "RESOLVE_REJECTION":
+        case LOGIN_ACTIONS.RESOLVE_REJECTION:
           // Show the specific reason the admin rejected them
           setError(data.message || "Your account was rejected. Please contact support.");
           return;
 
-        case "ACCOUNT_DEACTIVATED":
+        case LOGIN_ACTIONS.ACCOUNT_DEACTIVATED:
           setError("Your account has been deactivated.");
           return;
 
-        case "GO_TO_DASHBOARD":
+        case LOGIN_ACTIONS.GO_TO_DASHBOARD:
           // 3. Handle Successful Login Routing
           const userType = (data.user?.userType || "").toLowerCase().trim(); 
           console.log("Normalized User Type:", userType); // Debugging line
-          if (userType === "tenant") {
-            setLocation("/tenant-dashboard");
-          } else if (userType === "applicant") {
-            setLocation("/tenant-search-pgs");
-          } else if (userType === "admin") {
-            setLocation("/admin-dashboard");
+          if (userType === USER_TYPES.TENANT) {
+            setLocation(ROUTES.TENANT.DASHBOARD);
+          } else if (userType === USER_TYPES.APPLICANT) {
+            setLocation(ROUTES.TENANT.SEARCH_PGS);
+          } else if (userType === USER_TYPES.ADMIN) {
+            setLocation(ROUTES.ADMIN.DASHBOARD);
           } else {
             // Default for Owners
-            setLocation("/dashboard");
+            setLocation(ROUTES.OWNER.DASHBOARD);
           }
           return;
 
         default:
           // Fallback if backend sends a new action frontend doesn't know yet
           console.warn("Unknown login action:", data.action);
-          setLocation("/dashboard");
+          setLocation(ROUTES.OWNER.DASHBOARD);
       }
 
     } catch (err: any) {
@@ -206,7 +207,7 @@ export default function Login() {
                     Remember me
                   </Label>
                 </div>
-                <Link href="/forgot-password" className="text-primary font-medium hover:underline" data-testid="link-forgot-password">Forgot password?</Link>
+                <Link href={ROUTES.AUTH.FORGOT_PASSWORD} className="text-primary font-medium hover:underline" data-testid="link-forgot-password">Forgot password?</Link>
               </div>
               <Button type="submit" className="w-full h-12 text-base font-medium" disabled={isSubmitting} data-testid="button-login-submit">
                 {isSubmitting ? (
@@ -220,7 +221,7 @@ export default function Login() {
         </Card>
 
         <div className="text-center text-sm text-muted-foreground">
-          Don't have an account? <Link href="/register" className="text-primary font-medium hover:underline">Start Free Trial</Link>
+          Don't have an account? <Link href={ROUTES.AUTH.REGISTER} className="text-primary font-medium hover:underline">Start Free Trial</Link>
         </div>
       </motion.div>
     </div>

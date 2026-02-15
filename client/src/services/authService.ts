@@ -2,6 +2,11 @@ import { api } from "@/apiClient";
 import type {
   LoginRequest,
   LoginResponse,
+  RegisterRequest,
+  VerifyOtpRequest,
+  UserResponse,
+  AmenityResponse,
+  PgFileUploadResponse,
 } from "@/types/auth";
 
 export const authService = {
@@ -51,5 +56,50 @@ export const authService = {
       token,
       newPassword,
     });
+  },
+
+  /**
+   * Register a new user
+   */
+  register: async (payload: RegisterRequest) => {
+    await api.post("/api/auth/register", payload);
+  },
+
+  /**
+   * Verify OTP for registration
+   */
+  verifyOtp: async (payload: VerifyOtpRequest) => {
+    const { data } = await api.post<UserResponse>("/api/auth/verify-otp", payload);
+    return data;
+  },
+
+  /**
+   * Get all amenities
+   */
+  getAmenities: async () => {
+    const { data } = await api.get<AmenityResponse[]>("/api/common/registration/amenities");
+    return data;
+  },
+
+  /**
+   * Upload FSSAI certificate
+   */
+  uploadFssaiCertificate: async (formData: FormData) => {
+    const { data } = await api.post<PgFileUploadResponse>(
+      "/api/pg/upload-fssai-certificate",
+      formData
+    );
+    return data;
+  },
+
+  /**
+   * Upload Registration Document
+   */
+  uploadRegistrationDocument: async (formData: FormData) => {
+    const { data } = await api.post<PgFileUploadResponse>(
+      "/api/pg/upload-registration-document",
+      formData
+    );
+    return data;
   },
 };
