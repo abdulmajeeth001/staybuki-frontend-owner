@@ -20,7 +20,6 @@ import { Badge } from "@/components/ui/badge";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { api } from "@/apiClient";
 import { authService } from "@/services/authService";
 import type { RegisterRequest, VerifyOtpRequest } from "@/types/auth";
 
@@ -32,8 +31,6 @@ export default function Register() {
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [error, setError] = useState("");
   const [amenities, setAmenities] = useState<any[]>([]);
-  const [isUploadingRegistration, setIsUploadingRegistration] = useState(false);
-  const [isUploadingFssai, setIsUploadingFssai] = useState(false);
   const [registrationFile, setRegistrationFile] = useState<File | null>(null);
   const [fssaiFile, setFssaiFile] = useState<File | null>(null);
 
@@ -150,35 +147,7 @@ export default function Register() {
 
       setIsLoading(true);
       try {
-        // Handle file uploads immediately before registration
-        let currentRegUrl = formData.registrationDocumentUrl;
-        let currentFssaiUrl = formData.fssaiCertificateUrl;
-
-        if (formData.userType === "owner") {
-          if (registrationFile) {
-            setIsUploadingRegistration(true);
-            const formDataToSend = new FormData();
-            formDataToSend.append("file", registrationFile);
-            const data = await authService.uploadRegistrationDocument(formDataToSend);
-            currentRegUrl = data.url;
-            setRegistrationFile(null); // Clear file to prevent re-upload on retry
-            setFormData(prev => ({ ...prev, registrationDocumentUrl: data.url }));
-            toast.success("Registration document uploaded");
-          }
-
-          if (fssaiFile) {
-            setIsUploadingFssai(true);
-            const formDataToSend = new FormData();
-            formDataToSend.append("file", fssaiFile);
-            const data = await authService.uploadFssaiCertificate(formDataToSend);
-            currentFssaiUrl = data.url;
-            setFssaiFile(null);
-            setFormData(prev => ({ ...prev, fssaiCertificateUrl: data.url }));
-            toast.success("FSSAI certificate uploaded");
-          }
-        }
-
-        const registerData: RegisterRequest = {
+        const registerData: any = {
           name: formData.name,
           email: formData.email,
           mobile: formData.mobile,
@@ -197,21 +166,27 @@ export default function Register() {
             totalRooms: formData.totalRooms ? parseInt(formData.totalRooms) : undefined,
             pgType: formData.pgType,
             registrationNumber: formData.registrationNumber,
-            registrationDocumentUrl: currentRegUrl,
-            fssaiCertificateUrl: currentFssaiUrl,
             amenityIds: formData.amenityIds,
           };
         }
 
-        await authService.register(registerData);
+        const formDataToSend = new FormData();
+        formDataToSend.append("req", new Blob([JSON.stringify(registerData)], { type: "application/json" }));
+
+        if (registrationFile) {
+          formDataToSend.append("registrationDoc", registrationFile);
+        }
+        if (fssaiFile) {
+          formDataToSend.append("fssaiCert", fssaiFile);
+        }
+
+        await authService.register(formDataToSend as any);
 
         setIsLoading(false);
         setStep(4);
       } catch (err: any) {
         setError(err.response?.data?.error || err.message || "Registration failed");
         setIsLoading(false);
-        setIsUploadingRegistration(false);
-        setIsUploadingFssai(false);
       }
     } else if (step === 4) {
       const otpCode = otp.join("");
@@ -592,7 +567,7 @@ export default function Register() {
                                   variant={registrationFile || formData.registrationDocumentUrl ? "secondary" : "outline"}
                                   className="flex-1 h-10"
                                   onClick={() => document.getElementById('registrationDocument')?.click()}
-                                  disabled={isUploadingRegistration}
+                                  disabled={isLoading}
                                   data-testid="button-register-upload-registration"
                                 >
                                   <Upload className="h-4 w-4 mr-2" />
@@ -711,7 +686,7 @@ export default function Register() {
                                       variant={fssaiFile || formData.fssaiCertificateUrl ? "secondary" : "default"}
                                       className="flex-1 h-10"
                                       onClick={() => document.getElementById('fssaiCertificate')?.click()}
-                                      disabled={isUploadingFssai}
+                                      disabled={isLoading}
                                       data-testid="button-register-upload-fssai"
                                     >
                                       <Upload className="h-4 w-4 mr-2" />
