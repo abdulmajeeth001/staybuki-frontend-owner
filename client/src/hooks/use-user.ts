@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { api } from "@/apiClient";
 
 export interface TenantProfile {
@@ -19,29 +19,24 @@ export interface CurrentUser {
 }
 
 export function useUser() {
-  const [user, setUser] = useState<CurrentUser | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const fetchUser = async () => {
+  const { data: user = null, isLoading, error: queryError } = useQuery<CurrentUser | null>({
+    queryKey: ["current-user"],
+    queryFn: async () => {
       try {
         const res = await api.get("/api/auth/me");
-        setUser(res.data);
+        return res.data;
       } catch (err: any) {
         if (err.response?.status === 401) {
-          setUser(null);
-        } else {
-          setError(err.response?.data?.error || err.message || "Failed to fetch user");
-          setUser(null);
+          return null;
         }
-      } finally {
-        setIsLoading(false);
+        throw new Error(err.response?.data?.error || err.message || "Failed to fetch user");
       }
-    };
+    },
+    staleTime: 1000 * 60 * 30, // Cache user data for 30 minutes
+    retry: false,
+  });
 
-    fetchUser();
-  }, []);
+  const error = queryError ? (queryError as Error).message : null;
 
   // Derived flags for easier access
   const isTenantOnboarded = user?.userType === "tenant" && 

@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/apiClient";
 import { useCallback } from "react";
+import { useUser } from "./use-user";
 
 export interface PG {
   id: number;
@@ -20,8 +21,12 @@ export interface PG {
   createdAt?: string;
 }
 
-export function usePG() {
+export function usePG(enabled: boolean = true) {
   const queryClient = useQueryClient();
+  const { user, isLoading: isUserLoading } = useUser();
+  
+  // Strictly enforce that only owners can fetch PG data
+  const canFetch = enabled && !isUserLoading && user?.userType === "owner";
 
   // Fetch current PG with caching
   const { 
@@ -43,6 +48,7 @@ export function usePG() {
     },
     staleTime: 1000 * 60 * 30, // Data remains fresh for 30 minutes
     retry: false,
+    enabled: canFetch,
   });
 
   // Fetch all PGs with caching
@@ -65,6 +71,7 @@ export function usePG() {
     },
     staleTime: 1000 * 60 * 30, // 30 minutes
     retry: false,
+    enabled: canFetch,
   });
 
   const selectPG = useCallback(async (pgId: number) => {
@@ -194,9 +201,9 @@ export function usePG() {
 
   return { 
     pg, 
-    allPgs,
-    isLoading, 
-    isAllPgsLoading,
+    allPgs: canFetch ? allPgs : [],
+    isLoading: isUserLoading || (canFetch && isLoading), 
+    isAllPgsLoading: isUserLoading || (canFetch && isAllPgsLoading),
     error: (pgError as any)?.message || (allPgsError as any)?.message || null, 
     selectPG,
     createPG,

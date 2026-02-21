@@ -40,9 +40,8 @@ export default function MobileLayout({
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const { logout, isLoggingOut } = useLogout();
   const { user, isTenantOnboarded, isApplicant } = useUser();
-  const { pg } = usePG();
-  
   const isOwner = user?.userType === "owner";
+  const { pg } = usePG(isOwner);
   const isAdmin = user?.userType === "admin";
   const isTenant = user?.userType === "tenant";
 

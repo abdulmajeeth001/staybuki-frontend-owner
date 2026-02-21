@@ -60,12 +60,12 @@ const adminNavItems = [
 export default function Sidebar() {
   const [location, navigate] = useLocation();
   const { user } = useUser();
-  const { pg } = usePG();
+  const isOwner = user?.userType === "owner";
+  const { pg } = usePG(isOwner);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const { logout, isLoggingOut } = useLogout();
 
   const navItems = user?.userType === "admin" ? adminNavItems : user?.userType === "tenant" ? tenantNavItems : ownerNavItems;
-  const isOwner = user?.userType === "owner";
   const isTenant = user?.userType === "tenant";
   const isAdmin = user?.userType === "admin";
 
