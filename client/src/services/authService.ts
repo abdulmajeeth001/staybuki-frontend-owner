@@ -7,6 +7,8 @@ import type {
   UserResponse,
   AmenityResponse,
   PgFileUploadResponse,
+  ForgotPasswordRequest,
+  VerifyForgotPasswordRequest,
 } from "@/types/auth";
 
 export const authService = {
@@ -44,8 +46,15 @@ export const authService = {
   /**
    * Forgot password
    */
-  forgotPassword: async (email: string) => {
-    await api.post("/api/auth/forgot-password", { email });
+  forgotPassword: async (payload: ForgotPasswordRequest) => {
+    await api.post("/api/auth/forgot-password", payload);
+  },
+
+  /**
+   * Verify forgot password with OTP
+   */
+  verifyForgotPassword: async (payload: VerifyForgotPasswordRequest) => {
+    await api.post("/api/auth/verify-forgot-password", payload);
   },
 
   /**
@@ -61,8 +70,19 @@ export const authService = {
   /**
    * Register a new user
    */
-  register: async (payload: RegisterRequest) => {
-    await api.post("/api/auth/register", payload);
+  register: async (payload: RegisterRequest, registrationDoc?: File, fssaiCert?: File) => {
+    const formData = new FormData();
+    // The backend @RequestPart("req") expects a JSON Blob
+    formData.append("req", new Blob([JSON.stringify(payload)], { type: "application/json" }));
+
+    if (registrationDoc) {
+      formData.append("registrationDoc", registrationDoc);
+    }
+    if (fssaiCert) {
+      formData.append("fssaiCert", fssaiCert);
+    }
+
+    await api.post("/api/auth/register", formData);
   },
 
   /**

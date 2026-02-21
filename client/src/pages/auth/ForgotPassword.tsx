@@ -1,132 +1,145 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { Eye, EyeOff, Mail } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { Eye, EyeOff, Mail, ArrowLeft, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { api } from "@/apiClient";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { authService } from "@/services/authService";
+import type { ForgotPasswordRequest, VerifyForgotPasswordRequest } from "@/types/auth";
+import { forgotPasswordEmailSchema, resetPasswordSchema } from "@/validations/auth";
+
+type EmailFormValues = z.infer<typeof forgotPasswordEmailSchema>;
+type ResetFormValues = z.infer<typeof resetPasswordSchema>;
 
 export default function ForgotPassword() {
   const [, setLocation] = useLocation();
-  const [step, setStep] = useState(1); // 1: Enter email, 2: Enter OTP & new password
-  const [isLoading, setIsLoading] = useState(false);
+  const [step, setStep] = useState<1 | 2>(1);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+  const [serverError, setServerError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
 
-  const [email, setEmail] = useState("");
-  const [otp, setOtp] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+  // Form 1: Email
+  const emailForm = useForm<EmailFormValues>({
+    resolver: zodResolver(forgotPasswordEmailSchema),
+    defaultValues: { email: "" },
+  });
 
-  const handleRequestPasswordReset = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    setSuccess("");
+  // Form 2: Reset
+  const resetForm = useForm<ResetFormValues>({
+    resolver: zodResolver(resetPasswordSchema),
+    defaultValues: { otp: "", newPassword: "", confirmPassword: "" },
+  });
 
-    if (!email) {
-      setError("Please enter your email");
-      return;
-    }
-
-    setIsLoading(true);
+  const onEmailSubmit = async (values: EmailFormValues) => {
+    setServerError("");
+    setSuccessMessage("");
+    
     try {
-      await api.post("/api/auth/forgot-password", { email });
-
-      setSuccess("OTP sent to your email and registered phone number");
+      const payload: ForgotPasswordRequest = { email: values.email };
+      await authService.forgotPassword(payload);
+      
+      setSuccessMessage("OTP sent to your email and registered phone number");
       setTimeout(() => setStep(2), 1000);
     } catch (err: any) {
-      setError(err.response?.data?.error || err.message || "Failed to request password reset");
-    } finally {
-      setIsLoading(false);
+      setServerError(err.response?.data?.error || err.message || "Failed to request password reset");
     }
   };
 
-  const handleResetPassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    setSuccess("");
+  const onResetSubmit = async (values: ResetFormValues) => {
+    setServerError("");
+    setSuccessMessage("");
 
-    if (otp.length !== 6) {
-      setError("OTP must be 6 digits");
-      return;
-    }
-
-    if (newPassword !== confirmPassword) {
-      setError("Passwords do not match");
-      return;
-    }
-
-    if (newPassword.length < 8) {
-      setError("Password must be at least 8 characters");
-      return;
-    }
-
-    setIsLoading(true);
     try {
-      await api.post("/api/auth/verify-forgot-password", { email, otp, newPassword });
+      const email = emailForm.getValues("email");
+      const payload: VerifyForgotPasswordRequest = { 
+        email, 
+        otp: values.otp, 
+        newPassword: values.newPassword 
+      };
+      
+      await authService.verifyForgotPassword(payload);
 
-      setSuccess("Password reset successfully! Redirecting to login...");
+      setSuccessMessage("Password reset successfully! Redirecting to login...");
       setTimeout(() => setLocation("/login"), 2000);
     } catch (err: any) {
-      setError(err.response?.data?.error || err.message || "Failed to reset password");
-    } finally {
-      setIsLoading(false);
+      setServerError(err.response?.data?.error || err.message || "Failed to reset password");
     }
   };
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <Card className="w-full max-w-md border-none shadow-xl">
-        <CardHeader className="space-y-2 text-center">
+        <CardHeader className="space-y-2 text-center relative">
+          {step === 2 && (
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="absolute left-2 top-2"
+              onClick={() => setStep(1)}
+            >
+              <ArrowLeft className="w-4 h-4" />
+            </Button>
+          )}
           <div className="bg-primary/10 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
             <Mail className="w-8 h-8 text-primary" />
           </div>
           <CardTitle className="text-2xl">Reset Password</CardTitle>
-          <p className="text-sm text-muted-foreground">
+          <CardDescription>
             {step === 1
               ? "Enter your email to receive a password reset code"
               : "Enter the OTP and your new password"}
-          </p>
+          </CardDescription>
         </CardHeader>
 
         <CardContent>
-          {step === 1 ? (
-            <form onSubmit={handleRequestPasswordReset} className="space-y-4">
-              {error && (
-                <div className="p-3 bg-red-100 text-red-700 rounded-lg text-sm">
-                  {error}
-                </div>
-              )}
-              {success && (
-                <div className="p-3 bg-green-100 text-green-700 rounded-lg text-sm">
-                  {success}
-                </div>
-              )}
+          {serverError && (
+            <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg text-sm font-medium animate-in fade-in slide-in-from-top-1">
+              {serverError}
+            </div>
+          )}
+          {successMessage && (
+            <div className="mb-4 p-3 bg-green-100 text-green-700 rounded-lg text-sm font-medium animate-in fade-in slide-in-from-top-1">
+              {successMessage}
+            </div>
+          )}
 
+          {step === 1 ? (
+            <form onSubmit={emailForm.handleSubmit(onEmailSubmit)} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="email">Email Address</Label>
                 <Input
                   id="email"
                   type="email"
                   placeholder="your@email.com"
-                  required
+                  autoComplete="email"
                   className="h-12"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  disabled={emailForm.formState.isSubmitting}
+                  {...emailForm.register("email")}
                   data-testid="input-forgot-email"
                 />
+                {emailForm.formState.errors.email && (
+                  <p className="text-xs text-destructive">{emailForm.formState.errors.email.message}</p>
+                )}
               </div>
 
               <Button
                 type="submit"
                 className="w-full h-12"
-                disabled={isLoading}
+                disabled={emailForm.formState.isSubmitting}
                 data-testid="button-forgot-request"
               >
-                {isLoading ? "Sending OTP..." : "Send OTP"}
+                {emailForm.formState.isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Sending OTP...
+                  </>
+                ) : (
+                  "Send OTP"
+                )}
               </Button>
 
               <Button
@@ -139,33 +152,23 @@ export default function ForgotPassword() {
               </Button>
             </form>
           ) : (
-            <form onSubmit={handleResetPassword} className="space-y-4">
-              {error && (
-                <div className="p-3 bg-red-100 text-red-700 rounded-lg text-sm">
-                  {error}
-                </div>
-              )}
-              {success && (
-                <div className="p-3 bg-green-100 text-green-700 rounded-lg text-sm">
-                  {success}
-                </div>
-              )}
-
+            <form onSubmit={resetForm.handleSubmit(onResetSubmit)} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="otp">OTP Code</Label>
                 <Input
                   id="otp"
                   type="text"
+                  inputMode="numeric"
                   placeholder="000000"
                   maxLength={6}
-                  required
                   className="h-12 text-center text-lg tracking-widest font-mono"
-                  value={otp}
-                  onChange={(e) =>
-                    setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))
-                  }
+                  disabled={resetForm.formState.isSubmitting}
+                  {...resetForm.register("otp")}
                   data-testid="input-forgot-otp"
                 />
+                {resetForm.formState.errors.otp && (
+                  <p className="text-xs text-destructive">{resetForm.formState.errors.otp.message}</p>
+                )}
                 <p className="text-xs text-muted-foreground text-center">
                   Check your email and registered phone for OTP
                 </p>
@@ -178,11 +181,9 @@ export default function ForgotPassword() {
                     id="newPassword"
                     type={showPassword ? "text" : "password"}
                     placeholder="••••••••"
-                    minLength={8}
-                    required
                     className="h-12 pr-10"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
+                    disabled={resetForm.formState.isSubmitting}
+                    {...resetForm.register("newPassword")}
                     data-testid="input-forgot-password"
                   />
                   <button
@@ -197,6 +198,9 @@ export default function ForgotPassword() {
                     )}
                   </button>
                 </div>
+                {resetForm.formState.errors.newPassword && (
+                  <p className="text-xs text-destructive">{resetForm.formState.errors.newPassword.message}</p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -206,11 +210,9 @@ export default function ForgotPassword() {
                     id="confirmPassword"
                     type={showConfirm ? "text" : "password"}
                     placeholder="••••••••"
-                    minLength={8}
-                    required
                     className="h-12 pr-10"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    disabled={resetForm.formState.isSubmitting}
+                    {...resetForm.register("confirmPassword")}
                     data-testid="input-forgot-confirm"
                   />
                   <button
@@ -225,15 +227,24 @@ export default function ForgotPassword() {
                     )}
                   </button>
                 </div>
+                {resetForm.formState.errors.confirmPassword && (
+                  <p className="text-xs text-destructive">{resetForm.formState.errors.confirmPassword.message}</p>
+                )}
               </div>
 
               <Button
                 type="submit"
                 className="w-full h-12"
-                disabled={isLoading || otp.length !== 6}
+                disabled={resetForm.formState.isSubmitting}
                 data-testid="button-forgot-verify"
               >
-                {isLoading ? "Resetting..." : "Reset Password"}
+                {resetForm.formState.isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Resetting...
+                  </>
+                ) : (
+                  "Reset Password"
+                )}
               </Button>
 
               <Button
@@ -242,13 +253,11 @@ export default function ForgotPassword() {
                 className="w-full"
                 onClick={() => {
                   setStep(1);
-                  setOtp("");
-                  setNewPassword("");
-                  setConfirmPassword("");
-                  setError("");
+                  resetForm.reset();
+                  setServerError("");
                 }}
               >
-                Back
+                Change Email
               </Button>
             </form>
           )}

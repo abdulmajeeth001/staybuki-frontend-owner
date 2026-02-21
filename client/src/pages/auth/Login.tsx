@@ -13,12 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { authService } from "@/services/authService";
 import { ROUTES, LOGIN_ACTIONS, USER_TYPES } from "@/constants/routes";
 import type { LoginRequest } from "@/types/auth";
-
-const loginSchema = z.object({
-  email: z.string().email("Please enter a valid email address"),
-  password: z.string().min(1, "Password is required"),
-  rememberMe: z.boolean().default(false),
-});
+import { loginSchema } from "@/validations/auth";
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
