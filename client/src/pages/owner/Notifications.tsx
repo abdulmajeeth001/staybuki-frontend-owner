@@ -137,7 +137,7 @@ function NotificationsDesktop() {
 
     // Navigate based on notification type and user type
     if (user?.userType === "tenant" || user?.userType === "applicant") {
-      switch (notification.type) {
+      switch (notification.type.toLowerCase()) {
         case "payment":
           setLocation(`/tenant-payments${notification.referenceId ? `?paymentId=${notification.referenceId}` : ''}`);
           break;
@@ -162,7 +162,7 @@ function NotificationsDesktop() {
       }
     } else {
       // Owner routes
-      switch (notification.type) {
+      switch (notification.type.toLowerCase()) {
         case "visit_request":
           setLocation("/owner-visit-requests");
           break;
@@ -185,7 +185,7 @@ function NotificationsDesktop() {
   };
 
   const getNotificationIcon = (type: string) => {
-    switch (type) {
+    switch (type.toLowerCase()) {
       case "visit_request":
       case "onboarding_request":
         return MessageSquare;
@@ -517,7 +517,7 @@ function NotificationsMobile() {
 
     // Navigate based on notification type and user type
     if (user?.userType === "tenant" || user?.userType === "applicant") {
-      switch (notification.type) {
+      switch (notification.type.toLowerCase()) {
         case "payment":
           setLocation(`/tenant-payments${notification.referenceId ? `?paymentId=${notification.referenceId}` : ''}`);
           break;
@@ -542,7 +542,7 @@ function NotificationsMobile() {
       }
     } else {
       // Owner routes
-      switch (notification.type) {
+      switch (notification.type.toLowerCase()) {
         case "visit_request":
           setLocation("/owner-visit-requests");
           break;
@@ -565,7 +565,7 @@ function NotificationsMobile() {
   };
 
   const getNotificationIcon = (type: string) => {
-    switch (type) {
+    switch (type.toLowerCase()) {
       case "visit_request":
       case "onboarding_request":
         return MessageSquare;

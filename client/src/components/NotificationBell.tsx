@@ -31,7 +31,7 @@ export function NotificationBell() {
     // Navigate based on notification type and user type
     if (user?.userType === "tenant" || user?.userType === "applicant") {
       // Tenant/Applicant routes
-      switch (notification.type) {
+      switch (notification.type.toLowerCase()) {
         case "payment":
           setLocation(`/tenant-payments${notification.referenceId ? `?paymentId=${notification.referenceId}` : ''}`);
           break;
@@ -56,7 +56,7 @@ export function NotificationBell() {
       }
     } else {
       // Owner routes
-      switch (notification.type) {
+      switch (notification.type.toLowerCase()) {
         case "visit_request":
           setLocation("/owner-visit-requests");
           break;

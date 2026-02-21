@@ -36,7 +36,8 @@ export function useNotifications() {
     queryFn: async () => {
       try {
         const response = await api.get("/api/notifications");
-        return response.data;
+        // Normalize notification type to lowercase
+        return response.data.map((n: any) => ({ ...n, type: n.type.toLowerCase() }));
       } catch (err: any) {
         throw new Error(err.response?.data?.error || err.message || "Failed to fetch notifications");
       }
