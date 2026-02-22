@@ -1,4 +1,5 @@
 import DesktopLayout from "@/components/layout/DesktopLayout";
+import MobileLayout from "@/components/layout/MobileLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -9,8 +10,10 @@ import { Bell, User, Building, Edit2, Wallet, Zap } from "lucide-react";
 import { useState, useEffect } from "react";
 import { toast } from "@/hooks/use-toast";
 import { api } from "@/apiClient";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export default function Settings() {
+  const isMobile = useIsMobile();
   const [user, setUser] = useState<any>(null);
   const [pg, setPg] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -229,27 +232,30 @@ export default function Settings() {
   };
 
   if (loading) {
+    const Layout = isMobile ? MobileLayout : DesktopLayout;
     return (
-      <DesktopLayout title="Settings" showNav>
+      <Layout title="Settings" showNav>
         <div className="flex items-center justify-center py-16">
           <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-100 to-blue-100 flex items-center justify-center animate-pulse">
             <User className="w-6 h-6 text-purple-600" />
           </div>
         </div>
-      </DesktopLayout>
+      </Layout>
     );
   }
 
+  const Layout = isMobile ? MobileLayout : DesktopLayout;
+
   return (
-    <DesktopLayout title="Settings" showNav>
+    <Layout title="Settings" showNav>
       {/* Gradient Hero Section */}
-      <div className="relative mb-8 overflow-hidden rounded-3xl">
+      <div className={isMobile ? "relative -mx-4 -mt-4 mb-6 overflow-hidden" : "relative mb-8 overflow-hidden rounded-3xl"}>
         <div className="absolute inset-0 bg-gradient-to-br from-purple-600 via-blue-600 to-purple-700" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_120%,rgba(120,119,198,0.3),rgba(255,255,255,0))]" />
-        <div className="relative px-8 py-10 text-white">
+        <div className={isMobile ? "relative px-6 py-8 text-white" : "relative px-8 py-10 text-white"}>
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h2 className="text-4xl font-bold tracking-tight mb-2" data-testid="title-settings">
+              <h2 className={isMobile ? "text-2xl font-bold tracking-tight mb-1" : "text-4xl font-bold tracking-tight mb-2"} data-testid="title-settings">
                 Settings
               </h2>
               <p className="text-white/80 text-sm">
@@ -260,7 +266,7 @@ export default function Settings() {
         </div>
       </div>
 
-      <div className="max-w-3xl space-y-6 pb-24">
+      <div className={isMobile ? "space-y-4 pb-20" : "max-w-3xl space-y-6 pb-24"}>
         {/* Profile Settings */}
         <Card className="group hover:shadow-lg transition-all duration-300 border-2 border-transparent hover:border-purple-200 overflow-hidden relative" data-testid="card-profile-settings">
           <div className="absolute inset-0 bg-gradient-to-br from-purple-50 to-blue-50 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
@@ -622,6 +628,6 @@ export default function Settings() {
         </Card>
 
       </div>
-    </DesktopLayout>
+    </Layout>
   );
 }

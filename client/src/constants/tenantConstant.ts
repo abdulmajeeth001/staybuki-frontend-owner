@@ -49,3 +49,24 @@ export const TENANT_COMPLAINTS = {
   RESOLUTION_TITLE: "Resolution",
   RESOLVED_ON: "Resolved on",
 } as const;
+
+export const TENANT_PAYMENTS = {
+  PAGE_TITLE: "Payments",
+  PAGE_SUBTITLE: "Track your rent payments and history",
+  TOTAL_PAID: "Total Paid",
+  TOTAL_DUE: "Total Due",
+  HISTORY_TITLE: "Payment History",
+  STATUS_PAID: "paid",
+  STATUS_PENDING: "pending",
+  STATUS_PENDING_APPROVAL: "pending_approval",
+  STATUS_DELETED: "deleted",
+  LABEL_PENDING_APPROVAL: "Pending Approval",
+  BUTTON_PAY_NOW: "Pay Now",
+  MSG_PAYMENT_REJECTED: "Payment was rejected",
+  MSG_NO_PAYMENTS: "No payments yet",
+  TOAST_UPI_COPIED: "UPI ID copied!",
+  TOAST_ENTER_TXN_ID: "Please enter transaction ID",
+  TOAST_PAYMENT_SUBMITTED: "Payment submitted successfully!",
+  ERR_FETCH_PAYMENTS: "Failed to fetch payments",
+  ERR_SUBMIT_PAYMENT: "Failed to submit payment",
+} as const;

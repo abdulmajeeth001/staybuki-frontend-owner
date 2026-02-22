@@ -1476,6 +1476,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/common/registration/amenities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getAmenities_1"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/beds/pg/{pgId}": {
         parameters: {
             query?: never;
@@ -1721,6 +1737,7 @@ export interface components {
             paymentMethod?: string;
             transactionId?: string;
             paymentScreenshot?: string;
+            status?: string;
         };
         PaymentResponseDto: {
             /** Format: int32 */
@@ -2268,6 +2285,31 @@ export interface components {
             /** Format: date-time */
             updatedAt?: string;
         };
+        TenantPaymentResponseDto: {
+            /** Format: int32 */
+            id?: number;
+            amount?: number;
+            paymentMode?: string;
+            status?: string;
+            /** Format: date */
+            paymentDate?: string;
+            type?: string;
+            paymentMethod?: string;
+            transactionId?: string;
+            paymentScreenshot?: string;
+            rejectionReason?: string;
+            paymentMonth?: string;
+            /** Format: date-time */
+            generatedAt?: string;
+            /** Format: date-time */
+            dueDate?: string;
+            /** Format: date-time */
+            paidAt?: string;
+            /** Format: date-time */
+            deletedAt?: string;
+            /** Format: date-time */
+            createdAt?: string;
+        };
         OwnerUpiResponseDto: {
             upiId?: string;
             ownerName?: string;
@@ -2406,6 +2448,8 @@ export interface components {
         };
         NotificationPayload: {
             /** Format: int32 */
+            id?: number;
+            /** Format: int32 */
             userId?: number;
             /** Format: int32 */
             pgId?: number;
@@ -2415,6 +2459,8 @@ export interface components {
             /** Format: int32 */
             referenceId?: number;
             url?: string;
+            /** Format: date-time */
+            createdAt?: string;
         };
         BedStatsDto: {
             /** Format: int32 */
@@ -4121,9 +4167,15 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody: {
+        requestBody?: {
             content: {
-                "application/json": components["schemas"]["UserRequestDto"];
+                "multipart/form-data": {
+                    req: components["schemas"]["UserRequestDto"];
+                    /** Format: binary */
+                    registrationDoc?: string;
+                    /** Format: binary */
+                    fssaiCert?: string;
+                };
             };
         };
         responses: {
@@ -4709,7 +4761,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": Record<string, never>;
+                    "*/*": components["schemas"]["TenantPaymentResponseDto"][];
                 };
             };
         };
@@ -5122,6 +5174,28 @@ export interface operations {
                 };
                 content: {
                     "*/*": Record<string, never>;
+                };
+            };
+        };
+    };
+    getAmenities_1: {
+        parameters: {
+            query?: {
+                activeOnly?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AmenityResponseDto"][];
                 };
             };
         };

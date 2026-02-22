@@ -4,3 +4,9 @@ export type AnnouncementResponse = components["schemas"]["AnnouncementResponseDt
 
 export type Complaint = components["schemas"]["ComplaintResponseDto"];
 export type ComplaintRequest = components["schemas"]["ComplaintRequestDto"];
+
+// Payment Aliases
+export type TenantPaymentResponse = components["schemas"]["TenantPaymentResponseDto"];
+export type OwnerUpiResponse = components["schemas"]["OwnerUpiResponseDto"];
+export type PaymentUpdateRequest = components["schemas"]["PaymentUpdateRequestDto"];
+export type PaymentResponse = components["schemas"]["PaymentResponseDto"];
