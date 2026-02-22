@@ -1,5 +1,6 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import MobileLayout from "@/components/layout/MobileLayout";
+import DesktopLayout from "@/components/layout/DesktopLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { 
@@ -23,24 +24,71 @@ import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { useLocation } from "wouter";
-import { api } from "@/apiClient";
+import { tenantService } from "@/services/tenantService";
+import { TENANT_COMPLAINTS } from "@/constants/tenantConstant";
+import type { Complaint, ComplaintRequest } from "@/types/tenant";
+import { useIsMobile } from "@/hooks/use-mobile";
 
-type Complaint = {
-  id: number;
-  pgId: number;
-  ownerId: number;
-  tenantId: number | null;
-  roomId: number | null;
-  title: string;
-  description: string;
-  priority: string;
-  status: string;
-  resolutionNotes: string | null;
-  createdAt: string;
-  resolvedAt: string | null;
+const getStatusIcon = (status: string) => {
+  if (status === "resolved") return <CheckCircle className="w-5 h-5" />;
+  if (status === "in-progress") return <Clock className="w-5 h-5" />;
+  return <AlertCircle className="w-5 h-5" />;
+};
+
+const getStatusConfig = (status: string) => {
+  if (status === "resolved") 
+    return { 
+      gradient: "from-green-500 to-emerald-600", 
+      bg: "from-green-50 to-emerald-50",
+      text: "text-green-700",
+      border: "border-green-200",
+    };
+  if (status === "in-progress") 
+    return { 
+      gradient: "from-blue-500 to-cyan-600", 
+      bg: "from-blue-50 to-cyan-50",
+      text: "text-blue-700",
+      border: "border-blue-200",
+    };
+  return { 
+    gradient: "from-orange-500 to-red-600", 
+    bg: "from-orange-50 to-red-50",
+    text: "text-orange-700",
+    border: "border-orange-200",
+  };
+};
+
+const getStatusText = (status: string) => {
+  if (status === "resolved") return TENANT_COMPLAINTS.STATUS_RESOLVED;
+  if (status === "in-progress") return TENANT_COMPLAINTS.STATUS_IN_PROGRESS;
+  return TENANT_COMPLAINTS.STATUS_OPEN;
+};
+
+const getPriorityConfig = (priority: string) => {
+  if (priority === "high") 
+    return { 
+      gradient: "from-red-500 to-pink-600",
+      bg: "bg-red-100",
+      text: "text-red-700",
+      icon: AlertTriangle,
+    };
+  if (priority === "medium") 
+    return { 
+      gradient: "from-yellow-500 to-orange-500",
+      bg: "bg-yellow-100",
+      text: "text-yellow-700",
+      icon: AlertCircle,
+    };
+  return { 
+    gradient: "from-blue-500 to-cyan-600",
+    bg: "bg-blue-100",
+    text: "text-blue-700",
+    icon: Clock,
+  };
 };
 
 export default function TenantComplaints() {
+  const isMobile = useIsMobile();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -53,102 +101,34 @@ export default function TenantComplaints() {
 
   // Fetch tenant complaints
   const { data: complaints = [], isLoading } = useQuery<Complaint[]>({
-    queryKey: ["tenant-complaints"],
-    queryFn: async () => {
-      try {
-        const response = await api.get("/api/tenant/complaints");
-        return response.data;
-      } catch (error: any) {
-        throw new Error(error.response?.data?.error || error.message || "Failed to fetch complaints");
-      }
-    },
+    queryKey: [TENANT_COMPLAINTS.QUERY_KEY],
+    queryFn: tenantService.getComplaints,
     staleTime: 0,
     refetchOnMount: true,
   });
 
   // Create complaint mutation
   const createComplaintMutation = useMutation({
-    mutationFn: async (data: any) => {
-      const response = await api.post("/api/complaints", data);
-      return response.data;
-    },
+    mutationFn: tenantService.createComplaint,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["tenant-complaints"] });
+      queryClient.invalidateQueries({ queryKey: [TENANT_COMPLAINTS.QUERY_KEY] });
       setIsCreateDialogOpen(false);
-      toast({ title: "Complaint submitted successfully" });
+      toast({ title: TENANT_COMPLAINTS.TOAST_SUCCESS });
     },
     onError: (error: any) => {
-      toast({ title: "Error", description: error.response?.data?.error || error.message || "Failed to create complaint", variant: "destructive" });
+      toast({ title: "Error", description: error.response?.data?.error || error.message || TENANT_COMPLAINTS.TOAST_ERROR, variant: "destructive" });
     },
   });
 
   const handleCreateComplaint = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
-    createComplaintMutation.mutate({
-      title: formData.get("title"),
-      description: formData.get("description"),
-      priority: formData.get("priority"),
-      status: "open",
-    });
-  };
-
-  const getStatusIcon = (status: string) => {
-    if (status === "resolved") return <CheckCircle className="w-5 h-5" />;
-    if (status === "in-progress") return <Clock className="w-5 h-5" />;
-    return <AlertCircle className="w-5 h-5" />;
-  };
-
-  const getStatusConfig = (status: string) => {
-    if (status === "resolved") 
-      return { 
-        gradient: "from-green-500 to-emerald-600", 
-        bg: "from-green-50 to-emerald-50",
-        text: "text-green-700",
-        border: "border-green-200",
-      };
-    if (status === "in-progress") 
-      return { 
-        gradient: "from-blue-500 to-cyan-600", 
-        bg: "from-blue-50 to-cyan-50",
-        text: "text-blue-700",
-        border: "border-blue-200",
-      };
-    return { 
-      gradient: "from-orange-500 to-red-600", 
-      bg: "from-orange-50 to-red-50",
-      text: "text-orange-700",
-      border: "border-orange-200",
+    const payload: ComplaintRequest = {
+      title: formData.get("title") as string,
+      description: formData.get("description") as string,
+      priority: formData.get("priority") as ComplaintRequest["priority"],
     };
-  };
-
-  const getStatusText = (status: string) => {
-    if (status === "resolved") return "Resolved";
-    if (status === "in-progress") return "In Progress";
-    return "Open";
-  };
-
-  const getPriorityConfig = (priority: string) => {
-    if (priority === "high") 
-      return { 
-        gradient: "from-red-500 to-pink-600",
-        bg: "bg-red-100",
-        text: "text-red-700",
-        icon: AlertTriangle,
-      };
-    if (priority === "medium") 
-      return { 
-        gradient: "from-yellow-500 to-orange-500",
-        bg: "bg-yellow-100",
-        text: "text-yellow-700",
-        icon: AlertCircle,
-      };
-    return { 
-      gradient: "from-blue-500 to-cyan-600",
-      bg: "bg-blue-100",
-      text: "text-blue-700",
-      icon: Clock,
-    };
+    createComplaintMutation.mutate(payload);
   };
 
   // Scroll to highlighted complaint when complaints load
@@ -163,26 +143,43 @@ export default function TenantComplaints() {
     }
   }, [highlightComplaintId, isLoading, complaints.length]);
 
+  // Memoize derived state to avoid recalculation on every render
+  const { openComplaints, inProgressComplaints, resolvedComplaints } = useMemo(() => {
+    return {
+      openComplaints: complaints.filter(c => c.status === "open"),
+      inProgressComplaints: complaints.filter(c => c.status === "in-progress"),
+      resolvedComplaints: complaints.filter(c => c.status === "resolved")
+    };
+  }, [complaints]);
+
   if (isLoading) {
+    const Skeletons = (
+      <div className="space-y-4">
+        <Skeleton className="h-12 w-full" />
+        <Skeleton className="h-32 w-full" />
+        <Skeleton className="h-32 w-full" />
+      </div>
+    );
+
+    if (isMobile) {
+      return (
+        <MobileLayout title="My Complaints">
+          {Skeletons}
+        </MobileLayout>
+      );
+    }
+
     return (
-      <MobileLayout title="My Complaints">
-        <div className="space-y-4">
-          <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-32 w-full" />
-          <Skeleton className="h-32 w-full" />
-        </div>
-      </MobileLayout>
+      <DesktopLayout title="My Complaints">
+        {Skeletons}
+      </DesktopLayout>
     );
   }
 
-  const openComplaints = complaints.filter(c => c.status === "open");
-  const inProgressComplaints = complaints.filter(c => c.status === "in-progress");
-  const resolvedComplaints = complaints.filter(c => c.status === "resolved");
-
-  return (
-    <MobileLayout title="My Complaints">
+  const content = (
+    <>
       {/* Hero Section */}
-      <div className="relative -mx-4 -mt-6 mb-6 overflow-hidden">
+      <div className={cn("relative overflow-hidden mb-6", isMobile ? "-mx-4 -mt-6" : "-mx-6 -mt-6 rounded-b-3xl mb-8")}>
         <div className="absolute inset-0 bg-gradient-to-br from-purple-600 via-blue-600 to-purple-700" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_120%,rgba(120,119,198,0.3),rgba(255,255,255,0))]" />
         
@@ -192,8 +189,8 @@ export default function TenantComplaints() {
               <MessageSquare className="w-7 h-7 text-white" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold drop-shadow-lg">My Complaints</h1>
-              <p className="text-sm text-white/90 mt-1">Track and manage your requests</p>
+              <h1 className="text-3xl font-bold drop-shadow-lg">{TENANT_COMPLAINTS.PAGE_TITLE}</h1>
+              <p className="text-sm text-white/90 mt-1">{TENANT_COMPLAINTS.PAGE_SUBTITLE}</p>
             </div>
           </div>
           
@@ -204,13 +201,13 @@ export default function TenantComplaints() {
             {openComplaints.length > 0 && (
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-orange-500/30 backdrop-blur-sm border border-orange-300/30">
                 <AlertCircle className="w-4 h-4" />
-                <span className="text-sm font-semibold">{openComplaints.length} Open</span>
+                <span className="text-sm font-semibold">{openComplaints.length} {TENANT_COMPLAINTS.STATUS_OPEN}</span>
               </div>
             )}
             {resolvedComplaints.length > 0 && (
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-500/30 backdrop-blur-sm border border-green-300/30">
                 <CheckCircle className="w-4 h-4" />
-                <span className="text-sm font-semibold">{resolvedComplaints.length} Resolved</span>
+                <span className="text-sm font-semibold">{resolvedComplaints.length} {TENANT_COMPLAINTS.STATUS_RESOLVED}</span>
               </div>
             )}
           </div>
@@ -227,7 +224,7 @@ export default function TenantComplaints() {
               data-testid="button-create-complaint"
             >
               <Plus className="w-5 h-5 mr-2" />
-              Submit New Complaint
+              {TENANT_COMPLAINTS.BUTTON_CREATE}
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-md">
@@ -237,28 +234,28 @@ export default function TenantComplaints() {
                   <FileText className="w-5 h-5 text-white" />
                 </div>
                 <DialogTitle className="text-xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
-                  Submit Complaint
+                  {TENANT_COMPLAINTS.DIALOG_TITLE}
                 </DialogTitle>
               </div>
               <DialogDescription className="text-gray-600">
-                Report an issue or request maintenance
+                {TENANT_COMPLAINTS.DIALOG_DESC}
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleCreateComplaint}>
               <div className="space-y-5 mt-4">
                 <div className="space-y-2">
-                  <Label htmlFor="title" className="text-sm font-semibold text-gray-700">Issue Title</Label>
+                  <Label htmlFor="title" className="text-sm font-semibold text-gray-700">{TENANT_COMPLAINTS.LABEL_TITLE}</Label>
                   <Input 
                     id="title" 
                     name="title" 
                     required 
                     className="border-2 focus:border-purple-400"
                     data-testid="input-complaint-title" 
-                    placeholder="e.g., Fan not working" 
+                    placeholder={TENANT_COMPLAINTS.PLACEHOLDER_TITLE} 
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="description" className="text-sm font-semibold text-gray-700">Description</Label>
+                  <Label htmlFor="description" className="text-sm font-semibold text-gray-700">{TENANT_COMPLAINTS.LABEL_DESCRIPTION}</Label>
                   <Textarea 
                     id="description" 
                     name="description" 
@@ -266,19 +263,19 @@ export default function TenantComplaints() {
                     rows={4}
                     className="border-2 focus:border-purple-400 resize-none"
                     data-testid="input-complaint-description" 
-                    placeholder="Describe the issue in detail..."
+                    placeholder={TENANT_COMPLAINTS.PLACEHOLDER_DESCRIPTION}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="priority" className="text-sm font-semibold text-gray-700">Priority</Label>
+                  <Label htmlFor="priority" className="text-sm font-semibold text-gray-700">{TENANT_COMPLAINTS.LABEL_PRIORITY}</Label>
                   <Select name="priority" defaultValue="medium" required>
                     <SelectTrigger className="border-2 focus:border-purple-400" data-testid="select-complaint-priority">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="low" data-testid="select-priority-low">Low Priority</SelectItem>
-                      <SelectItem value="medium" data-testid="select-priority-medium">Medium Priority</SelectItem>
-                      <SelectItem value="high" data-testid="select-priority-high">High Priority</SelectItem>
+                      <SelectItem value="low" data-testid="select-priority-low">{TENANT_COMPLAINTS.PRIORITY_LOW}</SelectItem>
+                      <SelectItem value="medium" data-testid="select-priority-medium">{TENANT_COMPLAINTS.PRIORITY_MEDIUM}</SelectItem>
+                      <SelectItem value="high" data-testid="select-priority-high">{TENANT_COMPLAINTS.PRIORITY_HIGH}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -290,7 +287,7 @@ export default function TenantComplaints() {
                   className="flex-1 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 shadow-lg"
                   data-testid="button-submit-complaint"
                 >
-                  {createComplaintMutation.isPending ? "Submitting..." : "Submit Complaint"}
+                  {createComplaintMutation.isPending ? TENANT_COMPLAINTS.BUTTON_SUBMITTING : TENANT_COMPLAINTS.BUTTON_SUBMIT}
                 </Button>
               </DialogFooter>
             </form>
@@ -304,12 +301,12 @@ export default function TenantComplaints() {
               <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-purple-100 to-blue-100 flex items-center justify-center">
                 <MessageSquare className="w-10 h-10 text-purple-600" />
               </div>
-              <h3 className="text-xl font-bold mb-2 text-gray-800">No Complaints Yet</h3>
+              <h3 className="text-xl font-bold mb-2 text-gray-800">{TENANT_COMPLAINTS.EMPTY_TITLE}</h3>
               <p className="text-sm text-gray-600 mb-6" data-testid="text-no-complaints">
-                You haven't submitted any complaints or maintenance requests
+                {TENANT_COMPLAINTS.EMPTY_DESC}
               </p>
               <p className="text-xs text-gray-500">
-                Click the button above to submit your first complaint
+                {TENANT_COMPLAINTS.EMPTY_FOOTER}
               </p>
             </CardContent>
           </Card>
@@ -386,12 +383,12 @@ export default function TenantComplaints() {
                           <div className="mt-4 p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border-2 border-green-200">
                             <div className="flex items-center gap-2 mb-2">
                               <CheckCircle className="w-4 h-4 text-green-600" />
-                              <p className="text-sm font-bold text-green-800">Resolution</p>
+                              <p className="text-sm font-bold text-green-800">{TENANT_COMPLAINTS.RESOLUTION_TITLE}</p>
                             </div>
                             <p className="text-sm text-green-700 leading-relaxed">{complaint.resolutionNotes}</p>
                             {complaint.resolvedAt && (
                               <p className="text-xs text-green-600 mt-2 font-medium">
-                                Resolved on {format(new Date(complaint.resolvedAt), "MMM d, yyyy")}
+                                {TENANT_COMPLAINTS.RESOLVED_ON} {format(new Date(complaint.resolvedAt), "MMM d, yyyy")}
                               </p>
                             )}
                           </div>
@@ -405,6 +402,16 @@ export default function TenantComplaints() {
           </div>
         )}
       </div>
-    </MobileLayout>
+    </>
+  );
+
+  if (isMobile) {
+    return <MobileLayout title="My Complaints">{content}</MobileLayout>;
+  }
+
+  return (
+    <DesktopLayout title="My Complaints">
+      {content}
+    </DesktopLayout>
   );
 }
