@@ -6,16 +6,11 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Banknote, Upload, Check, X, Copy, Smartphone } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { api } from "@/apiClient";
+import { tenantService } from "@/services/tenantService";
+import type { TenantPaymentResponse, PaymentUpdateRequest } from "@/types/tenant";
 
 interface TenantPaymentFlowProps {
-  payment: {
-    id: number;
-    amount: string;
-    type: string;
-    paymentMonth?: string;
-    dueDate?: string;
-  };
+  payment: TenantPaymentResponse;
   ownerUpiId?: string;
   onSuccess: () => void;
 }
@@ -57,7 +52,7 @@ export function TenantPaymentFlow({ payment, ownerUpiId, onSuccess }: TenantPaym
     const params = new URLSearchParams({
       pa: ownerUpiId,
       pn: 'PG Rent Payment',
-      am: payment.amount,
+      am: String(payment.amount),
       cu: 'INR',
       tr: txnRef,
       tn: `Rent Payment ${payment.paymentMonth || ''}`
@@ -79,9 +74,13 @@ export function TenantPaymentFlow({ payment, ownerUpiId, onSuccess }: TenantPaym
   };
 
   const handleCashPayment = async () => {
+    if (!payment.id) {
+      toast({ title: "Error", description: "Invalid payment ID", variant: "destructive" });
+      return;
+    }
     setIsSubmitting(true);
     try {
-      await api.post(`/api/payments/${payment.id}/initiate-cash`);
+      await tenantService.initiateCashPayment(payment.id);
 
       toast({
         title: "Cash Payment Request Sent",
@@ -131,13 +130,19 @@ export function TenantPaymentFlow({ payment, ownerUpiId, onSuccess }: TenantPaym
       return;
     }
 
+    if (!payment.id) {
+      toast({ title: "Error", description: "Invalid payment ID", variant: "destructive" });
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      await api.post(`/api/payments/${payment.id}/submit-upi`, {
-        transactionId: transactionId.trim() || null,
-        screenshot,
-      });
-
+      const payload: PaymentUpdateRequest = {
+        transactionId: transactionId.trim() || undefined,
+        paymentScreenshot: screenshot,
+        paymentMethod: "UPI",
+      };
+      await tenantService.submitUpiPayment(payment.id, payload);
 
       toast({
         title: "Payment Submitted",

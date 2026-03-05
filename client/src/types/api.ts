@@ -2068,6 +2068,9 @@ export interface components {
             success?: boolean;
             message?: string;
             data?: components["schemas"]["RoomResponseDto"];
+            /** Format: date-time */
+            timestamp?: string;
+            errorCode?: string;
         };
         BulkBedRequestDto: {
             beds: components["schemas"]["CreateBedRequestDto"][];
@@ -2325,7 +2328,7 @@ export interface components {
             totalPaid?: number;
             totalPending?: number;
             totalOverdue?: number;
-            recentPayments?: Record<string, never>[];
+            recentPayments?: components["schemas"]["TenantPaymentResponseDto"][];
         };
         PgInfoDto: {
             /** Format: int32 */
@@ -4701,7 +4704,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": Record<string, never>;
+                    "*/*": components["schemas"]["ApiResponseRoomResponseDto"];
                 };
             };
         };

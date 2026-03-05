@@ -3,16 +3,26 @@ import type {
   AnnouncementResponse, 
   Complaint, 
   ComplaintRequest,
-  TenantPaymentResponseDto,
-  OwnerUpiResponseDto,
-  PaymentUpdateRequestDto,
-  PaymentResponseDto
+  TenantPaymentResponse,
+  OwnerUpiResponse,
+  PaymentUpdateRequest,
+  PaymentResponse,
+  RoomResponse,
+  RoomApiResponse
 } from "@/types/tenant";
 
 export const tenantService = {
   getAnnouncements: async () => {
     const { data } = await api.get<AnnouncementResponse[]>("/api/announcements/tenant");
     return data;
+  },
+
+  getRoomDetails: async (): Promise<RoomResponse | undefined> => {
+    const { data } = await api.get<RoomApiResponse>("/api/tenant/room");
+    if (!data.success) {
+      throw new Error(data.message || "Failed to fetch room details");
+    }
+    return data.data;
   },
 
   getComplaints: async (): Promise<Complaint[]> => {
@@ -25,18 +35,31 @@ export const tenantService = {
     return response.data;
   },
 
-  getPayments: async (): Promise<TenantPaymentResponseDto[]> => {
-    const response = await api.get<TenantPaymentResponseDto[]>("/api/tenant/payments");
+  getPayments: async (): Promise<TenantPaymentResponse[]> => {
+    const response = await api.get<TenantPaymentResponse[]>("/api/tenant/payments");
     return response.data;
   },
 
-  getOwnerUpi: async (): Promise<OwnerUpiResponseDto> => {
-    const response = await api.get<OwnerUpiResponseDto>("/api/tenant/owner-upi");
+  getOwnerUpi: async (): Promise<OwnerUpiResponse> => {
+    const response = await api.get<OwnerUpiResponse>("/api/tenant/owner-upi");
     return response.data;
   },
 
-  updatePayment: async (id: number, data: PaymentUpdateRequestDto): Promise<PaymentResponseDto> => {
-    const response = await api.put<PaymentResponseDto>(`/api/payments/${id}`, data);
+  updatePayment: async (id: number, data: PaymentUpdateRequest): Promise<PaymentResponseDto> => {
+    const response = await api.put<PaymentResponse>(`/api/payments/${id}`, data);
     return response.data;
+  },
+
+  initiateCashPayment: async (id: number): Promise<PaymentResponse> => {
+    const { data } = await api.post<PaymentResponse>(`/api/payments/${id}/initiate-cash`);
+    return data;
+  },
+
+  submitUpiPayment: async (
+    id: number,
+    payload: PaymentUpdateRequest
+  ): Promise<PaymentResponse> => {
+    const { data } = await api.post<PaymentResponse>(`/api/payments/${id}/submit-upi`, payload);
+    return data;
   },
 };

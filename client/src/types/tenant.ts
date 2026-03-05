@@ -10,3 +10,7 @@ export type TenantPaymentResponse = components["schemas"]["TenantPaymentResponse
 export type OwnerUpiResponse = components["schemas"]["OwnerUpiResponseDto"];
 export type PaymentUpdateRequest = components["schemas"]["PaymentUpdateRequestDto"];
 export type PaymentResponse = components["schemas"]["PaymentResponseDto"];
+
+//Tenant Room Aliases
+export type RoomResponse = components["schemas"]["RoomResponseDto"];
+export type RoomApiResponse = components["schemas"]["ApiResponseRoomResponseDto"];

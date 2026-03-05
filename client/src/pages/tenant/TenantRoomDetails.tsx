@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import MobileLayout from "@/components/layout/MobileLayout";
+import DesktopLayout from "@/components/layout/DesktopLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -7,18 +8,19 @@ import {
   Users,
   AirVent,
   Droplets,
-  Wind,
   DoorOpen,
   IndianRupee,
   Sparkles,
   Check,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { api } from "@/apiClient";
+import { tenantService } from "@/services/tenantService";
+import type { RoomResponse } from "@/types/tenant";
 
 export default function TenantRoomDetails() {
-  const [room, setRoom] = useState<any>(null);
+  const [room, setRoom] = useState<RoomResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchRoomDetails();
@@ -26,10 +28,11 @@ export default function TenantRoomDetails() {
 
   const fetchRoomDetails = async () => {
     try {
-      const res = await api.get("/api/tenant/room");
-      setRoom(res.data);
+      const data = await tenantService.getRoomDetails();
+      setRoom(data || null);
     } catch (err: any) {
       console.error("Failed to fetch room details:", err);
+      setError(err.message);
     } finally {
       setLoading(false);
     }
@@ -37,41 +40,90 @@ export default function TenantRoomDetails() {
 
   if (loading) {
     return (
-      <MobileLayout title="Room Details">
-        <div className="space-y-6">
-          <Card>
-            <CardContent className="p-6">
-              <Skeleton className="h-24 w-full" />
-            </CardContent>
-          </Card>
-          <div className="grid grid-cols-2 gap-3">
-            <Skeleton className="h-32" />
-            <Skeleton className="h-32" />
-            <Skeleton className="h-32" />
-            <Skeleton className="h-32" />
-          </div>
+      <>
+        <div className="hidden lg:block">
+          <DesktopLayout title="Room Details">
+            <RoomDetailsSkeleton />
+          </DesktopLayout>
         </div>
-      </MobileLayout>
+        <div className="lg:hidden">
+          <MobileLayout title="Room Details">
+            <RoomDetailsSkeleton />
+          </MobileLayout>
+        </div>
+      </>
     );
   }
 
   if (!room) {
+    const EmptyState = (
+      <Card className="text-center py-12">
+        <CardContent>
+          <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-purple-100 to-blue-100 flex items-center justify-center">
+            <Home className="w-10 h-10 text-purple-600" />
+          </div>
+          <h3 className="text-xl font-bold mb-2 text-gray-800">No Room Assigned</h3>
+          <p className="text-sm text-gray-600">
+            {error || "You don't have a room assigned yet. Please contact the PG owner."}
+          </p>
+        </CardContent>
+      </Card>
+    );
+
     return (
-      <MobileLayout title="Room Details">
-        <Card className="text-center py-12">
-          <CardContent>
-            <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-purple-100 to-blue-100 flex items-center justify-center">
-              <Home className="w-10 h-10 text-purple-600" />
-            </div>
-            <h3 className="text-xl font-bold mb-2 text-gray-800">No Room Assigned</h3>
-            <p className="text-sm text-gray-600">
-              You don't have a room assigned yet. Please contact the PG owner.
-            </p>
-          </CardContent>
-        </Card>
-      </MobileLayout>
+      <>
+        <div className="hidden lg:block">
+          <DesktopLayout title="Room Details">{EmptyState}</DesktopLayout>
+        </div>
+        <div className="lg:hidden">
+          <MobileLayout title="Room Details">{EmptyState}</MobileLayout>
+        </div>
+      </>
     );
   }
+
+  return (
+    <>
+      <div className="hidden lg:block">
+        <DesktopLayout title="Room Details">
+          <RoomDetailsContent room={room} isDesktop={true} />
+        </DesktopLayout>
+      </div>
+      <div className="lg:hidden">
+        <MobileLayout title="Room Details">
+          <RoomDetailsContent room={room} isDesktop={false} />
+        </MobileLayout>
+      </div>
+    </>
+  );
+}
+
+function RoomDetailsSkeleton() {
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardContent className="p-6">
+          <Skeleton className="h-24 w-full" />
+        </CardContent>
+      </Card>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <Skeleton className="h-32" />
+        <Skeleton className="h-32" />
+        <Skeleton className="h-32" />
+        <Skeleton className="h-32" />
+      </div>
+    </div>
+  );
+}
+
+function RoomDetailsContent({ room, isDesktop }: { room: RoomResponse; isDesktop: boolean }) {
+  const hasAC = room.amenities?.some((a) => a.toLowerCase().includes("ac") || a.toLowerCase().includes("air condition"));
+  const hasAttachedBathroom = room.amenities?.some((a) => a.toLowerCase().includes("attached bathroom"));
+
+  const displayAmenities = room.amenities?.filter((a) => {
+    const lower = a.toLowerCase();
+    return !lower.includes("ac") && !lower.includes("air condition") && !lower.includes("attached bathroom");
+  });
 
   const features = [
     {
@@ -90,15 +142,15 @@ export default function TenantRoomDetails() {
     },
     {
       label: "AC",
-      value: room.hasAC ? "Yes" : "No",
+      value: hasAC ? "Yes" : "No",
       icon: AirVent,
       gradient: "from-cyan-500 to-blue-600",
       bgGradient: "from-cyan-50 to-blue-50",
-      available: room.hasAC,
+      available: hasAC,
     },
     {
       label: "Bathroom",
-      value: room.hasAttachedBathroom ? "Attached" : "Common",
+      value: hasAttachedBathroom ? "Attached" : "Common",
       icon: Droplets,
       gradient: "from-purple-500 to-pink-600",
       bgGradient: "from-purple-50 to-pink-50",
@@ -106,33 +158,37 @@ export default function TenantRoomDetails() {
   ];
 
   return (
-    <MobileLayout title="Room Details">
+    <div className={cn("space-y-6", isDesktop ? "max-w-5xl mx-auto" : "")}>
       {/* Hero Section */}
-      <div className="relative -mx-4 -mt-6 mb-6 overflow-hidden">
+      <div className={cn(
+        "relative overflow-hidden",
+        isDesktop ? "-mx-8 -mt-8 mb-8 rounded-b-3xl" : "-mx-4 -mt-6 mb-6"
+      )}>
         <div className="absolute inset-0 bg-gradient-to-br from-purple-600 via-blue-600 to-purple-700" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_120%,rgba(120,119,198,0.3),rgba(255,255,255,0))]" />
         
-        <div className="relative px-6 py-8 text-white">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-14 h-14 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center border-2 border-white/30">
-              <Home className="w-7 h-7 text-white" />
+        <div className={cn("relative text-white", isDesktop ? "px-8 py-10" : "px-6 py-8")}>
+          <div className="flex items-center gap-4 mb-6">
+            <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center border-2 border-white/30 shadow-xl">
+              <Home className="w-8 h-8 text-white" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold drop-shadow-lg">Room {room.roomNumber}</h1>
-              <p className="text-sm text-white/90 mt-1">Your assigned accommodation</p>
+              <h1 className="text-3xl md:text-4xl font-bold drop-shadow-lg">Room {room.roomNumber}</h1>
+              <p className="text-sm md:text-base text-white/90 mt-1">Your assigned accommodation</p>
             </div>
           </div>
           
-          <div className="flex items-center gap-2 p-4 rounded-xl bg-white/10 backdrop-blur-sm border border-white/20">
-            <div className="flex-1">
-              <p className="text-xs text-white/80 mb-1">Monthly Rent</p>
-              <div className="flex items-center gap-1 text-2xl font-bold">
-                <IndianRupee className="w-5 h-5" />
-                {room.monthlyRent}
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex items-center gap-3 p-4 rounded-xl bg-white/10 backdrop-blur-sm border border-white/20 min-w-[200px]">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center shadow-lg">
+                <IndianRupee className="w-5 h-5 text-white" />
               </div>
-            </div>
-            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center">
-              <Check className="w-6 h-6 text-white" />
+              <div>
+                <p className="text-xs text-white/80 font-medium uppercase tracking-wide">Monthly Rent</p>
+                <div className="text-2xl font-bold">
+                  {room.monthlyRent}
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -141,14 +197,14 @@ export default function TenantRoomDetails() {
       {/* Features Grid */}
       <Card className="relative mb-6 border-2 hover:shadow-xl transition-all duration-300 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-purple-50 to-blue-50 opacity-50" />
-        <CardHeader className="relative">
+        <CardHeader className="relative border-b bg-white/50 backdrop-blur-sm">
           <CardTitle className="text-xl font-bold text-gray-800 flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-purple-600" />
             Room Features
           </CardTitle>
         </CardHeader>
-        <CardContent className="relative">
-          <div className="grid grid-cols-2 gap-3">
+        <CardContent className="relative p-6">
+          <div className={cn("grid gap-4", isDesktop ? "grid-cols-4" : "grid-cols-2")}>
             {features.map((feature) => (
               <div
                 key={feature.label}
@@ -162,22 +218,24 @@ export default function TenantRoomDetails() {
                 {feature.available !== false && (
                   <div className={cn("absolute inset-0 bg-gradient-to-br opacity-30", feature.bgGradient)} />
                 )}
-                <div className="relative flex flex-col items-center text-center gap-2">
+                <div className="relative flex flex-col items-center text-center gap-3">
                   <div className={cn(
-                    "w-12 h-12 rounded-full flex items-center justify-center transition-transform duration-300",
+                    "w-12 h-12 rounded-xl flex items-center justify-center transition-transform duration-300 shadow-sm",
                     feature.available === false
-                      ? "bg-gray-300"
+                      ? "bg-gray-200"
                       : `bg-gradient-to-br ${feature.gradient} group-hover:scale-110`
                   )}>
                     <feature.icon className="w-6 h-6 text-white" />
                   </div>
-                  <p className="text-xs text-gray-600 font-medium">{feature.label}</p>
-                  <p
-                    className="font-bold text-sm text-gray-800"
-                    data-testid={`text-room-${feature.label.toLowerCase()}`}
-                  >
-                    {feature.value}
-                  </p>
+                  <div>
+                    <p className="text-xs text-gray-500 font-semibold uppercase tracking-wide mb-1">{feature.label}</p>
+                    <p
+                      className="font-bold text-base text-gray-800"
+                      data-testid={`text-room-${feature.label.toLowerCase()}`}
+                    >
+                      {feature.value}
+                    </p>
+                  </div>
                 </div>
               </div>
             ))}
@@ -186,20 +244,24 @@ export default function TenantRoomDetails() {
       </Card>
 
       {/* Amenities */}
-      {room.amenities && room.amenities.length > 0 && (
+      {displayAmenities && displayAmenities.length > 0 && (
         <Card className="relative border-2 hover:shadow-xl transition-all duration-300 overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-blue-50 to-purple-50 opacity-50" />
-          <CardHeader className="relative">
-            <CardTitle className="text-xl font-bold text-gray-800">Additional Amenities</CardTitle>
+          <CardHeader className="relative border-b bg-white/50 backdrop-blur-sm">
+            <CardTitle className="text-xl font-bold text-gray-800 flex items-center gap-2">
+              <Check className="w-5 h-5 text-blue-600" />
+              Additional Amenities
+            </CardTitle>
           </CardHeader>
-          <CardContent className="relative">
-            <div className="flex flex-wrap gap-2">
-              {room.amenities.map((amenity: string) => (
+          <CardContent className="relative p-6">
+            <div className="flex flex-wrap gap-3">
+              {displayAmenities.map((amenity: string) => (
                 <span
                   key={amenity}
-                  className="px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-full text-sm font-semibold shadow-md hover:shadow-lg transition-shadow duration-300"
+                  className="px-4 py-2 bg-white border-2 border-purple-100 text-purple-700 rounded-full text-sm font-semibold shadow-sm hover:shadow-md hover:border-purple-300 hover:bg-purple-50 transition-all duration-300 flex items-center gap-2"
                   data-testid={`tag-amenity-${amenity.toLowerCase()}`}
                 >
+                  <div className="w-1.5 h-1.5 rounded-full bg-purple-500" />
                   {amenity}
                 </span>
               ))}
@@ -207,6 +269,6 @@ export default function TenantRoomDetails() {
           </CardContent>
         </Card>
       )}
-    </MobileLayout>
+    </div>
   );
 }

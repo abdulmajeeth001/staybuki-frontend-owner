@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import MobileLayout from "@/components/layout/MobileLayout";
 import DesktopLayout from "@/components/layout/DesktopLayout";
 import { Card, CardContent } from "@/components/ui/card";
@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import { TenantPaymentFlow } from "@/components/TenantPaymentFlow";
 import { tenantService } from "@/services/tenantService";
 import { TENANT_PAYMENTS } from "@/constants/tenantConstant";
-import type { TenantPaymentResponse, PaymentUpdateRequest, OwnerUpiResponse, PaymentResponse } from "@/types/tenant";
+import type { TenantPaymentResponse, OwnerUpiResponse } from "@/types/tenant";
 
 export default function TenantPayments() {
   const queryClient = useQueryClient();
@@ -19,7 +19,12 @@ export default function TenantPayments() {
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
 
   // Fetch Payments
-  const { data: payments = [], isLoading: isPaymentsLoading } = useQuery({
+  const { 
+    data: payments = [], 
+    isLoading: isPaymentsLoading,
+    isError: isPaymentsError,
+    refetch
+  } = useQuery({
     queryKey: ["tenant-payments"],
     queryFn: tenantService.getPayments,
     select: (data) => 
@@ -34,39 +39,25 @@ export default function TenantPayments() {
     queryFn: tenantService.getOwnerUpi,
   });
 
-  // Update Payment Mutation
-  const updatePaymentMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: PaymentUpdateRequest }): Promise<PaymentResponse> =>
-      tenantService.updatePayment(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["tenant-payments"] });
-      toast.success(TENANT_PAYMENTS.TOAST_PAYMENT_SUBMITTED);
-      setIsPaymentDialogOpen(false);
-    },
-    onError: (err: any) => {
-      console.error("Payment submission error:", err);
-      toast.error(err.response?.data?.error || TENANT_PAYMENTS.ERR_SUBMIT_PAYMENT);
-    },
-  });
-
   const handlePayNow = (payment: TenantPaymentResponse) => {
     setSelectedPayment(payment);
     setIsPaymentDialogOpen(true);
   };
 
-  const handlePaymentSubmit = async (transactionId: string) => {
-    if (!selectedPayment) return;
-
-    const updateData: PaymentUpdateRequest = {
-      status: "paid",
-      paymentMethod: "upi",
-      transactionId: transactionId.trim(),
-    };
-
-    await updatePaymentMutation.mutateAsync({
-      id: selectedPayment.id,
-      data: updateData,
-    });
+  const handlePaymentSuccess = () => {
+    // Optimistically update the cache to show "Pending Approval" immediately
+    if (selectedPayment) {
+      queryClient.setQueryData(["tenant-payments"], (oldData: TenantPaymentResponse[] | undefined) => {
+        if (!oldData) return [];
+        return oldData.map((p) =>
+          p.id === selectedPayment.id
+            ? { ...p, status: TENANT_PAYMENTS.STATUS_PENDING_APPROVAL }
+            : p
+        );
+      });
+    }
+    queryClient.invalidateQueries({ queryKey: ["tenant-payments"] });
+    setIsPaymentDialogOpen(false);
   };
 
   const { totalPaid, totalDue } = useMemo(() => {
@@ -98,6 +89,32 @@ export default function TenantPayments() {
     );
   }
 
+  if (isPaymentsError) {
+    const ErrorContent = (
+      <Card className="border-red-200 bg-red-50 m-4">
+        <CardContent className="flex flex-col items-center justify-center p-6 text-center">
+          <AlertCircle className="h-10 w-10 text-red-500 mb-3" />
+          <h3 className="text-lg font-semibold text-red-900 mb-1">Failed to load payments</h3>
+          <p className="text-sm text-red-700 mb-4">We couldn't fetch your payment history.</p>
+          <Button onClick={() => refetch()} variant="outline" className="border-red-200 hover:bg-red-100 text-red-900">
+            Try Again
+          </Button>
+        </CardContent>
+      </Card>
+    );
+
+    return (
+      <>
+        <div className="hidden lg:block">
+          <DesktopLayout title={TENANT_PAYMENTS.PAGE_TITLE}>{ErrorContent}</DesktopLayout>
+        </div>
+        <div className="lg:hidden">
+          <MobileLayout title={TENANT_PAYMENTS.PAGE_TITLE}>{ErrorContent}</MobileLayout>
+        </div>
+      </>
+    );
+  }
+
   const contentProps = {
     payments,
     totalPaid,
@@ -107,7 +124,7 @@ export default function TenantPayments() {
     isPaymentDialogOpen,
     setIsPaymentDialogOpen,
     onPayNow: handlePayNow,
-    onPaymentSubmit: handlePaymentSubmit,
+    onPaymentSuccess: handlePaymentSuccess,
   };
 
   return (
@@ -152,7 +169,7 @@ interface TenantPaymentsContentProps {
   isPaymentDialogOpen: boolean;
   setIsPaymentDialogOpen: (open: boolean) => void;
   onPayNow: (payment: TenantPaymentResponse) => void;
-  onPaymentSubmit: (transactionId: string) => Promise<void>;
+  onPaymentSuccess: () => void;
   isDesktop: boolean;
 }
 
@@ -165,7 +182,7 @@ function TenantPaymentsContent({
   isPaymentDialogOpen,
   setIsPaymentDialogOpen,
   onPayNow,
-  onPaymentSubmit,
+  onPaymentSuccess,
   isDesktop
 }: TenantPaymentsContentProps) {
   return (
@@ -228,15 +245,9 @@ function TenantPaymentsContent({
         <DialogContent className="sm:max-w-md">
           {selectedPayment && (
             <TenantPaymentFlow
-              payment={{
-                id: selectedPayment.id,
-                amount: String(selectedPayment.amount),
-                type: selectedPayment.type,
-                paymentMonth: selectedPayment.paymentMonth,
-                dueDate: selectedPayment.dueDate,
-              }}
+              payment={selectedPayment}
               ownerUpiId={ownerUpi?.upiId}
-              onSubmit={onPaymentSubmit}
+              onSuccess={onPaymentSuccess}
             />
           )}
         </DialogContent>
