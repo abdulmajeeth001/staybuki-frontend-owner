@@ -14,3 +14,11 @@ export type PaymentResponse = components["schemas"]["PaymentResponseDto"];
 //Tenant Room Aliases
 export type RoomResponse = components["schemas"]["RoomResponseDto"];
 export type RoomApiResponse = components["schemas"]["ApiResponseRoomResponseDto"];
+
+// Tenant PG Aliases
+export type PgResponse = components["schemas"]["PgResponseDto"];
+export type PgApiResponse = components["schemas"]["ApiResponsePgResponseDto"];
+
+// Facility Aliases
+export type FacilityResponse = components["schemas"]["FacilityDto"];
+export type FacilityApiResponse = components["schemas"]["ApiResponseListFacilityDto"];

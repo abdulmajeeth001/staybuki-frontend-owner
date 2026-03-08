@@ -1099,7 +1099,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["room"];
+        get: operations["getTenantRoom"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1131,7 +1131,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["pg"];
+        get: operations["getTenantPg"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1147,7 +1147,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["payments"];
+        get: operations["getTenantPayments"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1163,7 +1163,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["ownerUpi"];
+        get: operations["getTenantOwnerUpi"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1179,7 +1179,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["getOnboardingStatus"];
+        get: operations["getOnboardStatus"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1211,7 +1211,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["facilities"];
+        get: operations["getTenantPgFacilities"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1227,7 +1227,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["dashboard"];
+        get: operations["getTenantDashboard"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2288,6 +2288,14 @@ export interface components {
             /** Format: date-time */
             updatedAt?: string;
         };
+        ApiResponsePgResponseDto: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["PgResponseDto"];
+            /** Format: date-time */
+            timestamp?: string;
+            errorCode?: string;
+        };
         TenantPaymentResponseDto: {
             /** Format: int32 */
             id?: number;
@@ -2323,6 +2331,18 @@ export interface components {
             pgId?: number;
             pgName?: string;
             isOnboarded?: boolean;
+        };
+        ApiResponseListFacilityDto: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["FacilityDto"][];
+            /** Format: date-time */
+            timestamp?: string;
+            errorCode?: string;
+        };
+        FacilityDto: {
+            name?: string;
+            available?: boolean;
         };
         PaymentSummaryDto: {
             totalPaid?: number;
@@ -4689,7 +4709,7 @@ export interface operations {
             };
         };
     };
-    room: {
+    getTenantRoom: {
         parameters: {
             query?: never;
             header?: never;
@@ -4729,7 +4749,7 @@ export interface operations {
             };
         };
     };
-    pg: {
+    getTenantPg: {
         parameters: {
             query?: never;
             header?: never;
@@ -4744,12 +4764,12 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": Record<string, never>;
+                    "*/*": components["schemas"]["ApiResponsePgResponseDto"];
                 };
             };
         };
     };
-    payments: {
+    getTenantPayments: {
         parameters: {
             query?: never;
             header?: never;
@@ -4769,7 +4789,7 @@ export interface operations {
             };
         };
     };
-    ownerUpi: {
+    getTenantOwnerUpi: {
         parameters: {
             query?: never;
             header?: never;
@@ -4789,7 +4809,7 @@ export interface operations {
             };
         };
     };
-    getOnboardingStatus: {
+    getOnboardStatus: {
         parameters: {
             query?: never;
             header?: never;
@@ -4831,7 +4851,7 @@ export interface operations {
             };
         };
     };
-    facilities: {
+    getTenantPgFacilities: {
         parameters: {
             query?: never;
             header?: never;
@@ -4846,12 +4866,12 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": Record<string, never>;
+                    "*/*": components["schemas"]["ApiResponseListFacilityDto"];
                 };
             };
         };
     };
-    dashboard: {
+    getTenantDashboard: {
         parameters: {
             query?: never;
             header?: never;

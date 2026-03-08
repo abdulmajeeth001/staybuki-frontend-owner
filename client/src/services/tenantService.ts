@@ -8,7 +8,11 @@ import type {
   PaymentUpdateRequest,
   PaymentResponse,
   RoomResponse,
-  RoomApiResponse
+  RoomApiResponse,
+  PgResponse,
+  PgApiResponse,
+  FacilityResponse,
+  FacilityApiResponse
 } from "@/types/tenant";
 
 export const tenantService = {
@@ -21,6 +25,14 @@ export const tenantService = {
     const { data } = await api.get<RoomApiResponse>("/api/tenant/room");
     if (!data.success) {
       throw new Error(data.message || "Failed to fetch room details");
+    }
+    return data.data;
+  },
+
+  getTenantPg: async (): Promise<PgResponse | undefined> => {
+    const { data } = await api.get<PgApiResponse>("/api/tenant/pg");
+    if (!data.success) {
+      throw new Error(data.message || "Failed to fetch PG details");
     }
     return data.data;
   },
@@ -45,7 +57,7 @@ export const tenantService = {
     return response.data;
   },
 
-  updatePayment: async (id: number, data: PaymentUpdateRequest): Promise<PaymentResponseDto> => {
+  updatePayment: async (id: number, data: PaymentUpdateRequest): Promise<PaymentResponse> => {
     const response = await api.put<PaymentResponse>(`/api/payments/${id}`, data);
     return response.data;
   },
@@ -61,5 +73,13 @@ export const tenantService = {
   ): Promise<PaymentResponse> => {
     const { data } = await api.post<PaymentResponse>(`/api/payments/${id}/submit-upi`, payload);
     return data;
+  },
+
+  getFacilities: async (): Promise<FacilityResponse[]> => {
+    const { data } = await api.get<FacilityApiResponse>("/api/tenant/facilities");
+    if (!data.success) {
+      throw new Error(data.message || "Failed to fetch facilities");
+    }
+    return data.data || [];
   },
 };
