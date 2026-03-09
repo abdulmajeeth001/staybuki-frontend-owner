@@ -2288,6 +2288,14 @@ export interface components {
             /** Format: date-time */
             updatedAt?: string;
         };
+        ApiResponseTenantProfileDto: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["TenantProfileDto"];
+            /** Format: date-time */
+            timestamp?: string;
+            errorCode?: string;
+        };
         ApiResponsePgResponseDto: {
             success?: boolean;
             message?: string;
@@ -4744,7 +4752,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": Record<string, never>;
+                    "*/*": components["schemas"]["ApiResponseTenantProfileDto"];
                 };
             };
         };

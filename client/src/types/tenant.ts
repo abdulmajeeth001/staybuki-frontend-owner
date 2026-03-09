@@ -22,3 +22,7 @@ export type PgApiResponse = components["schemas"]["ApiResponsePgResponseDto"];
 // Facility Aliases
 export type FacilityResponse = components["schemas"]["FacilityDto"];
 export type FacilityApiResponse = components["schemas"]["ApiResponseListFacilityDto"];
+
+// Profile Aliases
+export type TenantProfileResponse = components["schemas"]["TenantProfileDto"];
+export type TenantProfileApiResponse = components["schemas"]["ApiResponseTenantProfileDto"];

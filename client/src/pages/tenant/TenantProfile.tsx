@@ -1,45 +1,88 @@
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import MobileLayout from "@/components/layout/MobileLayout";
+import DesktopLayout from "@/components/layout/DesktopLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Mail, Phone, Calendar, User, Sparkles, Shield } from "lucide-react";
+import { Mail, Phone, Calendar, User, Sparkles, Shield, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { api } from "@/apiClient";
+import { tenantService } from "@/services/tenantService";
 
 export default function TenantProfile() {
-  const [profile, setProfile] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const { data: profile, isLoading, isError } = useQuery({
+    queryKey: ["tenant-profile"],
+    queryFn: tenantService.getProfile,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
 
-  useEffect(() => {
-    fetchProfile();
-  }, []);
-
-  const fetchProfile = async () => {
-    try {
-      const res = await api.get("/api/tenant/profile");
-      setProfile(res.data);
-    } catch (err) {
-      console.error("Failed to fetch profile:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (loading) {
+  if (isLoading) {
     return (
-      <MobileLayout title="Profile">
-        <div className="space-y-6">
-          <div className="flex justify-center">
-            <Skeleton className="w-32 h-32 rounded-full" />
-          </div>
-          <Skeleton className="h-24 w-full" />
-          <Skeleton className="h-24 w-full" />
+      <>
+        <div className="hidden lg:block">
+          <DesktopLayout title="Profile">
+            <ProfileSkeleton />
+          </DesktopLayout>
         </div>
-      </MobileLayout>
+        <div className="lg:hidden">
+          <MobileLayout title="Profile">
+            <ProfileSkeleton />
+          </MobileLayout>
+        </div>
+      </>
     );
   }
 
-  const profileSections = [
+  if (isError) {
+    const ErrorState = (
+      <div className="flex flex-col items-center justify-center h-[60vh] text-center p-6">
+        <AlertCircle className="w-16 h-16 text-red-500 mb-4 opacity-80" />
+        <h3 className="text-xl font-bold text-gray-800 mb-2">Unable to Load Profile</h3>
+        <p className="text-gray-600">We couldn't fetch your profile information. Please check your connection and try again.</p>
+      </div>
+    );
+
+    return (
+      <>
+        <div className="hidden lg:block">
+          <DesktopLayout title="Profile">{ErrorState}</DesktopLayout>
+        </div>
+        <div className="lg:hidden">
+          <MobileLayout title="Profile">{ErrorState}</MobileLayout>
+        </div>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <div className="hidden lg:block">
+        <DesktopLayout title="Profile">
+          <TenantProfileContent profile={profile} isDesktop={true} />
+        </DesktopLayout>
+      </div>
+      <div className="lg:hidden">
+        <MobileLayout title="Profile">
+          <TenantProfileContent profile={profile} isDesktop={false} />
+        </MobileLayout>
+      </div>
+    </>
+  );
+}
+
+function ProfileSkeleton() {
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-center">
+        <Skeleton className="w-32 h-32 rounded-full" />
+      </div>
+      <Skeleton className="h-24 w-full" />
+      <Skeleton className="h-24 w-full" />
+    </div>
+  );
+}
+
+function TenantProfileContent({ profile, isDesktop }: { profile: any; isDesktop: boolean }) {
+  const profileSections = useMemo(() => [
     {
       title: "Personal Information",
       icon: User,
@@ -58,16 +101,19 @@ export default function TenantProfile() {
         { label: "Member Since", value: profile?.joinDate || "N/A", icon: Calendar },
       ],
     },
-  ];
+  ], [profile]);
 
   return (
-    <MobileLayout title="Profile">
+    <div className={isDesktop ? "max-w-4xl mx-auto" : ""}>
       {/* Hero Section with Avatar */}
-      <div className="relative -mx-4 -mt-6 mb-6 overflow-hidden">
+      <div className={cn(
+        "relative overflow-hidden mb-6",
+        isDesktop ? "-mx-8 -mt-8 rounded-b-3xl" : "-mx-4 -mt-6"
+      )}>
         <div className="absolute inset-0 bg-gradient-to-br from-purple-600 via-blue-600 to-purple-700" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_120%,rgba(120,119,198,0.3),rgba(255,255,255,0))]" />
         
-        <div className="relative px-6 py-12 text-white text-center">
+        <div className={cn("relative text-white text-center", isDesktop ? "px-8 py-12" : "px-6 py-12")}>
           {/* Avatar */}
           <div className="flex justify-center mb-4">
             <div className="relative">
@@ -86,11 +132,11 @@ export default function TenantProfile() {
       </div>
 
       {/* Profile Sections */}
-      <div className="space-y-6">
+      <div className={cn("space-y-6", isDesktop ? "grid grid-cols-2 gap-6 space-y-0" : "")}>
         {profileSections.map((section) => {
           const SectionIcon = section.icon;
           return (
-            <Card key={section.title} className="relative border-2 hover:shadow-xl transition-all duration-300 overflow-hidden">
+            <Card key={section.title} className="relative border-2 hover:shadow-xl transition-all duration-300 overflow-hidden h-full">
               <div className="absolute inset-0 bg-gradient-to-br from-purple-50 to-blue-50 opacity-50" />
               
               {/* Section Header */}
@@ -135,6 +181,6 @@ export default function TenantProfile() {
           );
         })}
       </div>
-    </MobileLayout>
+    </div>
   );
 }

@@ -12,7 +12,9 @@ import type {
   PgResponse,
   PgApiResponse,
   FacilityResponse,
-  FacilityApiResponse
+  FacilityApiResponse,
+  TenantProfileResponse,
+  TenantProfileApiResponse
 } from "@/types/tenant";
 
 export const tenantService = {
@@ -81,5 +83,13 @@ export const tenantService = {
       throw new Error(data.message || "Failed to fetch facilities");
     }
     return data.data || [];
+  },
+
+  getProfile: async (): Promise<TenantProfileResponse | undefined> => {
+    const { data } = await api.get<TenantProfileApiResponse>("/api/tenant/profile");
+    if (!data.success) {
+      throw new Error(data.message || "Failed to fetch profile");
+    }
+    return data.data;
   },
 };
