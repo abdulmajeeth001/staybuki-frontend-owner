@@ -1,13 +1,17 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { Eye, EyeOff, Lock } from "lucide-react";
+import MobileLayout from "@/components/layout/MobileLayout";
+import DesktopLayout from "@/components/layout/DesktopLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { api } from "@/apiClient";
+import { tenantService } from "@/services/tenantService";
+import type { ResetPasswordRequest, VerifyPasswordResetRequest } from "@/types/tenant";
+import { useIsMobile } from "@/hooks/use-mobile";
 
-export default function TenantResetPassword() {
+function ResetPasswordContent() {
   const [, setLocation] = useLocation();
   const [step, setStep] = useState(1); // 1: Enter password, 2: Enter OTP
   const [isLoading, setIsLoading] = useState(false);
@@ -37,12 +41,14 @@ export default function TenantResetPassword() {
 
     setIsLoading(true);
     try {
-      await api.post("/api/auth/reset-password", { newPassword, confirmPassword });
+      const request: ResetPasswordRequest = { newPassword, confirmPassword };
+      const response = await tenantService.resetPassword(request);
 
-      setSuccess("OTP sent to your email and mobile");
+      setSuccess(response.message || "OTP sent to your email and mobile");
       setTimeout(() => setStep(2), 1000);
     } catch (err: any) {
-      setError(err.response?.data?.error || err.message || "Failed to request password reset");
+      // Check for 'error' (your custom map) AND 'message' (standard Spring errors)
+      setError(err.response?.data?.error || err.response?.data?.message || err.message || "Failed to request password reset");
     } finally {
       setIsLoading(false);
     }
@@ -60,19 +66,20 @@ export default function TenantResetPassword() {
 
     setIsLoading(true);
     try {
-      await api.post("/api/auth/verify-password-reset", { newPassword, otp });
+      const request: VerifyPasswordResetRequest = { newPassword, otp };
+      const response = await tenantService.verifyResetPassword(request);
 
-      setSuccess("Password reset successfully!");
+      setSuccess(response.message || "Password reset successfully!");
       setTimeout(() => setLocation("/tenant-dashboard"), 2000);
     } catch (err: any) {
-      setError(err.response?.data?.error || err.message || "Invalid OTP");
+      setError(err.response?.data?.error || err.response?.data?.message || err.message || "Invalid OTP");
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+    <div className="flex h-full items-center justify-center p-4">
       <Card className="w-full max-w-md border-none shadow-xl">
         <CardHeader className="space-y-2 text-center">
           <div className="bg-primary/10 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -89,13 +96,14 @@ export default function TenantResetPassword() {
         <CardContent>
           {step === 1 ? (
             <form onSubmit={handleRequestPasswordReset} className="space-y-4">
+              {/* aria-live ensures screen readers announce messages when they appear */}
               {error && (
-                <div className="p-3 bg-red-100 text-red-700 rounded-lg text-sm">
+                <div className="p-3 bg-red-100 text-red-700 rounded-lg text-sm" aria-live="polite">
                   {error}
                 </div>
               )}
               {success && (
-                <div className="p-3 bg-green-100 text-green-700 rounded-lg text-sm">
+                <div className="p-3 bg-green-100 text-green-700 rounded-lg text-sm" aria-live="polite">
                   {success}
                 </div>
               )}
@@ -106,8 +114,10 @@ export default function TenantResetPassword() {
                   <Input
                     type={showPassword ? "text" : "password"}
                     placeholder="••••••••"
+                    autoComplete="new-password"
                     minLength={8}
                     required
+                    disabled={isLoading}
                     className="h-12 pr-10"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
@@ -133,8 +143,10 @@ export default function TenantResetPassword() {
                   <Input
                     type={showConfirm ? "text" : "password"}
                     placeholder="••••••••"
+                    autoComplete="new-password"
                     minLength={8}
                     required
+                    disabled={isLoading}
                     className="h-12 pr-10"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
@@ -166,12 +178,12 @@ export default function TenantResetPassword() {
           ) : (
             <form onSubmit={handleVerifyOTP} className="space-y-4">
               {error && (
-                <div className="p-3 bg-red-100 text-red-700 rounded-lg text-sm">
+                <div className="p-3 bg-red-100 text-red-700 rounded-lg text-sm" aria-live="polite">
                   {error}
                 </div>
               )}
               {success && (
-                <div className="p-3 bg-green-100 text-green-700 rounded-lg text-sm">
+                <div className="p-3 bg-green-100 text-green-700 rounded-lg text-sm" aria-live="polite">
                   {success}
                 </div>
               )}
@@ -182,7 +194,11 @@ export default function TenantResetPassword() {
                   type="text"
                   placeholder="000000"
                   maxLength={6}
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  autoComplete="one-time-code"
                   required
+                  disabled={isLoading}
                   className="h-12 text-center text-lg tracking-widest font-mono"
                   value={otp}
                   onChange={(e) =>
@@ -208,6 +224,7 @@ export default function TenantResetPassword() {
                 type="button"
                 variant="outline"
                 className="w-full"
+                disabled={isLoading}
                 onClick={() => {
                   setStep(1);
                   setOtp("");
@@ -220,5 +237,17 @@ export default function TenantResetPassword() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function TenantResetPassword() {
+  const isMobile = useIsMobile();
+  // Dynamically select the layout component to avoid duplicate JSX code
+  const Layout = isMobile ? MobileLayout : DesktopLayout;
+
+  return (
+    <Layout title="Reset Password" showNav={false}>
+      <ResetPasswordContent />
+    </Layout>
   );
 }

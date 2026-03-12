@@ -14,7 +14,9 @@ import type {
   FacilityResponse,
   FacilityApiResponse,
   TenantProfileResponse,
-  TenantProfileApiResponse
+  TenantProfileApiResponse,
+  ResetPasswordRequest,
+  VerifyPasswordResetRequest
 } from "@/types/tenant";
 
 export const tenantService = {
@@ -91,5 +93,15 @@ export const tenantService = {
       throw new Error(data.message || "Failed to fetch profile");
     }
     return data.data;
+  },
+
+  resetPassword: async (data: ResetPasswordRequest) => {
+    const response = await api.post("/api/auth/reset-password", data);
+    return response.data;
+  },
+
+  verifyResetPassword: async (data: VerifyPasswordResetRequest) => {
+    const response = await api.post("/api/auth/verify-password-reset", data);
+    return response.data;
   },
 };

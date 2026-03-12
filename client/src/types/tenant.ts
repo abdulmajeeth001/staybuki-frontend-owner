@@ -26,3 +26,7 @@ export type FacilityApiResponse = components["schemas"]["ApiResponseListFacility
 // Profile Aliases
 export type TenantProfileResponse = components["schemas"]["TenantProfileDto"];
 export type TenantProfileApiResponse = components["schemas"]["ApiResponseTenantProfileDto"];
+
+// Password Reset Aliases
+export type ResetPasswordRequest = components["schemas"]["ResetPasswordRequestDto"];
+export type VerifyPasswordResetRequest = components["schemas"]["VerifyPasswordResetRequestDto"];
