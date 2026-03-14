@@ -89,6 +89,7 @@ const getPriorityConfig = (priority: string) => {
 
 export default function TenantComplaints() {
   const isMobile = useIsMobile();
+  const Layout = isMobile ? MobileLayout : DesktopLayout;
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -161,18 +162,10 @@ export default function TenantComplaints() {
       </div>
     );
 
-    if (isMobile) {
-      return (
-        <MobileLayout title="My Complaints">
-          {Skeletons}
-        </MobileLayout>
-      );
-    }
-
     return (
-      <DesktopLayout title="My Complaints">
+      <Layout title="My Complaints">
         {Skeletons}
-      </DesktopLayout>
+      </Layout>
     );
   }
 
@@ -405,13 +398,9 @@ export default function TenantComplaints() {
     </>
   );
 
-  if (isMobile) {
-    return <MobileLayout title="My Complaints">{content}</MobileLayout>;
-  }
-
   return (
-    <DesktopLayout title="My Complaints">
+    <Layout title="My Complaints">
       {content}
-    </DesktopLayout>
+    </Layout>
   );
 }

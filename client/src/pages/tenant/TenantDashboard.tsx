@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import MobileLayout from "@/components/layout/MobileLayout";
 import DesktopLayout from "@/components/layout/DesktopLayout";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,6 +17,9 @@ import { tenantApi } from "@/api/tenantApi";
 import { getApiErrorMessage } from "@/utils/apiError";
 
 export default function TenantDashboard() {
+  const isMobile = useIsMobile();
+  const Layout = isMobile ? MobileLayout : DesktopLayout;
+
   const [, navigate] = useLocation();
   const [tenantData, setTenantData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -64,16 +68,9 @@ export default function TenantDashboard() {
 
   if (loading) {
     return (
-      <>
-        <div className="hidden lg:block">
-          <DesktopLayout title="Dashboard" showNav={false}>
-            <div className="flex items-center justify-center h-64">Loading...</div>
-          </DesktopLayout>
-        </div>
-        <div className="lg:hidden">
-          <MobileLayout title="Dashboard">Loading...</MobileLayout>
-        </div>
-      </>
+      <Layout title="Dashboard" showNav={!isMobile ? false : undefined}>
+        <div className={isMobile ? "" : "flex items-center justify-center h-64"}>Loading...</div>
+      </Layout>
     );
   }
 
@@ -117,18 +114,9 @@ export default function TenantDashboard() {
   ];
 
   return (
-    <>
-      <div className="hidden lg:block">
-        <DesktopLayout title="Dashboard" showNav={false}>
-          <DashboardContent tenantData={tenantData} menuItems={menuItems} isDesktop={true} />
-        </DesktopLayout>
-      </div>
-      <div className="lg:hidden">
-        <MobileLayout title="Dashboard">
-          <DashboardContent tenantData={tenantData} menuItems={menuItems} isDesktop={false} />
-        </MobileLayout>
-      </div>
-    </>
+    <Layout title="Dashboard" showNav={!isMobile ? false : undefined}>
+      <DashboardContent tenantData={tenantData} menuItems={menuItems} isDesktop={!isMobile} />
+    </Layout>
   );
 }
 

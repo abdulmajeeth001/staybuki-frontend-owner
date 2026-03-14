@@ -1,12 +1,13 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import MobileLayout from "@/components/layout/MobileLayout";
+import DesktopLayout from "@/components/layout/DesktopLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
@@ -25,38 +26,13 @@ import {
   Home as HomeIcon,
   ArrowLeft,
 } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 import { format, isPast } from "date-fns";
 import OnboardingRequestModal from "@/components/OnboardingRequestModal";
-import { api } from "@/apiClient";
-
-interface VisitRequest {
-  id: number;
-  pgId: number;
-  pgName?: string;
-  pgAddress?: string;
-  roomId?: number;
-  roomNumber?: string;
-  requestedDate: string;
-  requestedTime: string;
-  confirmedDate?: string;
-  confirmedTime?: string;
-  rescheduledDate?: string;
-  rescheduledTime?: string;
-  status: "pending" | "approved" | "rescheduled" | "completed" | "cancelled";
-  notes?: string;
-  ownerNotes?: string;
-  createdAt: string;
-}
-
-interface OnboardingRequest {
-  id: number;
-  status: "pending" | "approved" | "rejected";
-  pgId: number;
-  roomId: number;
-  rejectionReason?: string;
-}
+import { tenantService } from "@/services/tenantService";
+import type { VisitRequestResponse, OnboardingRequestResponse } from "@/types/tenant";
 
 const STATUS_CONFIG = {
   pending: {
@@ -86,126 +62,38 @@ const STATUS_CONFIG = {
   },
 };
 
-export default function TenantVisitRequestsPage() {
-  const [, navigate] = useLocation();
-  const queryClient = useQueryClient();
-  
-  const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [sortBy, setSortBy] = useState<"recent" | "date">("recent");
-  const [onboardingModal, setOnboardingModal] = useState<{
-    open: boolean;
-    visitRequestId?: number;
-    pgId?: number;
-    roomId?: number;
-  }>({ open: false });
+interface VisitRequestsContentProps {
+  visitRequests: VisitRequestResponse[];
+  onboardingRequestsMap: Record<number, OnboardingRequestResponse>;
+  statusFilter: string;
+  setStatusFilter: (v: string) => void;
+  sortBy: "recent" | "date";
+  setSortBy: (v: "recent" | "date") => void;
+  onboardingModal: { open: boolean; visitRequestId?: number; pgId?: number; roomId?: number };
+  setOnboardingModal: (v: any) => void;
+  acceptRescheduleMutation: any;
+  completeVisitMutation: any;
+  cancelVisitMutation: any;
+  navigate: (path: string) => void;
+  isDesktop: boolean;
+}
 
-  // Fetch visit requests
-  const { data: visitRequests = [], isLoading, error } = useQuery<VisitRequest[]>({
-    queryKey: ["/api/tenant/visit-requests"],
-    queryFn: async () => {
-      const res = await api.get("/api/tenant/visit-requests");
-      return res.data;
-    },
-    staleTime: 0, // Always consider data stale
-    refetchOnMount: "always", // Always refetch when component mounts
-    refetchOnWindowFocus: true, // Refetch when window regains focus
-  });
-
-  // Fetch onboarding requests for all unique PG IDs
-  const uniquePgIds = Array.from(new Set(visitRequests.map(req => req.pgId)));
-  
-  const { data: onboardingRequestsMap = {} } = useQuery<Record<number, OnboardingRequest>>({
-    queryKey: ["/api/tenant/onboarding-requests", uniquePgIds],
-    enabled: uniquePgIds.length > 0,
-    queryFn: async () => {
-      const requests = await Promise.all(
-        uniquePgIds.map(async (pgId) => {
-          try {
-            const res = await api.get(`/api/tenant/onboarding-requests/${pgId}`);
-            return { pgId, data: res.data };
-          } catch {
-            return { pgId, data: null };
-          }
-        })
-      );
-      
-      const map: Record<number, OnboardingRequest> = {};
-      requests.forEach(({ pgId, data }) => {
-        if (data) {
-          map[pgId] = data;
-        }
-      });
-      return map;
-    },
-  });
-
-  // Accept reschedule mutation
-  const acceptRescheduleMutation = useMutation({
-    mutationFn: async (id: number) => {
-      const res = await api.patch(`/api/tenant/visit-requests/${id}/accept-reschedule`);
-      return res.data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/tenant/visit-requests"] });
-      toast({
-        title: "Success",
-        description: "New visit time accepted successfully",
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.response?.data?.error || error.message || "Failed to accept reschedule",
-        variant: "destructive",
-      });
-    },
-  });
-
-  // Complete visit mutation
-  const completeVisitMutation = useMutation({
-    mutationFn: async (id: number) => {
-      const res = await api.patch(`/api/tenant/visit-requests/${id}/complete`);
-      return res.data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/tenant/visit-requests"] });
-      toast({
-        title: "Success",
-        description: "Visit marked as completed",
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.response?.data?.error || error.message || "Failed to mark as completed",
-        variant: "destructive",
-      });
-    },
-  });
-
-  // Cancel visit mutation
-  const cancelVisitMutation = useMutation({
-    mutationFn: async (id: number) => {
-      const res = await api.delete(`/api/tenant/visit-requests/${id}`);
-      return res.data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/tenant/visit-requests"] });
-      toast({
-        title: "Success",
-        description: "Visit request cancelled",
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.response?.data?.error || error.message || "Failed to cancel visit request",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const handleOpenOnboarding = (visitRequest: VisitRequest) => {
+function VisitRequestsContent({
+  visitRequests,
+  onboardingRequestsMap,
+  statusFilter,
+  setStatusFilter,
+  sortBy,
+  setSortBy,
+  onboardingModal,
+  setOnboardingModal,
+  acceptRescheduleMutation,
+  completeVisitMutation,
+  cancelVisitMutation,
+  navigate,
+  isDesktop,
+}: VisitRequestsContentProps) {
+  const handleOpenOnboarding = (visitRequest: VisitRequestResponse) => {
     setOnboardingModal({
       open: true,
       visitRequestId: visitRequest.id,
@@ -214,103 +102,55 @@ export default function TenantVisitRequestsPage() {
     });
   };
 
-  // Filter and sort requests
-  const filteredRequests = visitRequests
-    .filter((req) => {
-      if (statusFilter === "all") return true;
-      return req.status === statusFilter;
-    })
-    .sort((a, b) => {
-      if (sortBy === "recent") {
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-      } else {
-        const dateA = new Date(a.requestedDate).getTime();
-        const dateB = new Date(b.requestedDate).getTime();
-        return dateB - dateA;
-      }
-    });
+  const filteredRequests = useMemo(() => {
+    return visitRequests
+      .filter((req) => (statusFilter === "all" ? true : req.status === statusFilter))
+      .sort((a, b) => {
+        const getTime = (d: string | Date | null | undefined) =>
+          d ? new Date(d).getTime() : 0;
+        return sortBy === "recent"
+          ? getTime(b.createdAt) - getTime(a.createdAt)
+          : getTime(b.requestedDate) - getTime(a.requestedDate);
+      });
+  }, [visitRequests, statusFilter, sortBy]);
 
-  const getStatusCounts = () => {
-    return {
-      all: visitRequests.length,
-      pending: visitRequests.filter((r) => r.status === "pending").length,
-      approved: visitRequests.filter((r) => r.status === "approved").length,
-      completed: visitRequests.filter((r) => r.status === "completed").length,
-    };
-  };
-
-  const counts = getStatusCounts();
-
-  if (isLoading) {
-    return (
-      <MobileLayout title="My Visit Requests" showNav={true}>
-        <div className="space-y-4">
-          <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-48 w-full" />
-          <Skeleton className="h-48 w-full" />
-          <Skeleton className="h-48 w-full" />
-        </div>
-      </MobileLayout>
-    );
-  }
-
-  if (error) {
-    return (
-      <MobileLayout title="My Visit Requests" showNav={true}>
-        <Card className="text-center py-12">
-          <CardContent>
-            <AlertCircle className="w-16 h-16 mx-auto text-destructive mb-4" />
-            <h3 className="text-lg font-semibold mb-2" data-testid="text-error">
-              Failed to load visit requests
-            </h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              {error.message || "Please try again later"}
-            </p>
-            <Button onClick={() => navigate("/tenant-search-pgs")} data-testid="button-search-pgs">
-              Search PGs
-            </Button>
-          </CardContent>
-        </Card>
-      </MobileLayout>
-    );
-  }
+  const counts = useMemo(() => ({
+    all: visitRequests.length,
+    pending: visitRequests.filter((r) => r.status === "pending").length,
+    approved: visitRequests.filter((r) => r.status === "approved").length,
+    completed: visitRequests.filter((r) => r.status === "completed").length,
+  }), [visitRequests]);
 
   return (
-    <MobileLayout
-      title="My Visit Requests"
-      showNav={true}
-      action={
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => navigate("/tenant-dashboard")}
-          data-testid="button-back"
-        >
-          <ArrowLeft className="w-5 h-5" />
-        </Button>
-      }
-    >
-      {/* Hero Section */}
-      <div className="relative -mx-4 -mt-6 mb-6 overflow-hidden">
+    <div>
+      {/* ✅ Hero — renders flush to top, no negative margins needed.
+          On mobile: uses px-4 py-8. On desktop: uses px-8 py-10.
+          rounded-b-3xl only on desktop. */}
+      <div className={cn(
+        "relative overflow-hidden",
+        isDesktop ? "rounded-b-3xl mb-8" : "mb-6"
+      )}>
         <div className="absolute inset-0 bg-gradient-to-br from-purple-600 via-blue-600 to-purple-700" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.1),transparent_50%)]" />
-        <div className="relative px-6 py-8">
+        <div className={cn("relative text-white", isDesktop ? "px-8 py-10" : "px-6 py-8")}>
           <div className="text-center">
-            <h1 className="text-3xl font-bold text-white mb-2">
-              My Visits
-            </h1>
-            <p className="text-purple-100 text-sm">
+            <h1 className="text-3xl font-bold drop-shadow-lg mb-2">My Visits</h1>
+            <p className="text-sm text-white/90">
               Track your PG visit requests and schedules
             </p>
           </div>
         </div>
       </div>
 
-      <div className="space-y-4">
+      {/* ✅ Body — padded container, max-width centered on desktop */}
+      <div className={cn("space-y-4", isDesktop ? "max-w-5xl mx-auto px-8 pb-8" : "px-4 pb-6")}>
         {/* Controls Bar */}
         <div className="flex items-center justify-between gap-3">
           <div className="flex-1 max-w-[200px]">
-            <Select value={sortBy} onValueChange={(value: "recent" | "date") => setSortBy(value)}>
+            <Select
+              value={sortBy}
+              onValueChange={(value: "recent" | "date") => setSortBy(value)}
+            >
               <SelectTrigger data-testid="select-sort" className="h-9 text-sm">
                 <SelectValue />
               </SelectTrigger>
@@ -355,9 +195,7 @@ export default function TenantVisitRequestsPage() {
                 <Building2 className="w-8 h-8 text-purple-600" />
               </div>
               <h3 className="text-xl font-bold mb-2 text-gray-800" data-testid="text-no-requests">
-                {statusFilter === "all"
-                  ? "No visit requests yet"
-                  : `No ${statusFilter} visits`}
+                {statusFilter === "all" ? "No visit requests yet" : `No ${statusFilter} visits`}
               </h3>
               <p className="text-sm text-gray-600 mb-6 max-w-sm mx-auto">
                 {statusFilter === "all"
@@ -365,8 +203,8 @@ export default function TenantVisitRequestsPage() {
                   : `You don't have any ${statusFilter} visit requests at the moment`}
               </p>
               {statusFilter === "all" && (
-                <Button 
-                  onClick={() => navigate("/tenant-search-pgs")} 
+                <Button
+                  onClick={() => navigate("/tenant-search-pgs")}
                   className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 shadow-lg"
                   data-testid="button-search-pgs-empty"
                 >
@@ -378,33 +216,34 @@ export default function TenantVisitRequestsPage() {
         ) : (
           <div className="space-y-4">
             {filteredRequests.map((request) => {
-              const statusConfig = STATUS_CONFIG[request.status];
+              const statusConfig =
+                STATUS_CONFIG[request.status as keyof typeof STATUS_CONFIG] ||
+                STATUS_CONFIG.pending;
               const StatusIcon = statusConfig.icon;
               const visitDate = request.confirmedDate || request.requestedDate;
-              const visitTime = request.confirmedTime || request.requestedTime;
               const isPastVisit = visitDate ? isPast(new Date(visitDate)) : false;
-              
-              // Check if onboarding request exists for this PG
-              const onboardingRequest = onboardingRequestsMap[request.pgId];
-              const hasOnboardingRequest = onboardingRequest && 
+              const onboardingRequest = request.pgId ? onboardingRequestsMap[request.pgId] : undefined;
+              const hasOnboardingRequest =
+                onboardingRequest &&
                 (onboardingRequest.status === "pending" || onboardingRequest.status === "approved");
-              
-              // Show onboarding button only if visit is approved/completed, has roomId, and NO existing onboarding request
               const showOnboardingButton =
-                (request.status === "approved" || request.status === "completed") && 
-                request.roomId && 
+                (request.status === "approved" || request.status === "completed") &&
+                request.roomId &&
                 !hasOnboardingRequest;
 
               return (
-                <Card 
-                  key={request.id} 
+                <Card
+                  key={request.id}
                   data-testid={`card-visit-${request.id}`}
                   className="border-2 hover:border-purple-200 hover:shadow-xl transition-all duration-300 group overflow-hidden"
                 >
                   <CardHeader className="pb-3">
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1">
-                        <CardTitle className="text-xl font-bold mb-2 text-gray-800" data-testid={`text-pg-name-${request.id}`}>
+                        <CardTitle
+                          className="text-xl font-bold mb-2 text-gray-800"
+                          data-testid={`text-pg-name-${request.id}`}
+                        >
                           {request.pgName || "PG"}
                         </CardTitle>
                         {request.pgAddress && (
@@ -430,8 +269,8 @@ export default function TenantVisitRequestsPage() {
                       </Badge>
                     </div>
                   </CardHeader>
+
                   <CardContent className="space-y-5">
-                    {/* Visit Details Timeline */}
                     <div className="space-y-3">
                       <div className="flex items-start gap-3 text-sm">
                         <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0">
@@ -481,20 +320,17 @@ export default function TenantVisitRequestsPage() {
                                   {format(new Date(request.rescheduledDate), "MMM dd, yyyy")}
                                 </span>
                                 {" at "}
-                                <span data-testid={`text-rescheduled-time-${request.id}`}>
-                                  {request.rescheduledTime}
-                                </span>
+                                <span data-testid={`text-rescheduled-time-${request.id}`}>{request.rescheduledTime}</span>
                               </p>
                             </div>
                           </div>
                         )}
                     </div>
 
-                    {/* Notes */}
                     {request.notes && (
                       <div className="text-sm bg-purple-50 p-4 rounded-lg border border-purple-100">
                         <p className="font-semibold text-gray-800 mb-2 flex items-center gap-2">
-                          <span className="w-1.5 h-1.5 rounded-full bg-purple-500"></span>
+                          <span className="w-1.5 h-1.5 rounded-full bg-purple-500" />
                           Your Notes
                         </p>
                         <p className="text-gray-700" data-testid={`text-notes-${request.id}`}>
@@ -506,7 +342,7 @@ export default function TenantVisitRequestsPage() {
                     {request.ownerNotes && (
                       <div className="text-sm bg-gradient-to-r from-blue-50 to-purple-50 p-4 rounded-lg border-2 border-blue-200">
                         <p className="font-semibold text-gray-800 mb-2 flex items-center gap-2">
-                          <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                          <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
                           Owner's Message
                         </p>
                         <p className="text-gray-700" data-testid={`text-owner-notes-${request.id}`}>
@@ -515,7 +351,6 @@ export default function TenantVisitRequestsPage() {
                       </div>
                     )}
 
-                    {/* Action Buttons */}
                     <div className="flex flex-wrap gap-2 pt-2">
                       {request.status === "pending" && (
                         <Button
@@ -529,7 +364,6 @@ export default function TenantVisitRequestsPage() {
                           {cancelVisitMutation.isPending ? "Cancelling..." : "Cancel Request"}
                         </Button>
                       )}
-
                       {request.status === "rescheduled" && (
                         <Button
                           onClick={() => acceptRescheduleMutation.mutate(request.id)}
@@ -541,7 +375,6 @@ export default function TenantVisitRequestsPage() {
                           {acceptRescheduleMutation.isPending ? "Accepting..." : "Accept New Time"}
                         </Button>
                       )}
-
                       {request.status === "approved" && isPastVisit && (
                         <Button
                           onClick={() => completeVisitMutation.mutate(request.id)}
@@ -554,7 +387,6 @@ export default function TenantVisitRequestsPage() {
                           {completeVisitMutation.isPending ? "Marking..." : "Mark as Completed"}
                         </Button>
                       )}
-
                       {showOnboardingButton && (
                         <Button
                           onClick={() => handleOpenOnboarding(request)}
@@ -565,7 +397,6 @@ export default function TenantVisitRequestsPage() {
                           Request Onboarding
                         </Button>
                       )}
-
                       {(request.status === "approved" || request.status === "completed") && (
                         <Button
                           onClick={() => cancelVisitMutation.mutate(request.id)}
@@ -580,13 +411,12 @@ export default function TenantVisitRequestsPage() {
                       )}
                     </div>
 
-                    {/* Onboarding Status Badge */}
                     {onboardingRequest && (
                       <div className="pt-3 border-t">
                         {onboardingRequest.status === "pending" && (
                           <div className="bg-gradient-to-r from-orange-50 to-yellow-50 p-4 rounded-lg border-2 border-orange-200">
                             <div className="flex items-center gap-2 mb-2">
-                              <div className="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></div>
+                              <div className="w-2 h-2 rounded-full bg-orange-500 animate-pulse" />
                               <span className="font-semibold text-orange-900" data-testid={`text-onboarding-status-${request.id}`}>
                                 Onboarding Request Pending
                               </span>
@@ -596,7 +426,6 @@ export default function TenantVisitRequestsPage() {
                             </p>
                           </div>
                         )}
-                        
                         {onboardingRequest.status === "approved" && (
                           <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-4 rounded-lg border-2 border-green-200">
                             <div className="flex items-center gap-2 mb-2">
@@ -610,7 +439,6 @@ export default function TenantVisitRequestsPage() {
                             </p>
                           </div>
                         )}
-                        
                         {onboardingRequest.status === "rejected" && (
                           <div className="bg-gradient-to-r from-red-50 to-pink-50 p-4 rounded-lg border-2 border-red-200">
                             <div className="flex items-center gap-2 mb-2">
@@ -639,7 +467,6 @@ export default function TenantVisitRequestsPage() {
         )}
       </div>
 
-      {/* Onboarding Modal */}
       <OnboardingRequestModal
         open={onboardingModal.open}
         onClose={() => setOnboardingModal({ open: false })}
@@ -647,6 +474,157 @@ export default function TenantVisitRequestsPage() {
         pgId={onboardingModal.pgId}
         roomId={onboardingModal.roomId}
       />
-    </MobileLayout>
+    </div>
+  );
+}
+
+export default function TenantVisitRequestsPage() {
+  const isMobile = useIsMobile();
+  const Layout = isMobile ? MobileLayout : DesktopLayout;
+  const [, navigate] = useLocation();
+  const queryClient = useQueryClient();
+
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [sortBy, setSortBy] = useState<"recent" | "date">("recent");
+  const [onboardingModal, setOnboardingModal] = useState<{
+    open: boolean;
+    visitRequestId?: number;
+    pgId?: number;
+    roomId?: number;
+  }>({ open: false });
+
+  const { data: visitRequests = [], isLoading, error } = useQuery<VisitRequestResponse[]>({
+    queryKey: ["/api/tenant/visit-requests"],
+    queryFn: tenantService.getVisitRequests,
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+  });
+
+  const uniquePgIds = useMemo(() => {
+    const ids = visitRequests
+      .map((req) => req.pgId)
+      .filter((id): id is number => typeof id === "number");
+    return Array.from(new Set(ids));
+  }, [visitRequests]);
+
+  const { data: onboardingRequestsMap = {} } = useQuery({
+    queryKey: ["/api/tenant/onboarding-requests", uniquePgIds],
+    enabled: uniquePgIds.length > 0,
+    queryFn: () => tenantService.getOnboardingRequestsForPgs(uniquePgIds),
+  });
+
+  const acceptRescheduleMutation = useMutation({
+    mutationFn: tenantService.acceptVisitReschedule,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tenant/visit-requests"] });
+      toast({ title: "Success", description: "New visit time accepted successfully" });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.response?.data?.error || error.message || "Failed to accept reschedule",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const completeVisitMutation = useMutation({
+    mutationFn: tenantService.completeVisit,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tenant/visit-requests"] });
+      toast({ title: "Success", description: "Visit marked as completed" });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.response?.data?.error || error.message || "Failed to mark as completed",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const cancelVisitMutation = useMutation({
+    mutationFn: tenantService.cancelVisit,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tenant/visit-requests"] });
+      toast({ title: "Success", description: "Visit request cancelled" });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.response?.data?.error || error.message || "Failed to cancel visit request",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const layoutProps = isMobile
+    ? {
+        showNav: true,
+        action: (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate("/tenant-dashboard")}
+            data-testid="button-back"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
+        ),
+      }
+    : {};
+
+  if (isLoading) {
+    return (
+      <Layout title="My Visit Requests" {...layoutProps}>
+        <div className={cn("space-y-6", !isMobile ? "max-w-5xl mx-auto px-8 pt-8" : "px-4 pt-4")}>
+          <Skeleton className="h-24 w-full" />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Skeleton className="h-48 w-full" />
+            <Skeleton className="h-48 w-full" />
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (error) {
+    return (
+      <Layout title="My Visit Requests" {...layoutProps}>
+        <div className={cn(!isMobile ? "max-w-5xl mx-auto px-8 pt-8" : "px-4 pt-4")}>
+          <Card className="text-center py-12">
+            <CardContent>
+              <AlertCircle className="w-16 h-16 mx-auto text-destructive mb-4" />
+              <h3 className="text-lg font-semibold mb-2">Failed to load visit requests</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                {error.message || "Please try again later"}
+              </p>
+              <Button onClick={() => navigate("/tenant-search-pgs")}>Search PGs</Button>
+            </CardContent>
+          </Card>
+        </div>
+      </Layout>
+    );
+  }
+
+  return (
+    <Layout title="My Visit Requests" {...layoutProps}>
+      <VisitRequestsContent
+        visitRequests={visitRequests}
+        onboardingRequestsMap={onboardingRequestsMap}
+        statusFilter={statusFilter}
+        setStatusFilter={setStatusFilter}
+        sortBy={sortBy}
+        setSortBy={setSortBy}
+        onboardingModal={onboardingModal}
+        setOnboardingModal={setOnboardingModal}
+        acceptRescheduleMutation={acceptRescheduleMutation}
+        completeVisitMutation={completeVisitMutation}
+        cancelVisitMutation={cancelVisitMutation}
+        navigate={navigate}
+        isDesktop={!isMobile}
+      />
+    </Layout>
   );
 }

@@ -1,4 +1,6 @@
 import MobileLayout from "@/components/layout/MobileLayout";
+import DesktopLayout from "@/components/layout/DesktopLayout";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -52,6 +54,8 @@ const RELATIONSHIPS = [
 ];
 
 export default function EditTenant() {
+  const isMobile = useIsMobile();
+  const Layout = isMobile ? MobileLayout : DesktopLayout;
   const [, setLocation] = useLocation();
   const { id } = useParams();
   const queryClient = useQueryClient();
@@ -324,30 +328,31 @@ export default function EditTenant() {
 
   if (isLoading) {
     return (
-      <MobileLayout title="Edit Tenant">
+      <Layout title="Edit Tenant" showNav={false}>
         <div className="text-center py-8">Loading...</div>
-      </MobileLayout>
+      </Layout>
     );
   }
 
   if (!tenant) {
     return (
-      <MobileLayout title="Edit Tenant">
+      <Layout title="Edit Tenant" showNav={false}>
         <div className="text-center py-8">Tenant not found</div>
-      </MobileLayout>
+      </Layout>
     );
   }
 
   return (
-    <MobileLayout 
+    <Layout 
       title="Edit Tenant"
+      showNav={false}
       action={
         <Button variant="ghost" size="icon" onClick={() => setLocation("/tenants")}>
           <ChevronLeft className="w-6 h-6" />
         </Button>
       }
     >
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-6 md:py-8 max-w-3xl mx-auto">
         {/* Photo Upload */}
         <div className="flex justify-center">
           {photoPreview ? (
@@ -627,6 +632,6 @@ export default function EditTenant() {
           </Button>
         </div>
       </form>
-    </MobileLayout>
+    </Layout>
   );
 }

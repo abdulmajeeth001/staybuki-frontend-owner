@@ -1,4 +1,6 @@
 import MobileLayout from "@/components/layout/MobileLayout";
+import DesktopLayout from "@/components/layout/DesktopLayout";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,6 +17,8 @@ interface Tenant {
 }
 
 export default function AddRoom() {
+  const isMobile = useIsMobile();
+  const Layout = isMobile ? MobileLayout : DesktopLayout;
   const [, setLocation] = useLocation();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
@@ -120,7 +124,7 @@ export default function AddRoom() {
   const canAddMore = formData.tenantIds.length < sharingNum;
 
   return (
-    <MobileLayout title="Add Room" showNav={false}>
+    <Layout title="Add Room" showNav={false}>
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 pb-20">
         {/* Header */}
         <div className="sticky top-0 z-10 bg-white border-b border-slate-200 px-4 py-4">
@@ -422,6 +426,6 @@ export default function AddRoom() {
           </div>
         </form>
       </div>
-    </MobileLayout>
+    </Layout>
   );
 }

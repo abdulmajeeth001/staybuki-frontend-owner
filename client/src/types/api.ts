@@ -283,8 +283,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** List all visit requests for the current tenant */
         get: operations["list"];
         put?: never;
+        /** Create a new visit request */
         post: operations["create"];
         delete?: never;
         options?: never;
@@ -301,6 +303,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /** Submit a new onboarding request */
         post: operations["create_1"];
         delete?: never;
         options?: never;
@@ -526,38 +529,6 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["autoGenerate"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/onboarding-requests/{id}/reject": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["reject_1"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/onboarding-requests/{id}/approve": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["approve_2"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1009,6 +980,7 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
+        /** Mark a visit request as complete */
         patch: operations["complete"];
         trace?: never;
     };
@@ -1025,7 +997,42 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch: operations["accept"];
+        /** Accept a reschedule proposal for a visit request */
+        patch: operations["acceptReschedule"];
+        trace?: never;
+    };
+    "/api/owner/onboarding-requests/{id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Reject an onboarding request with a reason */
+        patch: operations["reject_1"];
+        trace?: never;
+    };
+    "/api/owner/onboarding-requests/{id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Approve an onboarding request */
+        patch: operations["approve_2"];
         trace?: never;
     };
     "/api/visit-requests": {
@@ -1195,6 +1202,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** Get onboarding request for a specific PG */
         get: operations["getByTenant"];
         put?: never;
         post?: never;
@@ -1332,6 +1340,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/owner/onboarding-requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List all onboarding requests for the owner's selected PG */
+        get: operations["getByOwner"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/owner/dashboard-stats": {
         parameters: {
             query?: never;
@@ -1356,22 +1381,6 @@ export interface paths {
             cookie?: never;
         };
         get: operations["getOwnerComplaints"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/onboarding-requests": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["getByOwner"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1614,6 +1623,7 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
+        /** Cancel a visit request */
         delete: operations["cancel"];
         options?: never;
         head?: never;
@@ -1948,6 +1958,8 @@ export interface components {
             confirmedDate?: string;
             confirmedTime?: string;
             notes?: string;
+            /** Format: date-time */
+            createdAt?: string;
         };
         PgCreateRequestDto: {
             pgName?: string;
@@ -2047,6 +2059,14 @@ export interface components {
             requestedTime: string;
             notes?: string;
         };
+        ApiResponseVisitRequestResponseDto: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["VisitRequestResponseDto"];
+            /** Format: date-time */
+            timestamp?: string;
+            errorCode?: string;
+        };
         CreateOnboardingRequestDto: {
             /** Format: int32 */
             pgId: number;
@@ -2063,6 +2083,53 @@ export interface components {
             emergencyContactName?: string;
             emergencyContactPhone?: string;
             emergencyContactRelationship?: string;
+        };
+        ApiResponseOnboardingRequestResponseDto: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["OnboardingRequestResponseDto"];
+            /** Format: date-time */
+            timestamp?: string;
+            errorCode?: string;
+        };
+        OnboardingRequestResponseDto: {
+            /** Format: int64 */
+            id?: number;
+            /** Format: int64 */
+            pgId?: number;
+            /** Format: int64 */
+            roomId?: number;
+            /** Format: int64 */
+            tenantUserId?: number;
+            name?: string;
+            email?: string;
+            phone?: string;
+            monthlyRent?: number;
+            status?: string;
+            rejectionReason?: string;
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: date-time */
+            approvedAt?: string;
+            pgName?: string;
+            roomNumber?: string;
+            tenantHistory?: components["schemas"]["TenantHistoryDto"][];
+        };
+        TenantHistoryDto: {
+            /** Format: int64 */
+            id?: number;
+            pgName?: string;
+            pgAddress?: string;
+            roomNumber?: string;
+            /** Format: date-time */
+            moveInDate?: string;
+            /** Format: date-time */
+            moveOutDate?: string;
+            ownerFeedback?: string;
+            /** Format: int32 */
+            rating?: number;
+            behaviorTags?: string[];
+            ownerName?: string;
         };
         ApiResponseRoomResponseDto: {
             success?: boolean;
@@ -2127,9 +2194,6 @@ export interface components {
             type: string;
             /** Format: date-time */
             dueDate?: string;
-        };
-        RejectOnboardingRequestDto: {
-            reason: string;
         };
         Keys: {
             p256dh?: string;
@@ -2265,6 +2329,9 @@ export interface components {
             isActive?: boolean;
             owner?: components["schemas"]["OwnerDto"];
         };
+        RejectOnboardingRequestDto: {
+            reason: string;
+        };
         TenantResponseDto: {
             /** Format: int32 */
             id?: number;
@@ -2287,6 +2354,14 @@ export interface components {
             createdAt?: string;
             /** Format: date-time */
             updatedAt?: string;
+        };
+        ApiResponseListVisitRequestResponseDto: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["VisitRequestResponseDto"][];
+            /** Format: date-time */
+            timestamp?: string;
+            errorCode?: string;
         };
         ApiResponseTenantProfileDto: {
             success?: boolean;
@@ -2467,6 +2542,14 @@ export interface components {
             /** Format: date-time */
             createdAt?: string;
         };
+        ApiResponseListOnboardingRequestResponseDto: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["OnboardingRequestResponseDto"][];
+            /** Format: date-time */
+            timestamp?: string;
+            errorCode?: string;
+        };
         OwnerDashboardStatsResponseDto: {
             /** Format: int64 */
             totalTenants?: number;
@@ -2551,6 +2634,14 @@ export interface components {
             behaviorTags?: string[];
             /** Format: int32 */
             recordedByOwnerId: number;
+        };
+        ApiResponseVoid: {
+            success?: boolean;
+            message?: string;
+            data?: Record<string, never>;
+            /** Format: date-time */
+            timestamp?: string;
+            errorCode?: string;
         };
     };
     responses: never;
@@ -3267,7 +3358,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["VisitRequestResponseDto"][];
+                    "*/*": components["schemas"]["ApiResponseListVisitRequestResponseDto"];
                 };
             };
         };
@@ -3291,7 +3382,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["VisitRequestResponseDto"];
+                    "*/*": components["schemas"]["ApiResponseVisitRequestResponseDto"];
                 };
             };
         };
@@ -3315,7 +3406,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": Record<string, never>;
+                    "*/*": components["schemas"]["ApiResponseOnboardingRequestResponseDto"];
                 };
             };
         };
@@ -3745,54 +3836,6 @@ export interface operations {
                     "*/*": {
                         [key: string]: Record<string, never>;
                     };
-                };
-            };
-        };
-    };
-    reject_1: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["RejectOnboardingRequestDto"];
-            };
-        };
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": Record<string, never>;
-                };
-            };
-        };
-    };
-    approve_2: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": Record<string, never>;
                 };
             };
         };
@@ -4578,12 +4621,12 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["VisitRequestResponseDto"];
+                    "*/*": components["schemas"]["ApiResponseVisitRequestResponseDto"];
                 };
             };
         };
     };
-    accept: {
+    acceptReschedule: {
         parameters: {
             query?: never;
             header?: never;
@@ -4600,7 +4643,55 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["VisitRequestResponseDto"];
+                    "*/*": components["schemas"]["ApiResponseVisitRequestResponseDto"];
+                };
+            };
+        };
+    };
+    reject_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RejectOnboardingRequestDto"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseOnboardingRequestResponseDto"];
+                };
+            };
+        };
+    };
+    approve_2: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseOnboardingRequestResponseDto"];
                 };
             };
         };
@@ -4854,7 +4945,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": Record<string, never>;
+                    "*/*": components["schemas"]["ApiResponseOnboardingRequestResponseDto"];
                 };
             };
         };
@@ -5019,6 +5110,26 @@ export interface operations {
             };
         };
     };
+    getByOwner: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListOnboardingRequestResponseDto"];
+                };
+            };
+        };
+    };
     getDashboardStats: {
         parameters: {
             query?: never;
@@ -5055,26 +5166,6 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ComplaintResponseDto"][];
-                };
-            };
-        };
-    };
-    getByOwner: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": Record<string, never>;
                 };
             };
         };
@@ -5392,7 +5483,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": Record<string, never>;
+                    "*/*": components["schemas"]["ApiResponseVoid"];
                 };
             };
         };

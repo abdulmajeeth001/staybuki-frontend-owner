@@ -1,4 +1,6 @@
 import MobileLayout from "@/components/layout/MobileLayout";
+import DesktopLayout from "@/components/layout/DesktopLayout";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useLocation, useRoute } from "wouter";
@@ -9,6 +11,8 @@ import pako from "pako";
 import { api } from "@/apiClient";
 
 export default function ViewTenant() {
+  const isMobile = useIsMobile();
+  const Layout = isMobile ? MobileLayout : DesktopLayout;
   const [, setLocation] = useLocation();
   const [match, params] = useRoute("/tenants/view/:id");
   const [showAadharPreview, setShowAadharPreview] = useState(false);
@@ -166,7 +170,7 @@ export default function ViewTenant() {
 
   if (isLoading) {
     return (
-      <MobileLayout
+      <Layout
         title="View Tenant"
         action={
           <Button variant="ghost" size="icon" onClick={() => setLocation("/tenants")}>
@@ -177,13 +181,13 @@ export default function ViewTenant() {
         <div className="flex items-center justify-center h-64">
           <p className="text-muted-foreground">Loading tenant details...</p>
         </div>
-      </MobileLayout>
+      </Layout>
     );
   }
 
   if (error || !tenant) {
     return (
-      <MobileLayout
+      <Layout
         title="View Tenant"
         action={
           <Button variant="ghost" size="icon" onClick={() => setLocation("/tenants")}>
@@ -192,12 +196,12 @@ export default function ViewTenant() {
         }
       >
         <div className="text-center text-destructive py-8">Failed to load tenant details</div>
-      </MobileLayout>
+      </Layout>
     );
   }
 
   return (
-    <MobileLayout
+    <Layout
       title="Tenant Profile"
       action={
         <Button variant="ghost" size="icon" onClick={() => setLocation("/tenants")}>
@@ -205,7 +209,7 @@ export default function ViewTenant() {
         </Button>
       }
     >
-      <div className="space-y-4 pb-6">
+      <div className="space-y-4 pb-6 md:py-8 max-w-3xl mx-auto">
         {/* Profile Header */}
         <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-2xl p-6 text-white flex flex-col items-center gap-4">
           {tenant.tenantImage ? (
@@ -384,6 +388,6 @@ export default function ViewTenant() {
           </Card>
         )}
       </div>
-    </MobileLayout>
+    </Layout>
   );
 }

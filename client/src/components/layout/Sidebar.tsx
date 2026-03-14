@@ -1,5 +1,5 @@
 import { useLocation } from "wouter";
-import { Home, Users, CreditCard, Bell, Settings, DoorOpen, Wrench, AlertCircle, BarChart3, LogOut, Building2, Shield, CalendarCheck, UtensilsCrossed, Tag, Megaphone } from "lucide-react";
+import { Home, Users, CreditCard, Bell, Settings, DoorOpen, Wrench, AlertCircle, BarChart3, LogOut, Building2, Shield, CalendarCheck, UtensilsCrossed, Tag, Megaphone, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -57,7 +57,19 @@ const adminNavItems = [
   { icon: Settings, label: "Settings", path: "/settings" },
 ];
 
-export default function Sidebar() {
+const applicantNavItems = [
+  { icon: Search, label: "Search PGs", path: "/tenant-search-pgs" },
+  { icon: CalendarCheck, label: "Visit Requests", path: "/tenant-visit-requests" },
+  { icon: Bell, label: "Notifications", path: "/notifications" },
+  { icon: Settings, label: "Settings", path: "/settings" },
+];
+
+interface SidebarProps {
+  className?: string;
+  onClose?: () => void;
+}
+
+export default function Sidebar({ className, onClose }: SidebarProps = {}) {
   const [location, navigate] = useLocation();
   const { user } = useUser();
   const isOwner = user?.userType === "owner";
@@ -65,9 +77,13 @@ export default function Sidebar() {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const { logout, isLoggingOut } = useLogout();
 
-  const navItems = user?.userType === "admin" ? adminNavItems : user?.userType === "tenant" ? tenantNavItems : ownerNavItems;
+  const navItems = user?.userType === "admin" ? adminNavItems 
+    : user?.userType === "applicant" ? applicantNavItems
+    : user?.userType === "tenant" ? tenantNavItems 
+    : ownerNavItems;
   const isTenant = user?.userType === "tenant";
   const isAdmin = user?.userType === "admin";
+  const isApplicant = user?.userType === "applicant";
 
   const { data: tenantData } = useQuery<{ photoUrl?: string }>({
     queryKey: ["/api/users/profile"],
@@ -102,13 +118,25 @@ export default function Sidebar() {
     setShowLogoutConfirm(false);
   };
 
+  const handleNavigation = (path: string) => {
+    navigate(path);
+    if (onClose) onClose();
+  };
+
   return (
-    <aside className="hidden lg:flex flex-col w-64 bg-card border-r border-border h-screen sticky top-0 overflow-y-auto">
+    <aside className={cn(className || "hidden lg:flex w-64 h-screen sticky top-0", "bg-card border-r border-border flex flex-col overflow-y-auto overflow-x-hidden")}>
+      <div className="w-64 flex flex-col min-h-full">
       {/* Header */}
       <div className="p-6 border-b border-border">
         <div 
-          onClick={() => navigate(isAdmin ? "/admin-dashboard" : "/dashboard")}
-          className="cursor-pointer rounded-lg hover:bg-secondary/50 transition-colors p-2 -m-2 mb-4"
+          onClick={() => {
+            if (isApplicant) return;
+              if (isAdmin) handleNavigation("/admin-dashboard");
+              else if (isTenant) handleNavigation("/tenant-dashboard");
+              else handleNavigation("/dashboard");
+          }}
+          className={cn("rounded-lg transition-colors p-2 -m-2 mb-4", 
+            !isApplicant ? "cursor-pointer hover:bg-secondary/50" : "")}
         >
           <div className="flex items-center gap-3">
             <img 
@@ -147,7 +175,7 @@ export default function Sidebar() {
           return (
             <div
               key={path}
-              onClick={() => navigate(path)}
+              onClick={() => handleNavigation(path)}
               className={cn(
                 "flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 cursor-pointer",
                 isActive 
@@ -199,6 +227,7 @@ export default function Sidebar() {
           </div>
         </AlertDialogContent>
       </AlertDialog>
+      </div>
     </aside>
   );
 }

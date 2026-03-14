@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import MobileLayout from "@/components/layout/MobileLayout";
 import DesktopLayout from "@/components/layout/DesktopLayout";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { Card, CardContent } from "@/components/ui/card";
 import { ArrowUpRight, ArrowDownLeft, Calendar, AlertCircle } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -14,6 +15,9 @@ import { TENANT_PAYMENTS } from "@/constants/tenantConstant";
 import type { TenantPaymentResponse, OwnerUpiResponse } from "@/types/tenant";
 
 export default function TenantPayments() {
+  const isMobile = useIsMobile();
+  const Layout = isMobile ? MobileLayout : DesktopLayout;
+
   const queryClient = useQueryClient();
   const [selectedPayment, setSelectedPayment] = useState<TenantPaymentResponse | null>(null);
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
@@ -74,18 +78,9 @@ export default function TenantPayments() {
 
   if (isPaymentsLoading) {
     return (
-      <>
-        <div className="hidden lg:block">
-          <DesktopLayout title={TENANT_PAYMENTS.PAGE_TITLE}>
-            <PaymentsSkeleton />
-          </DesktopLayout>
-        </div>
-        <div className="lg:hidden">
-          <MobileLayout title={TENANT_PAYMENTS.PAGE_TITLE}>
-            <PaymentsSkeleton />
-          </MobileLayout>
-        </div>
-      </>
+      <Layout title={TENANT_PAYMENTS.PAGE_TITLE}>
+        <PaymentsSkeleton />
+      </Layout>
     );
   }
 
@@ -104,14 +99,9 @@ export default function TenantPayments() {
     );
 
     return (
-      <>
-        <div className="hidden lg:block">
-          <DesktopLayout title={TENANT_PAYMENTS.PAGE_TITLE}>{ErrorContent}</DesktopLayout>
-        </div>
-        <div className="lg:hidden">
-          <MobileLayout title={TENANT_PAYMENTS.PAGE_TITLE}>{ErrorContent}</MobileLayout>
-        </div>
-      </>
+      <Layout title={TENANT_PAYMENTS.PAGE_TITLE}>
+        {ErrorContent}
+      </Layout>
     );
   }
 
@@ -128,18 +118,9 @@ export default function TenantPayments() {
   };
 
   return (
-    <>
-      <div className="hidden lg:block">
-        <DesktopLayout title={TENANT_PAYMENTS.PAGE_TITLE}>
-          <TenantPaymentsContent {...contentProps} isDesktop={true} />
-        </DesktopLayout>
-      </div>
-      <div className="lg:hidden">
-        <MobileLayout title={TENANT_PAYMENTS.PAGE_TITLE}>
-          <TenantPaymentsContent {...contentProps} isDesktop={false} />
-        </MobileLayout>
-      </div>
-    </>
+    <Layout title={TENANT_PAYMENTS.PAGE_TITLE}>
+      <TenantPaymentsContent {...contentProps} isDesktop={!isMobile} />
+    </Layout>
   );
 }
 

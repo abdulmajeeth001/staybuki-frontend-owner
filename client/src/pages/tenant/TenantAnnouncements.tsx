@@ -8,6 +8,7 @@ import { Megaphone, Search, AlertCircle } from "lucide-react";
 import { useUser } from "@/hooks/use-user";
 import DesktopLayout from "@/components/layout/DesktopLayout";
 import MobileLayout from "@/components/layout/MobileLayout";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { format } from "date-fns";
 import { tenantService } from "@/services/tenantService";
 import { USER_TYPES } from "@/constants/routes";
@@ -28,6 +29,9 @@ const getPriorityColor = (priority: AnnouncementResponse["priority"]) => {
 };
 
 export default function TenantAnnouncements() {
+  const isMobile = useIsMobile();
+  const Layout = isMobile ? MobileLayout : DesktopLayout;
+
   const { user } = useUser();
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -57,28 +61,14 @@ export default function TenantAnnouncements() {
   if (!user || user.userType !== USER_TYPES.TENANT) return null;
 
   return (
-    <>
-      <div className="hidden lg:block">
-        <DesktopLayout title={TENANT_ANNOUNCEMENTS.PAGE_TITLE}>
-          <TenantAnnouncementsContent
-            announcements={sortedAnnouncements}
-            isLoading={isLoading}
-            searchQuery={searchQuery}
-            setSearchQuery={setSearchQuery}
-          />
-        </DesktopLayout>
-      </div>
-      <div className="lg:hidden">
-        <MobileLayout title={TENANT_ANNOUNCEMENTS.PAGE_TITLE}>
-          <TenantAnnouncementsContent
-            announcements={sortedAnnouncements}
-            isLoading={isLoading}
-            searchQuery={searchQuery}
-            setSearchQuery={setSearchQuery}
-          />
-        </MobileLayout>
-      </div>
-    </>
+    <Layout title={TENANT_ANNOUNCEMENTS.PAGE_TITLE}>
+      <TenantAnnouncementsContent
+        announcements={sortedAnnouncements}
+        isLoading={isLoading}
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+      />
+    </Layout>
   );
 }
 

@@ -16,7 +16,13 @@ import type {
   TenantProfileResponse,
   TenantProfileApiResponse,
   ResetPasswordRequest,
-  VerifyPasswordResetRequest
+  VerifyPasswordResetRequest,
+  VisitRequestResponse,
+  OnboardingRequestResponse,
+  OnboardingRequestApiResponse,
+  VisitRequestListApiResponse,
+  VisitRequestApiResponse,
+  VoidApiResponse
 } from "@/types/tenant";
 
 export const tenantService = {
@@ -103,5 +109,72 @@ export const tenantService = {
   verifyResetPassword: async (data: VerifyPasswordResetRequest) => {
     const response = await api.post("/api/auth/verify-password-reset", data);
     return response.data;
+  },
+
+  getVisitRequests: async (): Promise<VisitRequestResponse[]> => {
+    const { data } = await api.get<VisitRequestListApiResponse>("/api/tenant/visit-requests");
+    if (!data.success) {
+      throw new Error(data.message || "Failed to fetch visit requests");
+    }
+    return data.data || [];
+  },
+
+  getOnboardingRequestByPgId: async (pgId: number): Promise<OnboardingRequestResponse | undefined> => {
+    const { data } = await api.get<OnboardingRequestApiResponse>(`/api/tenant/onboarding-requests/${pgId}`);
+    if (!data.success) {
+      throw new Error(data.message || "Failed to fetch onboarding request");
+    }
+    return data.data;
+  },
+
+  getOnboardingRequestsForPgs: async function (pgIds: number[]): Promise<Record<number, OnboardingRequestResponse>> {
+    if (pgIds.length === 0) {
+      return {};
+    }
+
+    const requests = await Promise.all(
+      pgIds.map(async (pgId) => {
+        try {
+          // Using `this` to call another method within the same service object.
+          const data = await this.getOnboardingRequestByPgId(pgId);
+          return { pgId, data };
+        } catch {
+          // If a request for a specific PG fails (e.g., 404 Not Found), we treat it as null.
+          return { pgId, data: null };
+        }
+      })
+    );
+
+    const map: Record<number, OnboardingRequestResponse> = {};
+    requests.forEach(({ pgId, data }) => {
+      if (data) {
+        map[pgId] = data;
+      }
+    });
+    return map;
+  },
+
+  acceptVisitReschedule: async (id: number): Promise<VisitRequestResponse | undefined> => {
+    const { data } = await api.patch<VisitRequestApiResponse>(`/api/tenant/visit-requests/${id}/accept-reschedule`);
+    if (!data.success) {
+      throw new Error(data.message || "Failed to accept reschedule");
+    }
+    return data.data;
+  },
+
+  completeVisit: async (id: number): Promise<VisitRequestResponse | undefined> => {
+    const { data } = await api.patch<VisitRequestApiResponse>(`/api/tenant/visit-requests/${id}/complete`);
+    if (!data.success) {
+      throw new Error(data.message || "Failed to complete visit");
+    }
+    return data.data;
+  },
+
+  cancelVisit: async (id: number): Promise<{ success: boolean; message: string }> => {
+    const { data } = await api.delete<VoidApiResponse>(`/api/tenant/visit-requests/${id}`);
+    if (!data.success) {
+      throw new Error(data.message || "Failed to cancel visit");
+    }
+    return { success: true, message: data.message || "Visit cancelled successfully" };
   },
 };

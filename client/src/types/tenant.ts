@@ -30,3 +30,11 @@ export type TenantProfileApiResponse = components["schemas"]["ApiResponseTenantP
 // Password Reset Aliases
 export type ResetPasswordRequest = components["schemas"]["ResetPasswordRequestDto"];
 export type VerifyPasswordResetRequest = components["schemas"]["VerifyPasswordResetRequestDto"];
+
+// Visit & Onboarding Aliases
+export type VisitRequestResponse = components["schemas"]["VisitRequestResponseDto"];
+export type OnboardingRequestResponse = components["schemas"]["OnboardingRequestResponseDto"];
+export type VisitRequestListApiResponse = components["schemas"]["ApiResponseListVisitRequestResponseDto"];
+export type VisitRequestApiResponse = components["schemas"]["ApiResponseVisitRequestResponseDto"];
+export type OnboardingRequestApiResponse = components["schemas"]["ApiResponseOnboardingRequestResponseDto"];
+export type VoidApiResponse = components["schemas"]["ApiResponseVoid"];

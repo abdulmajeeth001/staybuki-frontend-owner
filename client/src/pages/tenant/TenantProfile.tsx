@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import MobileLayout from "@/components/layout/MobileLayout";
 import DesktopLayout from "@/components/layout/DesktopLayout";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Mail, Phone, Calendar, User, Sparkles, Shield, AlertCircle } from "lucide-react";
@@ -9,6 +10,9 @@ import { cn } from "@/lib/utils";
 import { tenantService } from "@/services/tenantService";
 
 export default function TenantProfile() {
+  const isMobile = useIsMobile();
+  const Layout = isMobile ? MobileLayout : DesktopLayout;
+
   const { data: profile, isLoading, isError } = useQuery({
     queryKey: ["tenant-profile"],
     queryFn: tenantService.getProfile,
@@ -17,18 +21,9 @@ export default function TenantProfile() {
 
   if (isLoading) {
     return (
-      <>
-        <div className="hidden lg:block">
-          <DesktopLayout title="Profile">
-            <ProfileSkeleton />
-          </DesktopLayout>
-        </div>
-        <div className="lg:hidden">
-          <MobileLayout title="Profile">
-            <ProfileSkeleton />
-          </MobileLayout>
-        </div>
-      </>
+      <Layout title="Profile">
+        <ProfileSkeleton />
+      </Layout>
     );
   }
 
@@ -42,30 +37,16 @@ export default function TenantProfile() {
     );
 
     return (
-      <>
-        <div className="hidden lg:block">
-          <DesktopLayout title="Profile">{ErrorState}</DesktopLayout>
-        </div>
-        <div className="lg:hidden">
-          <MobileLayout title="Profile">{ErrorState}</MobileLayout>
-        </div>
-      </>
+      <Layout title="Profile">
+        {ErrorState}
+      </Layout>
     );
   }
 
   return (
-    <>
-      <div className="hidden lg:block">
-        <DesktopLayout title="Profile">
-          <TenantProfileContent profile={profile} isDesktop={true} />
-        </DesktopLayout>
-      </div>
-      <div className="lg:hidden">
-        <MobileLayout title="Profile">
-          <TenantProfileContent profile={profile} isDesktop={false} />
-        </MobileLayout>
-      </div>
-    </>
+    <Layout title="Profile">
+      <TenantProfileContent profile={profile} isDesktop={!isMobile} />
+    </Layout>
   );
 }
 

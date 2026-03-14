@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import MobileLayout from "@/components/layout/MobileLayout";
 import DesktopLayout from "@/components/layout/DesktopLayout";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -33,6 +34,9 @@ const DEFAULT_FACILITIES = [
 ];
 
 export default function TenantPgFacilities() {
+  const isMobile = useIsMobile();
+  const Layout = isMobile ? MobileLayout : DesktopLayout;
+
   // State can hold API data (FacilityResponse) or local defaults with icons
   const [facilities, setFacilities] = useState<(FacilityResponse | typeof DEFAULT_FACILITIES[0])[]>([]);
   const [loading, setLoading] = useState(true);
@@ -56,34 +60,16 @@ export default function TenantPgFacilities() {
 
   if (loading) {
     return (
-      <>
-        <div className="hidden lg:block">
-          <DesktopLayout title="Facilities">
-            <FacilitiesSkeleton />
-          </DesktopLayout>
-        </div>
-        <div className="lg:hidden">
-          <MobileLayout title="Facilities">
-            <FacilitiesSkeleton />
-          </MobileLayout>
-        </div>
-      </>
+      <Layout title="Facilities">
+        <FacilitiesSkeleton />
+      </Layout>
     );
   }
 
   return (
-    <>
-      <div className="hidden lg:block">
-        <DesktopLayout title="Facilities">
-          <FacilitiesContent facilities={facilities} isDesktop={true} />
-        </DesktopLayout>
-      </div>
-      <div className="lg:hidden">
-        <MobileLayout title="Facilities">
-          <FacilitiesContent facilities={facilities} isDesktop={false} />
-        </MobileLayout>
-      </div>
-    </>
+    <Layout title="Facilities">
+      <FacilitiesContent facilities={facilities} isDesktop={!isMobile} />
+    </Layout>
   );
 }
 

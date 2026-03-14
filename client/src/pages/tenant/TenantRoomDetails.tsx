@@ -1,4 +1,6 @@
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useIsMobile } from "@/hooks/use-mobile";
 import MobileLayout from "@/components/layout/MobileLayout";
 import DesktopLayout from "@/components/layout/DesktopLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,83 +20,52 @@ import { tenantService } from "@/services/tenantService";
 import type { RoomResponse } from "@/types/tenant";
 
 export default function TenantRoomDetails() {
-  const [room, setRoom] = useState<RoomResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const isMobile = useIsMobile();
+  const Layout = isMobile ? MobileLayout : DesktopLayout;
 
-  useEffect(() => {
-    fetchRoomDetails();
-  }, []);
+  const { 
+    data: room, 
+    isLoading, 
+    error 
+  } = useQuery({
+    queryKey: ["tenant-room-details"],
+    queryFn: tenantService.getRoomDetails,
+    retry: 1,
+    staleTime: 5 * 60 * 1000, // 5 minutes cache
+  });
 
-  const fetchRoomDetails = async () => {
-    try {
-      const data = await tenantService.getRoomDetails();
-      setRoom(data || null);
-    } catch (err: any) {
-      console.error("Failed to fetch room details:", err);
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (loading) {
+  if (isLoading) {
     return (
-      <>
-        <div className="hidden lg:block">
-          <DesktopLayout title="Room Details">
-            <RoomDetailsSkeleton />
-          </DesktopLayout>
-        </div>
-        <div className="lg:hidden">
-          <MobileLayout title="Room Details">
-            <RoomDetailsSkeleton />
-          </MobileLayout>
-        </div>
-      </>
+      <Layout title="Room Details">
+        <RoomDetailsSkeleton />
+      </Layout>
     );
   }
 
-  if (!room) {
-    const EmptyState = (
-      <Card className="text-center py-12">
-        <CardContent>
-          <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-purple-100 to-blue-100 flex items-center justify-center">
-            <Home className="w-10 h-10 text-purple-600" />
-          </div>
-          <h3 className="text-xl font-bold mb-2 text-gray-800">No Room Assigned</h3>
-          <p className="text-sm text-gray-600">
-            {error || "You don't have a room assigned yet. Please contact the PG owner."}
-          </p>
-        </CardContent>
-      </Card>
-    );
-
+  if (error || !room) {
+    const errorMessage = error instanceof Error ? error.message : "You don't have a room assigned yet. Please contact the PG owner.";
+    
     return (
-      <>
-        <div className="hidden lg:block">
-          <DesktopLayout title="Room Details">{EmptyState}</DesktopLayout>
-        </div>
-        <div className="lg:hidden">
-          <MobileLayout title="Room Details">{EmptyState}</MobileLayout>
-        </div>
-      </>
+      <Layout title="Room Details">
+        <Card className="text-center py-12">
+          <CardContent>
+            <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-purple-100 to-blue-100 flex items-center justify-center">
+              <Home className="w-10 h-10 text-purple-600" />
+            </div>
+            <h3 className="text-xl font-bold mb-2 text-gray-800">No Room Assigned</h3>
+            <p className="text-sm text-gray-600">
+              {errorMessage}
+            </p>
+          </CardContent>
+        </Card>
+      </Layout>
     );
   }
 
   return (
-    <>
-      <div className="hidden lg:block">
-        <DesktopLayout title="Room Details">
-          <RoomDetailsContent room={room} isDesktop={true} />
-        </DesktopLayout>
-      </div>
-      <div className="lg:hidden">
-        <MobileLayout title="Room Details">
-          <RoomDetailsContent room={room} isDesktop={false} />
-        </MobileLayout>
-      </div>
-    </>
+    <Layout title="Room Details">
+      <RoomDetailsContent room={room} isDesktop={!isMobile} />
+    </Layout>
   );
 }
 
@@ -117,45 +88,49 @@ function RoomDetailsSkeleton() {
 }
 
 function RoomDetailsContent({ room, isDesktop }: { room: RoomResponse; isDesktop: boolean }) {
-  const hasAC = room.amenities?.some((a) => a.toLowerCase().includes("ac") || a.toLowerCase().includes("air condition"));
-  const hasAttachedBathroom = room.amenities?.some((a) => a.toLowerCase().includes("attached bathroom"));
+  const { displayAmenities, features } = useMemo(() => {
+    const hasAC = room.amenities?.some((a) => a.toLowerCase().includes("ac") || a.toLowerCase().includes("air condition"));
+    const hasAttachedBathroom = room.amenities?.some((a) => a.toLowerCase().includes("attached bathroom"));
 
-  const displayAmenities = room.amenities?.filter((a) => {
-    const lower = a.toLowerCase();
-    return !lower.includes("ac") && !lower.includes("air condition") && !lower.includes("attached bathroom");
-  });
+    const displayAmenities = room.amenities?.filter((a) => {
+      const lower = a.toLowerCase();
+      return !lower.includes("ac") && !lower.includes("air condition") && !lower.includes("attached bathroom");
+    });
 
-  const features = [
-    {
-      label: "Sharing",
-      value: `${room.sharing} people`,
-      icon: Users,
-      gradient: "from-blue-500 to-cyan-600",
-      bgGradient: "from-blue-50 to-cyan-50",
-    },
-    {
-      label: "Floor",
-      value: `Floor ${room.floor}`,
-      icon: DoorOpen,
-      gradient: "from-green-500 to-emerald-600",
-      bgGradient: "from-green-50 to-emerald-50",
-    },
-    {
-      label: "AC",
-      value: hasAC ? "Yes" : "No",
-      icon: AirVent,
-      gradient: "from-cyan-500 to-blue-600",
-      bgGradient: "from-cyan-50 to-blue-50",
-      available: hasAC,
-    },
-    {
-      label: "Bathroom",
-      value: hasAttachedBathroom ? "Attached" : "Common",
-      icon: Droplets,
-      gradient: "from-purple-500 to-pink-600",
-      bgGradient: "from-purple-50 to-pink-50",
-    },
-  ];
+    const features = [
+      {
+        label: "Sharing",
+        value: `${room.sharing} people`,
+        icon: Users,
+        gradient: "from-blue-500 to-cyan-600",
+        bgGradient: "from-blue-50 to-cyan-50",
+      },
+      {
+        label: "Floor",
+        value: `Floor ${room.floor}`,
+        icon: DoorOpen,
+        gradient: "from-green-500 to-emerald-600",
+        bgGradient: "from-green-50 to-emerald-50",
+      },
+      {
+        label: "AC",
+        value: hasAC ? "Yes" : "No",
+        icon: AirVent,
+        gradient: "from-cyan-500 to-blue-600",
+        bgGradient: "from-cyan-50 to-blue-50",
+        available: hasAC,
+      },
+      {
+        label: "Bathroom",
+        value: hasAttachedBathroom ? "Attached" : "Common",
+        icon: Droplets,
+        gradient: "from-purple-500 to-pink-600",
+        bgGradient: "from-purple-50 to-pink-50",
+      },
+    ];
+
+    return { displayAmenities, features };
+  }, [room]);
 
   return (
     <div className={cn("space-y-6", isDesktop ? "max-w-5xl mx-auto" : "")}>

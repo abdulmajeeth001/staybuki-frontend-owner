@@ -1,4 +1,6 @@
 import MobileLayout from "@/components/layout/MobileLayout";
+import DesktopLayout from "@/components/layout/DesktopLayout";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -49,6 +51,8 @@ const RELATIONSHIPS = [
 ];
 
 export default function AddTenant() {
+  const isMobile = useIsMobile();
+  const Layout = isMobile ? MobileLayout : DesktopLayout;
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const [formData, setFormData] = useState({
@@ -243,15 +247,16 @@ export default function AddTenant() {
   };
 
   return (
-    <MobileLayout 
+    <Layout 
       title="Add Tenant"
+      showNav={false}
       action={
         <Button variant="ghost" size="icon" onClick={() => setLocation("/tenants")}>
           <ChevronLeft className="w-6 h-6" />
         </Button>
       }
     >
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-6 md:py-8 max-w-3xl mx-auto">
         {/* Photo Upload */}
         <div className="flex justify-center">
           <label className="w-24 h-24 rounded-full bg-secondary border-2 border-dashed border-muted-foreground/30 flex flex-col items-center justify-center text-muted-foreground cursor-pointer hover:bg-secondary/80 transition-colors">
@@ -514,6 +519,6 @@ export default function AddTenant() {
           </Button>
         </div>
       </form>
-    </MobileLayout>
+    </Layout>
   );
 }

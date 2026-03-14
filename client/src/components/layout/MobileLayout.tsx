@@ -187,8 +187,13 @@ export default function MobileLayout({
         {/* Header */}
         <div className="p-6 border-b border-border">
           <div 
-            onClick={() => navigate(isAdmin ? "/admin-dashboard" : "/dashboard")}
-            className="cursor-pointer mb-4"
+            onClick={() => {
+              if (isApplicant) return;
+              if (isAdmin) navigate("/admin-dashboard");
+              else if (isTenant) navigate("/tenant-dashboard");
+              else navigate("/dashboard");
+            }}
+            className={cn("mb-4", !isApplicant ? "cursor-pointer" : "")}
           >
             <div className="flex items-center gap-3">
               <img 

@@ -1,4 +1,6 @@
 import MobileLayout from "@/components/layout/MobileLayout";
+import DesktopLayout from "@/components/layout/DesktopLayout";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,6 +19,8 @@ interface Tenant {
 }
 
 export default function EditRoom() {
+  const isMobile = useIsMobile();
+  const Layout = isMobile ? MobileLayout : DesktopLayout;
   const [, setLocation] = useLocation();
   const { id } = useParams();
   const queryClient = useQueryClient();
@@ -150,11 +154,11 @@ export default function EditRoom() {
 
   if (isFetching) {
     return (
-      <MobileLayout title="Edit Room" showNav={false}>
+      <Layout title="Edit Room" showNav={false}>
         <div className="flex items-center justify-center h-64">
           <p className="text-slate-500">Loading room details...</p>
         </div>
-      </MobileLayout>
+      </Layout>
     );
   }
 
@@ -164,7 +168,7 @@ export default function EditRoom() {
   const canAddMore = formData.tenantIds.length < sharingNum;
 
   return (
-    <MobileLayout title="Edit Room" showNav={false}>
+    <Layout title="Edit Room" showNav={false}>
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 pb-20">
         {/* Header */}
         <div className="sticky top-0 z-10 bg-white border-b border-slate-200 px-4 py-4">
@@ -619,6 +623,6 @@ export default function EditRoom() {
           )}
         </form>
       </div>
-    </MobileLayout>
+    </Layout>
   );
 }

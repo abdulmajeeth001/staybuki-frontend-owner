@@ -27,7 +27,6 @@ export default function DesktopLayout({
   return (
     <div className="flex h-screen bg-background">
       <Sidebar />
-      
       <div className="flex-1 overflow-hidden">
         {/* Desktop Header */}
         <header className="hidden lg:flex bg-card border-b border-border h-16 items-center justify-between px-8 sticky top-0 z-40">
@@ -43,11 +42,11 @@ export default function DesktopLayout({
           </div>
         </header>
 
-        {/* Desktop Main Content */}
-        <main className="hidden lg:flex flex-col overflow-y-scroll h-[calc(100vh-4rem)]">
-          <div className="p-8 space-y-6">
-            {children}
-          </div>
+        {/* Desktop Main Content
+            ✅ overflow-y-auto (not scroll), NO flex, NO inner wrapper div.
+            Children render directly inside — pages control their own padding. */}
+        <main className="hidden lg:block overflow-y-auto h-[calc(100vh-4rem)]">
+          {children}
         </main>
 
         {/* Mobile Layout */}

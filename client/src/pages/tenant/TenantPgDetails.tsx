@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import MobileLayout from "@/components/layout/MobileLayout";
 import DesktopLayout from "@/components/layout/DesktopLayout";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Building2, MapPin, Navigation, AlertCircle } from "lucide-react";
@@ -9,6 +10,9 @@ import { tenantService } from "@/services/tenantService";
 import type { PgResponse } from "@/types/tenant";
 
 export default function TenantPgDetails() {
+  const isMobile = useIsMobile();
+  const Layout = isMobile ? MobileLayout : DesktopLayout;
+
   const [pg, setPg] = useState<PgResponse | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -29,18 +33,9 @@ export default function TenantPgDetails() {
 
   if (loading) {
     return (
-      <>
-        <div className="hidden lg:block">
-          <DesktopLayout title="PG Details">
-            <PgDetailsSkeleton />
-          </DesktopLayout>
-        </div>
-        <div className="lg:hidden">
-          <MobileLayout title="PG Details">
-            <PgDetailsSkeleton />
-          </MobileLayout>
-        </div>
-      </>
+      <Layout title="PG Details">
+        <PgDetailsSkeleton />
+      </Layout>
     );
   }
 
@@ -60,30 +55,16 @@ export default function TenantPgDetails() {
     );
 
     return (
-      <>
-        <div className="hidden lg:block">
-          <DesktopLayout title="PG Details">{EmptyState}</DesktopLayout>
-        </div>
-        <div className="lg:hidden">
-          <MobileLayout title="PG Details">{EmptyState}</MobileLayout>
-        </div>
-      </>
+      <Layout title="PG Details">
+        {EmptyState}
+      </Layout>
     );
   }
 
   return (
-    <>
-      <div className="hidden lg:block">
-        <DesktopLayout title="PG Details">
-          <PgDetailsContent pg={pg} isDesktop={true} />
-        </DesktopLayout>
-      </div>
-      <div className="lg:hidden">
-        <MobileLayout title="PG Details">
-          <PgDetailsContent pg={pg} isDesktop={false} />
-        </MobileLayout>
-      </div>
-    </>
+    <Layout title="PG Details">
+      <PgDetailsContent pg={pg} isDesktop={!isMobile} />
+    </Layout>
   );
 }
 

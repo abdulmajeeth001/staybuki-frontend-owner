@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { useParams, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import MobileLayout from "@/components/layout/MobileLayout";
+import DesktopLayout from "@/components/layout/DesktopLayout";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -112,6 +114,8 @@ const TIME_SLOTS = [
 ];
 
 export default function PGDetailsPage() {
+  const isMobile = useIsMobile();
+  const Layout = isMobile ? MobileLayout : DesktopLayout;
   const { id } = useParams<{ id: string }>();
   const [, navigate] = useLocation();
   const queryClient = useQueryClient();
@@ -272,8 +276,8 @@ export default function PGDetailsPage() {
 
   if (isLoading) {
     return (
-      <MobileLayout title="PG Details" showNav={true}>
-        <div className="space-y-6">
+      <Layout title="PG Details" showNav={true}>
+        <div className={cn("space-y-6", !isMobile ? "max-w-5xl mx-auto mt-8" : "")}>
           <Card>
             <CardContent className="p-6">
               <Skeleton className="h-8 w-3/4 mb-4" />
@@ -287,14 +291,15 @@ export default function PGDetailsPage() {
             </CardContent>
           </Card>
         </div>
-      </MobileLayout>
+      </Layout>
     );
   }
 
   if (error || !pg) {
     return (
-      <MobileLayout title="PG Details" showNav={true}>
-        <Card className="text-center py-12">
+      <Layout title="PG Details" showNav={true}>
+        <div className={cn(!isMobile ? "max-w-5xl mx-auto mt-8" : "")}>
+          <Card className="text-center py-12">
           <CardContent>
             <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-purple-100 to-blue-100 flex items-center justify-center">
               <Building2 className="w-10 h-10 text-purple-600" />
@@ -315,14 +320,15 @@ export default function PGDetailsPage() {
             </Button>
           </CardContent>
         </Card>
-      </MobileLayout>
+        </div>
+      </Layout>
     );
   }
 
   const rating = parseFloat(pg.averageRating);
 
   return (
-    <MobileLayout
+    <Layout
       title="PG Details"
       showNav={true}
       action={
@@ -336,10 +342,11 @@ export default function PGDetailsPage() {
         </Button>
       }
     >
-      {/* Full-Bleed Hero Image Section */}
-      <div className="relative -mx-4 -mt-6 mb-6 overflow-hidden" data-testid="card-pg-header">
-        {/* Hero Image */}
-        <div className="relative h-64 overflow-hidden">
+      <div className={cn(!isMobile ? "max-w-5xl mx-auto" : "")}>
+        {/* Full-Bleed Hero Image Section */}
+        <div className={cn("relative overflow-hidden mb-6", !isMobile ? "-mx-8 -mt-8 rounded-b-3xl" : "-mx-4 -mt-6")} data-testid="card-pg-header">
+          {/* Hero Image */}
+          <div className="relative h-64 overflow-hidden">
           {pg.imageUrl ? (
             <>
               <img
@@ -736,6 +743,7 @@ export default function PGDetailsPage() {
           </div>
         </DialogContent>
       </Dialog>
-    </MobileLayout>
+      </div>
+    </Layout>
   );
 }
