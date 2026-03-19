@@ -169,7 +169,7 @@ function TenantPaymentsContent({
   return (
     <div className="max-w-5xl mx-auto">
       {/* Hero Section */}
-      <div className={isDesktop ? "relative -mx-8 -mt-8 mb-8 overflow-hidden rounded-b-3xl" : "relative -mx-4 -mt-6 mb-6 overflow-hidden"}>
+      <div className={isDesktop ? "relative -mx-6 -mt-6 mb-8 overflow-hidden rounded-b-3xl" : "relative -mx-4 -mt-6 mb-6 overflow-hidden"}>
         <div className="absolute inset-0 bg-gradient-to-br from-purple-600 via-blue-600 to-purple-700" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_30%,rgba(255,255,255,0.1),transparent_50%)]" />
         <div className={isDesktop ? "relative px-8 py-10" : "relative px-6 py-8"}>

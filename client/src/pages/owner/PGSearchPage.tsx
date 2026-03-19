@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import MobileLayout from "@/components/layout/MobileLayout";
@@ -37,45 +37,9 @@ import {
   Search,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { api } from "@/apiClient";
-
-interface PGSearchFilters {
-  searchQuery?: string;
-  latitude?: number;
-  longitude?: number;
-  maxDistance?: number;
-  pgType?: string;
-  hasFood?: boolean;
-  hasParking?: boolean;
-  hasAC?: boolean;
-  hasCCTV?: boolean;
-  hasWifi?: boolean;
-  hasLaundry?: boolean;
-  hasGym?: boolean;
-  limit?: number;
-  offset?: number;
-}
-
-interface PGResult {
-  id: number;
-  pgName: string;
-  pgAddress: string;
-  pgLocation: string;
-  latitude: string | null;
-  longitude: string | null;
-  imageUrl: string | null;
-  pgType: string;
-  hasFood: boolean;
-  hasParking: boolean;
-  hasAC: boolean;
-  hasCCTV: boolean;
-  hasWifi: boolean;
-  hasLaundry: boolean;
-  hasGym: boolean;
-  averageRating: string;
-  totalRatings: number;
-  distance?: number;
-}
+import { applicantService } from "@/services/applicantService";
+import type { PgSearchRequest, PgSearchResult } from "@/types/applicant";
+import { toast } from "@/hooks/use-toast";
 
 const DISTANCE_PRESETS = [
   { label: "5 km", value: 5 },
@@ -97,34 +61,21 @@ const AMENITY_ICONS = {
 function PGSearchContent() {
   const isMobile = useIsMobile();
   const [, navigate] = useLocation();
-  const [filters, setFilters] = useState<PGSearchFilters>({
+  const [filters, setFilters] = useState<PgSearchRequest>({
     maxDistance: 10,
     limit: 20,
     offset: 0,
   });
-  const [tempFilters, setTempFilters] = useState<PGSearchFilters>({ ...filters });
+  const [tempFilters, setTempFilters] = useState<PgSearchRequest>({ ...filters });
   const [isGettingLocation, setIsGettingLocation] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [sortBy, setSortBy] = useState<"distance" | "rating" | "both">("both");
   const [hasSearched, setHasSearched] = useState(false);
 
-  const { data: pgs, isLoading, refetch } = useQuery<PGResult[]>({
-    queryKey: ["/api/tenant/pgs/search", filters],
+  const { data: pgs, isLoading, refetch } = useQuery<PgSearchResult[]>({
+    queryKey: ["/api/applicant/search", filters],
     enabled: hasSearched,
-    queryFn: async () => {
-      const params = new URLSearchParams();
-      Object.entries(filters).forEach(([key, value]) => {
-        if (value !== undefined && value !== null && value !== "") {
-          params.append(key, value.toString());
-        }
-      });
-      try {
-        const res = await api.get(`/api/tenant/pgs/search?${params.toString()}`);
-        return res.data;
-      } catch (error: any) {
-        throw new Error(error.response?.data?.error || error.message || "Failed to search PGs");
-      }
-    },
+    queryFn: () => applicantService.searchPgs(filters),
   });
 
   useEffect(() => {
@@ -158,9 +109,13 @@ function PGSearchContent() {
     }
   }, [hasSearched]);
 
-  const getCurrentLocation = () => {
+  const getCurrentLocation = useCallback(() => {
     if (!navigator.geolocation) {
-      alert("Geolocation is not supported by your browser");
+      toast({ 
+        title: "Error", 
+        description: "Geolocation is not supported by your browser", 
+        variant: "destructive" 
+      });
       return;
     }
 
@@ -169,83 +124,95 @@ function PGSearchContent() {
       (position) => {
         const lat = position.coords.latitude;
         const lng = position.coords.longitude;
-        setTempFilters({
-          ...tempFilters,
+        setTempFilters((prev) => ({
+          ...prev,
           latitude: lat,
           longitude: lng,
-        });
+        }));
         setIsGettingLocation(false);
       },
       (error) => {
         setIsGettingLocation(false);
         if (error.code === error.PERMISSION_DENIED) {
-          alert("Location access denied. Please enable location permissions to search nearby PGs.");
+          toast({ 
+            title: "Permission Denied", 
+            description: "Please enable location permissions to search nearby PGs.", 
+            variant: "destructive" 
+          });
         } else {
-          alert("Failed to get your location. Please try manual input.");
+          toast({ 
+            title: "Error", 
+            description: "Failed to get your location. Please try manual input.", 
+            variant: "destructive" 
+          });
         }
       }
     );
-  };
+  }, []);
 
-  const handleSearch = () => {
+  const handleSearch = useCallback(() => {
     setFilters({ ...tempFilters });
     setHasSearched(true);
     setShowFilters(false);
-  };
+  }, [tempFilters]);
 
-  const clearFilters = () => {
-    const resetFilters = {
-      maxDistance: 10,
-      limit: 20,
-      offset: 0,
-      latitude: tempFilters.latitude,
-      longitude: tempFilters.longitude,
-    };
-    setTempFilters(resetFilters);
-    setFilters(resetFilters);
-    setHasSearched(false);
-  };
-
-  const loadMore = () => {
-    setFilters({
-      ...filters,
-      offset: (filters.offset || 0) + (filters.limit || 20),
+  const clearFilters = useCallback(() => {
+    setTempFilters((prev) => {
+      const resetFilters = {
+        maxDistance: 10,
+        limit: 20,
+        offset: 0,
+        latitude: prev.latitude,
+        longitude: prev.longitude,
+      };
+      setFilters(resetFilters);
+      return resetFilters;
     });
-  };
+    setHasSearched(false);
+  }, []);
 
-  const sortedPgs = [...(pgs || [])].sort((a, b) => {
-    if (sortBy === "distance" && a.distance !== undefined && b.distance !== undefined) {
-      return a.distance - b.distance;
-    }
-    if (sortBy === "rating") {
-      return parseFloat(b.averageRating) - parseFloat(a.averageRating);
-    }
-    // both: prioritize rating, then distance
-    const ratingDiff = parseFloat(b.averageRating) - parseFloat(a.averageRating);
-    if (Math.abs(ratingDiff) > 0.1) return ratingDiff;
-    if (a.distance !== undefined && b.distance !== undefined) {
-      return a.distance - b.distance;
-    }
-    return 0;
-  });
+  const loadMore = useCallback(() => {
+    setFilters((prev) => ({
+      ...prev,
+      offset: (prev.offset || 0) + (prev.limit || 20),
+    }));
+  }, []);
 
-  const getAmenityIcons = (pg: PGResult) => {
+  const sortedPgs = useMemo(() => {
+    return [...(pgs || [])].sort((a, b) => {
+      if (sortBy === "distance" && a.distance !== undefined && b.distance !== undefined) {
+        return a.distance - b.distance;
+      }
+      if (sortBy === "rating") {
+        return parseFloat(String(b.averageRating || 0)) - parseFloat(String(a.averageRating || 0));
+      }
+      // both: prioritize rating, then distance
+      const ratingDiff = parseFloat(String(b.averageRating || 0)) - parseFloat(String(a.averageRating || 0));
+      if (Math.abs(ratingDiff) > 0.1) return ratingDiff;
+      if (a.distance !== undefined && b.distance !== undefined) {
+        return a.distance - b.distance;
+      }
+      return 0;
+    });
+  }, [pgs, sortBy]);
+
+  const getAmenityIcons = useCallback((pg: PgSearchResult) => {
     return Object.entries(AMENITY_ICONS)
-      .filter(([key]) => pg[key as keyof PGResult])
+      .filter(([key]) => (pg as any)[key])
       .slice(0, 4);
-  };
+  }, []);
 
   return (
     <div className={cn(!isMobile ? "max-w-7xl mx-auto" : "")}>
       {/* Hero Search Section with Gradient */}
       <div className={cn(
         "relative overflow-hidden",
-        !isMobile ? "-mx-8 -mt-8 mb-8 rounded-b-3xl" : "-mx-4 -mt-6 mb-6"
+        !isMobile ? "-mx-6 -mt-6 mb-8 rounded-b-3xl" : "-mx-4 -mt-6 mb-6"
       )}>
           <div className="absolute inset-0 bg-gradient-to-br from-purple-600 via-blue-600 to-purple-700 opacity-90" />
           <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGRlZnM+PHBhdHRlcm4gaWQ9ImdyaWQiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHBhdGggZD0iTSAwIDEwIEwgNDAgMTAgTSAxMCAwIEwgMTAgNDAgTSAwIDIwIEwgNDAgMjAgTSAyMCAwIEwgNDAgMjAgTSAyMCAwIEwgMjAgNDAgTSAwIDMwIEwgNDAgMzAgTSAzMCAwIEwgMzAgNDAiIGZpbGw9Im5vbmUiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS1vcGFjaXR5PSIwLjAzIiBzdHJva2Utd2lkdGg9IjEiLz48L3BhdHRlcm4+PC9kZWZzPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjZ3JpZCkiLz48L3N2Zz4=')] opacity-20" />
           
-          <div className={cn("relative space-y-6", !isMobile ? "px-8 py-12" : "px-6 py-8")}>
+          <div className={cn("relative space-y-6", !isMobile ? "px-6 py-12" : "px-6 py-8")}>
             <div className="text-center space-y-2">
               <h2 className={cn("font-bold text-white tracking-tight", !isMobile ? "text-4xl" : "text-3xl")}>
                 Find Your Perfect PG
@@ -328,7 +295,7 @@ function PGSearchContent() {
           </div>
         </div>
 
-        <div className={cn(!isMobile ? "grid grid-cols-12 gap-8 px-8 pb-12" : "space-y-4")}>
+        <div className={cn(!isMobile ? "grid grid-cols-12 gap-8 px-6 pb-12" : "space-y-4")}>
           {/* Sidebar / Filters */}
           <div className={cn(!isMobile ? "col-span-3 space-y-6" : "")}>
             {/* Filter Toggle Button - Mobile */}
@@ -371,7 +338,7 @@ function PGSearchContent() {
                       onValueChange={(value) =>
                         setTempFilters({
                           ...tempFilters,
-                          pgType: value === "all" ? undefined : value,
+                            pgType: value === "all" ? undefined : (value as any),
                         })
                       }
                       className="space-y-2"
@@ -411,12 +378,12 @@ function PGSearchContent() {
                         <div key={key} className="flex items-center space-x-3 p-2 rounded-lg hover:bg-blue-50 transition-colors">
                           <Checkbox
                             id={key}
-                            checked={!!tempFilters[key as keyof PGSearchFilters]}
+                            checked={!!(tempFilters as any)[key]}
                             onCheckedChange={(checked) =>
                               setTempFilters({
                                 ...tempFilters,
-                                [key]: checked || undefined,
-                              })
+                              [key as keyof PgSearchRequest]: checked || undefined,
+                            })
                             }
                             className="border-2"
                             data-testid={`checkbox-${key}`}
@@ -496,7 +463,7 @@ function PGSearchContent() {
                 {/* Sort & Results Count */}
                 <div className="flex items-center justify-between gap-4">
                   <div className="flex-1">
-                    <Select value={sortBy} onValueChange={(value: any) => setSortBy(value)}>
+                    <Select value={sortBy} onValueChange={(value: "distance" | "rating" | "both") => setSortBy(value)}>
                       <SelectTrigger data-testid="select-sort">
                         <SelectValue placeholder="Sort by" />
                       </SelectTrigger>
@@ -538,7 +505,7 @@ function PGSearchContent() {
                 <div className={cn("grid gap-6", !isMobile ? "grid-cols-2" : "grid-cols-1")}>
                   {sortedPgs.map((pg) => {
                     const amenities = getAmenityIcons(pg);
-                    const rating = parseFloat(pg.averageRating);
+                    const rating = parseFloat(String(pg.averageRating || 0));
 
                     return (
                       <Card
@@ -618,10 +585,10 @@ function PGSearchContent() {
                                     <span>{label}</span>
                                   </div>
                                 ))}
-                                {Object.entries(AMENITY_ICONS).filter(([key]) => pg[key as keyof PGResult])
+                                {Object.entries(AMENITY_ICONS).filter(([key]) => (pg as any)[key])
                                   .length > 4 && (
                                   <div className="text-xs font-medium text-gray-500 bg-gray-50 px-2.5 py-1.5 rounded-lg">
-                                    +{Object.entries(AMENITY_ICONS).filter(([key]) => pg[key as keyof PGResult])
+                                    +{Object.entries(AMENITY_ICONS).filter(([key]) => (pg as any)[key])
                                       .length - 4} more
                                   </div>
                                 )}

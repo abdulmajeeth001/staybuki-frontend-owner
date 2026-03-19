@@ -839,6 +839,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/applicant/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["searchPgs"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/announcements": {
         parameters: {
             query?: never;
@@ -1533,6 +1549,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/applicant/pgs/{pgId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getPgWithRooms"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/announcements/tenant": {
         parameters: {
             query?: never;
@@ -1689,6 +1721,7 @@ export interface components {
             floor?: number;
             status?: string;
             amenities?: string[];
+            tenantIds?: number[];
         };
         PgUpdateRequestDto: {
             pgName?: string;
@@ -2314,6 +2347,54 @@ export interface components {
         ForgotPasswordRequestDto: {
             email: string;
         };
+        PgSearchRequestDto: {
+            searchQuery?: string;
+            /** Format: double */
+            latitude?: number;
+            /** Format: double */
+            longitude?: number;
+            /** Format: double */
+            maxDistance?: number;
+            pgType?: string;
+            hasFood?: boolean;
+            hasParking?: boolean;
+            hasAC?: boolean;
+            hasCCTV?: boolean;
+            hasWifi?: boolean;
+            hasLaundry?: boolean;
+            hasGym?: boolean;
+            /** Format: int32 */
+            limit?: number;
+            /** Format: int32 */
+            offset?: number;
+        };
+        ApiResponseListPgSearchResponseDto: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["PgSearchResponseDto"][];
+            /** Format: date-time */
+            timestamp?: string;
+            errorCode?: string;
+        };
+        PgSearchResponseDto: {
+            /** Format: int64 */
+            id?: number;
+            pgName?: string;
+            pgLocation?: string;
+            pgAddress?: string;
+            pgType?: string;
+            /** Format: double */
+            distance?: number;
+            /** Format: double */
+            averageRating?: number;
+            hasFood?: boolean;
+            hasParking?: boolean;
+            hasAC?: boolean;
+            hasCCTV?: boolean;
+            hasWifi?: boolean;
+            hasLaundry?: boolean;
+            hasGym?: boolean;
+        };
         OwnerDto: {
             /** Format: int64 */
             id?: number;
@@ -2605,6 +2686,34 @@ export interface components {
             floor?: number;
             beds?: components["schemas"]["BedWithTenantDto"][];
             bedStats?: components["schemas"]["BedStatsDto"];
+        };
+        ApiResponsePgWithRoomsResponseDto: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["PgWithRoomsResponseDto"];
+            /** Format: date-time */
+            timestamp?: string;
+            errorCode?: string;
+        };
+        PgWithRoomsResponseDto: {
+            /** Format: int64 */
+            id?: number;
+            pgName?: string;
+            pgLocation?: string;
+            pgAddress?: string;
+            pgType?: string;
+            /** Format: double */
+            distance?: number;
+            /** Format: double */
+            averageRating?: number;
+            hasFood?: boolean;
+            hasParking?: boolean;
+            hasAC?: boolean;
+            hasCCTV?: boolean;
+            hasWifi?: boolean;
+            hasLaundry?: boolean;
+            hasGym?: boolean;
+            availableRooms?: components["schemas"]["RoomResponseDto"][];
         };
         AdminDashboardStatsDto: {
             /** Format: int64 */
@@ -4330,6 +4439,30 @@ export interface operations {
             };
         };
     };
+    searchPgs: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PgSearchRequestDto"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListPgSearchResponseDto"];
+                };
+            };
+        };
+    };
     getOwnerAnnouncements: {
         parameters: {
             query?: never;
@@ -5360,6 +5493,28 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["UserResponseDto"];
+                };
+            };
+        };
+    };
+    getPgWithRooms: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                pgId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponsePgWithRoomsResponseDto"];
                 };
             };
         };

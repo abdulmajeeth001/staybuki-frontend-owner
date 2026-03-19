@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import MobileLayout from "@/components/layout/MobileLayout";
@@ -47,64 +47,31 @@ import {
   IndianRupee,
   Sparkles,
   Bed,
+  Zap,
+  Droplet,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { useUser } from "@/hooks/use-user";
-import { api } from "@/apiClient";
+import { applicantService } from "@/services/applicantService";
+import type { PgDetailsResponse, VisitRequestResponse, CreateVisitRequest, BedResponse } from "@/types/applicant";
 
-interface BedPosition {
-  id: number;
-  position: string;
-  displayOrder: number;
-  status: string;
-  tenantId: number | null;
-}
+// Using loosely typed Room map for rendering purposes until backend schema is resolved
+type Room = any;
 
-interface Room {
-  id: number;
-  roomNumber: string;
-  monthlyRent: string;
-  sharing: number;
-  floor: number;
-  hasAttachedBathroom: boolean;
-  hasAC: boolean;
-  status: string;
-  tenantIds: number[];
-  beds?: BedPosition[];
-}
-
-interface PGDetails {
-  id: number;
-  pgName: string;
-  pgAddress: string;
-  pgLocation: string;
-  latitude: string | null;
-  longitude: string | null;
-  imageUrl: string | null;
-  pgType: string;
-  hasFood: boolean;
-  hasParking: boolean;
-  hasAC: boolean;
-  hasCCTV: boolean;
-  hasWifi: boolean;
-  hasLaundry: boolean;
-  hasGym: boolean;
-  averageRating: string;
-  totalRatings: number;
-  ownerId: number;
-  availableRooms: Room[];
-}
-
-const AMENITY_ICONS = {
-  hasFood: { icon: Utensils, label: "Food" },
-  hasParking: { icon: Car, label: "Parking" },
-  hasAC: { icon: Wind, label: "AC" },
-  hasCCTV: { icon: Camera, label: "CCTV" },
-  hasWifi: { icon: Wifi, label: "WiFi" },
-  hasLaundry: { icon: Shirt, label: "Laundry" },
-  hasGym: { icon: Dumbbell, label: "Gym" },
+const getAmenityIcon = (amenity: string) => {
+  const name = amenity.toLowerCase();
+  if (name.includes("wifi")) return Wifi;
+  if (name.includes("water")) return Droplet;
+  if (name.includes("power")) return Zap;
+  if (name.includes("food") || name.includes("meal")) return Utensils;
+  if (name.includes("parking")) return Car;
+  if (name.includes("ac") || name.includes("air")) return Wind;
+  if (name.includes("cctv") || name.includes("camera")) return Camera;
+  if (name.includes("laundry") || name.includes("wash")) return Shirt;
+  if (name.includes("gym") || name.includes("fit")) return Dumbbell;
+  return Check;
 };
 
 const TIME_SLOTS = [
@@ -127,79 +94,74 @@ export default function PGDetailsPage() {
   const [visitTime, setVisitTime] = useState("");
   const [visitNotes, setVisitNotes] = useState("");
   const [visitGender, setVisitGender] = useState("");
-  const [roomBeds, setRoomBeds] = useState<Record<number, BedPosition[]>>({});
+  const [roomBeds, setRoomBeds] = useState<Record<number, BedResponse[]>>({});
 
   const pgId = parseInt(id || "0");
 
   // Fetch PG details
-  const { data: pg, isLoading, error } = useQuery<PGDetails>({
-    queryKey: ["/api/tenant/pgs", pgId],
-    queryFn: async () => {
-      try {
-        const res = await api.get(`/api/tenant/pgs/${pgId}`);
-        return res.data;
-      } catch (err: any) {
-        if (err.response?.status === 404) throw new Error("PG not found");
-        throw new Error(err.response?.data?.error || err.message || "Failed to fetch PG details");
-      }
-    },
+  const { data: pg, isLoading, error } = useQuery<PgDetailsResponse>({
+    queryKey: ["/api/applicant/pgs", pgId],
+    queryFn: () => applicantService.getPgDetails(pgId),
     enabled: !!pgId,
   });
 
   // Fetch existing visit requests to check for pending ones
-  const { data: visitRequests } = useQuery<any[]>({
+  const { data: visitRequests = [] } = useQuery<VisitRequestResponse[]>({
     queryKey: ["/api/tenant/visit-requests"],
-    queryFn: async () => {
-      try {
-        const res = await api.get("/api/tenant/visit-requests");
-        return res.data;
-      } catch (err: any) {
-        throw new Error(err.response?.data?.error || err.message || "Failed to fetch visit requests");
-      }
-    },
+    queryFn: () => applicantService.getVisitRequests(),
   });
 
   // Check if there's a pending request for this PG
-  const hasPendingRequest = visitRequests?.some(
+  const hasPendingRequest = Array.isArray(visitRequests) && visitRequests.some(
     (req) =>
       req.pgId === pgId &&
       (req.status === "pending" || req.status === "approved" || req.status === "rescheduled")
   );
 
+  // Extract unique amenities from all available rooms
+  const roomAmenities = useMemo(() => {
+    const amenitiesSet = new Set<string>();
+    if ((pg as any)?.availableRooms) {
+      (pg as any).availableRooms.forEach((room: any) => {
+        if (Array.isArray(room.amenities)) {
+          room.amenities.forEach((amenity: string) => amenitiesSet.add(amenity));
+        }
+      });
+    }
+    return Array.from(amenitiesSet);
+  }, [pg]);
+
   // Fetch bed positions for rooms when PG data is loaded
   useEffect(() => {
-    const fetchBeds = async () => {
-      if (!pg?.availableRooms?.length) return;
-      
-      const bedsData: Record<number, BedPosition[]> = {};
-      await Promise.all(
-        pg.availableRooms.map(async (room) => {
-          try {
-            const res = await api.get(`/api/rooms/${room.id}/beds`);
-            bedsData[room.id] = res.data;
-          } catch (err) {
-            console.error(`Failed to fetch beds for room ${room.id}:`, err);
-          }
-        })
-      );
-      setRoomBeds(bedsData);
-    };
-    fetchBeds();
-  }, [pg?.availableRooms]);
+  const fetchBeds = async () => {
+    // 1. Guard against null pg or empty rooms
+    if (!(pg as any)?.availableRooms?.length) return;
+    const bedsData: Record<number, BedResponse[]> = {};
+    await Promise.all(
+      (pg as any).availableRooms.map(async (room: Room) => {
+        // 2. CRITICAL: Only call API if room.id is a valid number
+        if (!room.id || isNaN(Number(room.id))) {
+          console.warn(`Skipping bed fetch: invalid room id`, room);
+          return;
+        }
+
+        try {
+          const res = await applicantService.getRoomBeds(room.id);
+          bedsData[room.id] = res;
+        } catch (err) {
+          console.error(`Failed to fetch beds for room ${room.id}:`, err);
+        }
+      })
+    );
+    setRoomBeds(bedsData);
+  };
+
+  fetchBeds();
+}, [(pg as any)?.availableRooms]);
 
   // Create visit request mutation
   const createVisitRequest = useMutation({
-    mutationFn: async (data: {
-      pgId: number;
-      roomId?: number;
-      requestedDate: string;
-      requestedTime: string;
-      notes?: string;
-      gender?: string;
-    }) => {
-      const res = await api.post("/api/tenant/visit-requests", data);
-      return res.data;
-    },
+    mutationFn: (data: CreateVisitRequest) => applicantService.createVisitRequest(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tenant/visit-requests"] });
       toast({
@@ -218,7 +180,7 @@ export default function PGDetailsPage() {
     },
   });
 
-  const handleRequestVisit = (room?: Room) => {
+  const handleRequestVisit = (room?: any) => {
     if (hasPendingRequest) {
       toast({
         title: "Pending Request Exists",
@@ -232,7 +194,7 @@ export default function PGDetailsPage() {
   };
 
   // Check if this is a gender-restricted PG and user needs to provide gender
-  const isGenderRestrictedPG = pg?.pgType === "boys" || pg?.pgType === "girls";
+  const isGenderRestrictedPG = (pg as any)?.pgType === "boys" || (pg as any)?.pgType === "girls";
   const userHasGender = !!user?.gender;
   const needsGenderInput = isGenderRestrictedPG && !userHasGender;
 
@@ -325,7 +287,7 @@ export default function PGDetailsPage() {
     );
   }
 
-  const rating = parseFloat(pg.averageRating);
+  const rating = parseFloat((pg as any).averageRating || "0");
 
   return (
     <Layout
@@ -344,14 +306,14 @@ export default function PGDetailsPage() {
     >
       <div className={cn(!isMobile ? "max-w-5xl mx-auto" : "")}>
         {/* Full-Bleed Hero Image Section */}
-        <div className={cn("relative overflow-hidden mb-6", !isMobile ? "-mx-8 -mt-8 rounded-b-3xl" : "-mx-4 -mt-6")} data-testid="card-pg-header">
+        <div className={cn("relative overflow-hidden mb-6", !isMobile ? "-mx-6 -mt-6 rounded-b-3xl" : "-mx-4 -mt-6")} data-testid="card-pg-header">
           {/* Hero Image */}
           <div className="relative h-64 overflow-hidden">
-          {pg.imageUrl ? (
+          {(pg as any).imageUrl ? (
             <>
               <img
-                src={pg.imageUrl}
-                alt={pg.pgName}
+                src={(pg as any).imageUrl}
+                alt={(pg as any).pgName}
                 className="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
                 data-testid="img-pg"
               />
@@ -370,35 +332,35 @@ export default function PGDetailsPage() {
               <Badge
                 className={cn(
                   "capitalize text-white border-white/30 backdrop-blur-sm",
-                  pg.pgType === "male" && "bg-blue-600/80",
-                  pg.pgType === "female" && "bg-pink-600/80",
-                  pg.pgType === "common" && "bg-purple-600/80"
+                  (pg as any).pgType === "male" && "bg-blue-600/80",
+                  (pg as any).pgType === "female" && "bg-pink-600/80",
+                  (pg as any).pgType === "common" && "bg-purple-600/80"
                 )}
                 data-testid="badge-pg-type"
               >
-                {pg.pgType}
+                {(pg as any).pgType}
               </Badge>
               
               {rating > 0 && (
                 <Badge className="gap-1 bg-white/20 text-white border-white/30 backdrop-blur-sm" data-testid="badge-rating">
                   <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-                  {rating.toFixed(1)} ({pg.totalRatings})
+                  {rating.toFixed(1)} ({(pg as any).totalRatings})
                 </Badge>
               )}
             </div>
             
             <h1 className="text-3xl font-bold mb-3 drop-shadow-lg" data-testid="text-pg-name">
-              {pg.pgName}
+              {(pg as any).pgName}
             </h1>
             
             <div className="space-y-1">
               <p className="text-sm flex items-center gap-2 drop-shadow">
                 <MapPin className="w-4 h-4" />
-                <span data-testid="text-pg-address">{pg.pgAddress}</span>
+                <span data-testid="text-pg-address">{(pg as any).pgAddress}</span>
               </p>
               <p className="text-sm flex items-center gap-2 drop-shadow">
                 <HomeIcon className="w-4 h-4" />
-                <span data-testid="text-pg-location">{pg.pgLocation}</span>
+                <span data-testid="text-pg-location">{(pg as any).pgLocation}</span>
               </p>
             </div>
           </div>
@@ -406,57 +368,42 @@ export default function PGDetailsPage() {
       </div>
 
       {/* Amenities Section */}
-      <Card className="relative mb-6 border-2 hover:shadow-xl transition-all duration-300 overflow-hidden" data-testid="card-amenities">
-        <div className="absolute inset-0 bg-gradient-to-br from-purple-50 to-blue-50 opacity-50" />
-        <CardHeader className="relative">
-          <CardTitle className="text-xl font-bold text-gray-800 flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-purple-600" />
-            Amenities & Facilities
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="relative">
-          <div className="grid grid-cols-2 gap-3">
-            {Object.entries(AMENITY_ICONS).map(([key, { icon: Icon, label }]) => {
-              const isAvailable = pg[key as keyof PGDetails];
-              return (
-                <div
-                  key={key}
-                  className={cn(
-                    "relative flex items-center gap-3 p-4 rounded-xl border-2 transition-all duration-300 group overflow-hidden",
-                    isAvailable
-                      ? "bg-white border-green-200 hover:border-green-300 hover:shadow-lg hover:scale-105"
-                      : "bg-gray-50 border-gray-200 opacity-60"
-                  )}
-                  data-testid={`amenity-${key}`}
-                >
-                  {isAvailable && (
+      {roomAmenities.length > 0 && (
+        <Card className="relative mb-6 border-2 hover:shadow-xl transition-all duration-300 overflow-hidden" data-testid="card-amenities">
+          <div className="absolute inset-0 bg-gradient-to-br from-purple-50 to-blue-50 opacity-50" />
+          <CardHeader className="relative">
+            <CardTitle className="text-xl font-bold text-gray-800 flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-purple-600" />
+              Amenities & Facilities
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="relative">
+            <div className="grid grid-cols-2 gap-3">
+              {roomAmenities.map((amenity) => {
+                const Icon = getAmenityIcon(amenity);
+                return (
+                  <div
+                    key={amenity}
+                    className="relative flex items-center gap-3 p-4 rounded-xl border-2 transition-all duration-300 group overflow-hidden bg-white border-green-200 hover:border-green-300 hover:shadow-lg hover:scale-105"
+                    data-testid={`amenity-${amenity}`}
+                  >
                     <div className="absolute inset-0 bg-gradient-to-br from-green-50 to-emerald-50 opacity-50" />
-                  )}
-                  <div className={cn(
-                    "relative w-10 h-10 rounded-full flex items-center justify-center transition-transform duration-300",
-                    isAvailable 
-                      ? "bg-gradient-to-br from-green-500 to-emerald-600 group-hover:scale-110" 
-                      : "bg-gray-300"
-                  )}>
-                    <Icon className="w-5 h-5 text-white" />
-                  </div>
-                  <div className="relative flex-1">
-                    <span className={cn(
-                      "text-sm font-semibold",
-                      isAvailable ? "text-gray-800" : "text-gray-400"
-                    )}>
-                      {label}
-                    </span>
-                    {isAvailable && (
+                    <div className="relative w-10 h-10 rounded-full flex items-center justify-center transition-transform duration-300 bg-gradient-to-br from-green-500 to-emerald-600 group-hover:scale-110">
+                      <Icon className="w-5 h-5 text-white" />
+                    </div>
+                    <div className="relative flex-1">
+                      <span className="text-sm font-semibold text-gray-800">
+                        {amenity}
+                      </span>
                       <Check className="absolute -top-1 -right-1 w-4 h-4 text-green-600" />
-                    )}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
-        </CardContent>
-      </Card>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Available Rooms Section */}
       <Card className="relative border-2 hover:shadow-xl transition-all duration-300 overflow-hidden" data-testid="card-rooms">
@@ -464,11 +411,11 @@ export default function PGDetailsPage() {
         <CardHeader className="relative flex flex-row items-center justify-between">
           <CardTitle className="text-xl font-bold text-gray-800">Available Rooms</CardTitle>
           <Badge className="bg-gradient-to-r from-purple-600 to-blue-600 text-white" data-testid="badge-room-count">
-            {pg.availableRooms.length} {pg.availableRooms.length === 1 ? "room" : "rooms"}
+            {(pg as any).availableRooms?.length || 0} {((pg as any).availableRooms?.length || 0) === 1 ? "room" : "rooms"}
           </Badge>
         </CardHeader>
         <CardContent className="relative">
-          {pg.availableRooms.length === 0 ? (
+          {!(pg as any).availableRooms || (pg as any).availableRooms.length === 0 ? (
             <div className="text-center py-12">
               <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-purple-100 to-blue-100 flex items-center justify-center">
                 <DoorOpen className="w-10 h-10 text-purple-600" />
@@ -480,7 +427,7 @@ export default function PGDetailsPage() {
             </div>
           ) : (
             <div className="space-y-4">
-              {pg.availableRooms.map((room) => {
+              {(pg as any).availableRooms.map((room: any) => {
                 const availableBeds = room.sharing - (room.tenantIds?.length || 0);
                 const isFullyOccupied = availableBeds === 0;
 
@@ -555,7 +502,7 @@ export default function PGDetailsPage() {
                                 key={bed.id}
                                 className={cn(
                                   "p-2 rounded-lg text-center border transition-all",
-                                  bed.status === "available"
+                                  bed.status === "AVAILABLE"
                                     ? "bg-green-50 border-green-200 text-green-700"
                                     : "bg-red-50 border-red-200 text-red-600 opacity-75"
                                 )}
@@ -565,13 +512,13 @@ export default function PGDetailsPage() {
                                 <Badge 
                                   variant="secondary" 
                                   className={cn(
-                                    "text-[10px] mt-1 px-1.5",
-                                    bed.status === "available" 
+                                    "text-[10px] mt-1 px-1.5 capitalize",
+                                    bed.status === "AVAILABLE" 
                                       ? "bg-green-100 text-green-700" 
                                       : "bg-red-100 text-red-600"
                                   )}
                                 >
-                                  {bed.status === "available" ? "Free" : "Taken"}
+                                  {bed.status}
                                 </Badge>
                               </div>
                             ))}
@@ -604,7 +551,7 @@ export default function PGDetailsPage() {
           )}
 
           {/* General Request Visit Button */}
-          {pg.availableRooms.length > 0 && (
+          {(pg as any).availableRooms && (pg as any).availableRooms.length > 0 && (
             <div className="mt-6 pt-6 border-t-2 border-dashed border-gray-200">
               <Button
                 onClick={() => handleRequestVisit()}
