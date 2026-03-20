@@ -32,6 +32,7 @@ export default function Settings() {
   const [originalProfileForm, setOriginalProfileForm] = useState({ name: "", email: "", mobile: "" });
   const [originalPgForm, setOriginalPgForm] = useState({ pgName: "", pgAddress: "", pgLocation: "", latitude: "", longitude: "", imageUrl: "", totalRooms: 0, rentPaymentDate: null as number | null });
   const [originalPaymentForm, setOriginalPaymentForm] = useState({ upiId: "" });
+  const [pgImageFile, setPgImageFile] = useState<File | string | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -71,6 +72,7 @@ export default function Settings() {
             };
             setPgForm(pgData2);
             setOriginalPgForm(pgData2);
+            setPgImageFile(pgData.imageUrl || null);
           }
         } catch (pgError) {
           // PG might not exist yet, ignore 404
@@ -136,18 +138,31 @@ export default function Settings() {
     setPgSaveLoading(true);
     try {
       const isUpdate = pg?.id;
+      const cleanUrl = (url: string) => url ? url.split('?')[0] : url;
       let res;
       
+      const formDataPayload = new FormData();
+      const cleanedMetadata = {
+        ...pgForm,
+        imageUrl: cleanUrl(pgForm.imageUrl)
+      };
+      formDataPayload.append("pgData", new Blob([JSON.stringify(cleanedMetadata)], { type: 'application/json' }));
+      
+      if ((pgImageFile as any) instanceof File || (pgImageFile as any) instanceof Blob) {
+        formDataPayload.append("pgImageFile", pgImageFile as File);
+      }
+
       if (isUpdate) {
-        res = await api.put(`/api/pg/${pg.id}`, pgForm);
+        res = await api.put(`/api/pg/${pg.id}`, formDataPayload);
       } else {
-        res = await api.post("/api/pg", pgForm);
+        res = await api.post("/api/pg", formDataPayload);
       }
       
         const data = res.data;
         setPg(data);
         setOriginalPgForm(pgForm);
         setEditingPg(false);
+        setPgImageFile(data.imageUrl || null);
         toast({
           title: "Success",
           description: isUpdate ? "PG details updated successfully" : "PG created successfully",
@@ -161,6 +176,29 @@ export default function Settings() {
     } finally {
       setPgSaveLoading(false);
     }
+  };
+
+  const handleImageSelect = (fileData: any) => {
+    if (typeof fileData === 'string' && fileData.startsWith('data:image')) {
+      try {
+        const arr = fileData.split(',');
+        const mimeMatch = arr[0].match(/:(.*?);/);
+        if (mimeMatch) {
+          const mime = mimeMatch[1];
+          const bstr = atob(arr[1]);
+          let n = bstr.length;
+          const u8arr = new Uint8Array(n);
+          while (n--) {
+            u8arr[n] = bstr.charCodeAt(n);
+          }
+          setPgImageFile(new File([u8arr], "pg-image.jpg", { type: mime }));
+          return;
+        }
+      } catch (e) {
+        console.error("Failed to convert base64 to File", e);
+      }
+    }
+    setPgImageFile(fileData);
   };
 
   const handleEditPayment = () => {
@@ -430,13 +468,14 @@ export default function Settings() {
             {editingPg && (
               <div className="space-y-2">
                 <ImageUploader 
-                  onImageSelect={(base64Image) => {
-                    setPgForm(prev => ({
-                      ...prev,
-                      imageUrl: base64Image
-                    }));
-                  }}
-                  currentImage={pgForm.imageUrl}
+                  onImageSelect={handleImageSelect}
+                  currentImage={
+                    (pgImageFile as any) instanceof File || (pgImageFile as any) instanceof Blob
+                      ? URL.createObjectURL(pgImageFile as any)
+                      : typeof pgImageFile === "string"
+                      ? pgImageFile
+                      : (pgForm.imageUrl || "")
+                  }
                   label="PG Image (Optional)"
                 />
               </div>

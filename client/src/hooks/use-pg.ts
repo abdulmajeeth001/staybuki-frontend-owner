@@ -119,11 +119,19 @@ export function usePG(enabled: boolean = true) {
     try {
       const formData = new FormData();
 
+      const cleanUrl = (url?: string | null) => url ? url.split('?')[0] : url;
+
       // 1. Separate the File from the metadata
-      const { pgImageFile, registrationDocumentFile, fssaiCertificateFile, ...pgMetadata } = values;
+      const { pgImageFile, registrationDocumentFile, fssaiCertificateFile, imageUrl, registrationDocumentUrl, fssaiCertificateUrl, ...restMetadata } = values;
 
       // 2. Append the DTO as a JSON Blob
       // This allows Spring's @RequestPart to map it to your DTO class
+      const pgMetadata = {
+        ...restMetadata,
+        ...(imageUrl !== undefined && { imageUrl: cleanUrl(imageUrl) }),
+        ...(registrationDocumentUrl !== undefined && { registrationDocumentUrl: cleanUrl(registrationDocumentUrl) }),
+        ...(fssaiCertificateUrl !== undefined && { fssaiCertificateUrl: cleanUrl(fssaiCertificateUrl) })
+      };
       formData.append("pgData", new Blob([JSON.stringify(pgMetadata)], {
         type: 'application/json'
       }));
@@ -165,8 +173,15 @@ export function usePG(enabled: boolean = true) {
   }) => {
     try {
       const formData = new FormData();
-      const { pgImageFile, registrationDocumentFile, fssaiCertificateFile, ...pgMetadata } = values;
+      const cleanUrl = (url?: string | null) => url ? url.split('?')[0] : url;
+      const { pgImageFile, registrationDocumentFile, fssaiCertificateFile, imageUrl, registrationDocumentUrl, fssaiCertificateUrl, ...restMetadata } = values;
 
+      const pgMetadata = {
+        ...restMetadata,
+        ...(imageUrl !== undefined && { imageUrl: cleanUrl(imageUrl) }),
+        ...(registrationDocumentUrl !== undefined && { registrationDocumentUrl: cleanUrl(registrationDocumentUrl) }),
+        ...(fssaiCertificateUrl !== undefined && { fssaiCertificateUrl: cleanUrl(fssaiCertificateUrl) })
+      };
       formData.append("pgData", new Blob([JSON.stringify(pgMetadata)], {
         type: 'application/json'
       }));
