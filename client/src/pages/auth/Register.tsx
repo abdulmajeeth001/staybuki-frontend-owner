@@ -16,7 +16,7 @@ import { useLocation } from "wouter";
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ChevronLeft, Mail, Phone, User, Lock, Eye, EyeOff, ArrowRight, Upload, FileText, File, Building2, Home, Users, FileCheck, Award, Grid3x3, MapPin, Image as ImageIcon, Sparkles, Check } from "lucide-react";
+import { ChevronLeft, Mail, Phone, User, Lock, Eye, EyeOff, ArrowRight, Upload, FileText, File as FileIcon, Building2, Home, Users, FileCheck, Award, Grid3x3, MapPin, Image as ImageIcon, Sparkles, Check } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { motion, AnimatePresence } from "framer-motion";
@@ -39,6 +39,7 @@ export default function Register() {
   const [amenities, setAmenities] = useState<any[]>([]);
   const [registrationFile, setRegistrationFile] = useState<File | null>(null);
   const [fssaiFile, setFssaiFile] = useState<File | null>(null);
+  const [pgImageFile, setPgImageFile] = useState<File | null>(null);
 
   const form = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
@@ -112,6 +113,29 @@ export default function Register() {
     setValue("fssaiCertificateUrl", "");
   };
 
+  const handleImageSelect = (fileData: any) => {
+    if (typeof fileData === 'string' && fileData.startsWith('data:image')) {
+      try {
+        const arr = fileData.split(',');
+        const mimeMatch = arr[0].match(/:(.*?);/);
+        if (mimeMatch) {
+          const mime = mimeMatch[1];
+          const bstr = atob(arr[1]);
+          let n = bstr.length;
+          const u8arr = new Uint8Array(n);
+          while (n--) {
+            u8arr[n] = bstr.charCodeAt(n);
+          }
+          setPgImageFile(new File([u8arr], "pg-image.jpg", { type: mime }));
+          return;
+        }
+      } catch (e) {
+        console.error("Failed to convert base64 to File", e);
+      }
+    }
+    setPgImageFile(fileData);
+  };
+
   const handleOtpChange = (index: number, value: string) => {
     if (value.length > 1) return;
     const newOtp = [...otp];
@@ -176,7 +200,7 @@ export default function Register() {
           } : undefined
         };
 
-        await authService.register(registerData, registrationFile || undefined, fssaiFile || undefined);
+        await authService.register(registerData, registrationFile || undefined, fssaiFile || undefined, pgImageFile || undefined);
 
         setIsLoading(false);
         setStep(4);
@@ -437,10 +461,10 @@ export default function Register() {
                           />
                           
                           <ImageUploader 
-                            onImageSelect={(base64Image) => {
-                              setValue("imageUrl", base64Image);
+                            onImageSelect={(file: any) => {
+                              setPgImageFile(file);
                             }}
-                            currentImage={formData.imageUrl}
+                            currentImage={pgImageFile ? URL.createObjectURL(pgImageFile) : ""}
                             label="PG Image (Optional)"
                           />
                         </div>

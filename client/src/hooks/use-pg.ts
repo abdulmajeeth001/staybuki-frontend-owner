@@ -99,22 +99,49 @@ export function usePG(enabled: boolean = true) {
     }
   }, [queryClient]);
 
-  const createPG = useCallback(async (pgData: { 
+  const createPG = useCallback(async (values: { 
     pgName: string; 
     pgAddress: string; 
     pgLocation: string; 
     latitude?: string;
     longitude?: string;
-    imageUrl?: string;
+    imageUrl?: string | null;
     totalRooms?: number;
     pgType?: string;
     registrationNumber?: string;
     registrationDocumentUrl?: string;
+    registrationDocumentFile?: File | null;
     fssaiCertificateUrl?: string;
+    fssaiCertificateFile?: File | null;
+    pgImageFile?: File | null;
     amenityIds?: number[];
   }) => {
     try {
-      const res = await api.post("/api/pg", pgData);
+      const formData = new FormData();
+
+      // 1. Separate the File from the metadata
+      const { pgImageFile, registrationDocumentFile, fssaiCertificateFile, ...pgMetadata } = values;
+
+      // 2. Append the DTO as a JSON Blob
+      // This allows Spring's @RequestPart to map it to your DTO class
+      formData.append("pgData", new Blob([JSON.stringify(pgMetadata)], {
+        type: 'application/json'
+      }));
+
+      // 3. Append the binary image file if it exists
+      if (pgImageFile) {
+        formData.append("pgImageFile", pgImageFile); // Matches @RequestPart("file") in Spring
+      }
+      if (registrationDocumentFile) {
+        formData.append("registrationDoc", registrationDocumentFile);
+      }
+      if (fssaiCertificateFile) {
+        formData.append("fssaiCert", fssaiCertificateFile);
+      }
+
+      // 4. Send the request
+      // Axios automatically sets 'multipart/form-data' when it sees FormData
+      const res = await api.post("/api/pg", formData);
       const data = res.data;
       
       queryClient.setQueryData(["current-pg"], data);
@@ -123,13 +150,38 @@ export function usePG(enabled: boolean = true) {
       return data;
     } catch (err: any) {
       console.error("Error creating PG:", err);
+      // In Spring Boot, errors usually come back in err.response.data.error
       throw new Error(err.response?.data?.error || "Failed to create PG");
     }
   }, [queryClient]);
 
-  const updatePG = useCallback(async (pgId: number, pgData: Partial<PG> & { amenityIds?: number[], pgType?: string }) => {
+  const updatePG = useCallback(async (pgId: number, values: Omit<Partial<PG>, "imageUrl"> & { 
+    amenityIds?: number[], 
+    pgType?: string,
+    imageUrl?: string | null,
+    pgImageFile?: File | null,
+    registrationDocumentFile?: File | null,
+    fssaiCertificateFile?: File | null
+  }) => {
     try {
-      const res = await api.put(`/api/pg/${pgId}`, pgData);
+      const formData = new FormData();
+      const { pgImageFile, registrationDocumentFile, fssaiCertificateFile, ...pgMetadata } = values;
+
+      formData.append("pgData", new Blob([JSON.stringify(pgMetadata)], {
+        type: 'application/json'
+      }));
+
+      if (pgImageFile) {
+        formData.append("pgImageFile", pgImageFile);
+      }
+      if (registrationDocumentFile) {
+        formData.append("registrationDoc", registrationDocumentFile);
+      }
+      if (fssaiCertificateFile) {
+        formData.append("fssaiCert", fssaiCertificateFile);
+      }
+
+      const res = await api.put(`/api/pg/${pgId}`, formData);
       const data = res.data;
       
       // If we updated the currently selected PG, update its cache

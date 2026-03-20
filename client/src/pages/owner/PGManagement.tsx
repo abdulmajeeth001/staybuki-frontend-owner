@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import DesktopLayout from "@/components/layout/DesktopLayout";
 import { usePG, PG } from "@/hooks/use-pg";
-import { Building2, Plus, Edit2, Trash2, MapPin, Home, Check, X, Upload, FileText, File, Eye, Package, Users, Grid3x3, FileCheck, Award, Sparkles, Image as ImageIcon, Star } from "lucide-react";
+import { Building2, Plus, Edit2, Trash2, MapPin, Home, Check, X, Upload, FileText, File as FileIcon, Eye, Package, Users, Grid3x3, FileCheck, Award, Sparkles, Image as ImageIcon, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -55,8 +55,9 @@ export default function PGManagement() {
   const [selectedPg, setSelectedPg] = useState<PG | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [amenities, setAmenities] = useState<Amenity[]>([]);
-  const [isUploadingRegistration, setIsUploadingRegistration] = useState(false);
-  const [isUploadingFssai, setIsUploadingFssai] = useState(false);
+  const [registrationFile, setRegistrationFile] = useState<File | null>(null);
+  const [fssaiFile, setFssaiFile] = useState<File | null>(null);
+  const [pgImageFile, setPgImageFile] = useState<File | string | null>(null);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
   const [detailsPgAmenities, setDetailsPgAmenities] = useState<Amenity[]>([]);
 
@@ -66,7 +67,7 @@ export default function PGManagement() {
     pgLocation: "",
     latitude: "",
     longitude: "",
-    imageUrl: "",
+    imageUrl: null as string | null,
     totalRooms: "",
     pgType: "common" as "common" | "boys" | "girls",
     registrationNumber: "",
@@ -79,7 +80,7 @@ export default function PGManagement() {
   useEffect(() => {
     const fetchAmenities = async () => {
       try {
-        const response = await api.get("/api/amenities");
+        const response = await api.get("api/amenities");
         setAmenities(response.data.filter((a: Amenity) => a.isActive));
       } catch (error: any) {
         console.error("Failed to fetch amenities:", error);
@@ -96,7 +97,7 @@ export default function PGManagement() {
       pgLocation: "",
       latitude: "",
       longitude: "",
-      imageUrl: "",
+      imageUrl: null,
       totalRooms: "",
       pgType: "common" as "common" | "boys" | "girls",
       registrationNumber: "",
@@ -104,9 +105,12 @@ export default function PGManagement() {
       fssaiCertificateUrl: "",
       amenityIds: [],
     });
+    setRegistrationFile(null);
+    setFssaiFile(null);
+    setPgImageFile(null);
   };
 
-  const handleRegistrationDocumentUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleRegistrationDocumentUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -121,24 +125,11 @@ export default function PGManagement() {
       return;
     }
 
-    setIsUploadingRegistration(true);
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
-
-      const response = await api.post("/api/pg/upload-registration-document", formData);
-
-      const data = response.data;
-      setFormData((prev) => ({ ...prev, registrationDocumentUrl: data.url }));
-      toast.success("Registration document uploaded successfully");
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || "Failed to upload registration document");
-    } finally {
-      setIsUploadingRegistration(false);
-    }
+    setRegistrationFile(file);
+    setFormData((prev) => ({ ...prev, registrationDocumentUrl: "" }));
   };
 
-  const handleFssaiCertificateUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFssaiCertificateUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -153,21 +144,31 @@ export default function PGManagement() {
       return;
     }
 
-    setIsUploadingFssai(true);
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
+    setFssaiFile(file);
+    setFormData((prev) => ({ ...prev, fssaiCertificateUrl: "" }));
+  };
 
-      const response = await api.post("/api/pg/upload-fssai-certificate", formData);
-
-      const data = response.data;
-      setFormData((prev) => ({ ...prev, fssaiCertificateUrl: data.url }));
-      toast.success("FSSAI certificate uploaded successfully");
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || "Failed to upload FSSAI certificate");
-    } finally {
-      setIsUploadingFssai(false);
+  const handleImageSelect = (fileData: any) => {
+    if (typeof fileData === 'string' && fileData.startsWith('data:image')) {
+      try {
+        const arr = fileData.split(',');
+        const mimeMatch = arr[0].match(/:(.*?);/);
+        if (mimeMatch) {
+          const mime = mimeMatch[1];
+          const bstr = atob(arr[1]);
+          let n = bstr.length;
+          const u8arr = new Uint8Array(n);
+          while (n--) {
+            u8arr[n] = bstr.charCodeAt(n);
+          }
+          setPgImageFile(new File([u8arr], "pg-image.jpg", { type: mime }));
+          return;
+        }
+      } catch (e) {
+        console.error("Failed to convert base64 to File", e);
+      }
     }
+    setPgImageFile(fileData);
   };
 
   const toggleAmenity = (amenityId: number) => {
@@ -192,9 +193,9 @@ export default function PGManagement() {
     
     // Fetch amenities for this PG
     try {
-      const response = await api.get(`/api/pg/${pg.id}/amenities`);
+      const response = await api.get(`/api/pgAmenities/${pg.id}`);
       const pgAmenities = response.data;
-      const amenityIds = pgAmenities.map((a: any) => a.amenityId);
+      const amenityIds = pgAmenities.map((a: any) => Number(a.amenityId || a.id));
       const selectedAmenities = amenities.filter(a => amenityIds.includes(a.id));
       setDetailsPgAmenities(selectedAmenities);
     } catch (error: any) {
@@ -226,6 +227,9 @@ export default function PGManagement() {
         registrationNumber: formData.registrationNumber,
         registrationDocumentUrl: formData.registrationDocumentUrl,
         fssaiCertificateUrl: formData.fssaiCertificateUrl,
+        registrationDocumentFile: registrationFile,
+        fssaiCertificateFile: fssaiFile,
+        pgImageFile: typeof pgImageFile === "string" ? null : pgImageFile,
         amenityIds: formData.amenityIds,
       });
       toast.success("PG created successfully!");
@@ -259,6 +263,9 @@ export default function PGManagement() {
         registrationNumber: formData.registrationNumber,
         registrationDocumentUrl: formData.registrationDocumentUrl,
         fssaiCertificateUrl: formData.fssaiCertificateUrl,
+        registrationDocumentFile: registrationFile,
+        fssaiCertificateFile: fssaiFile,
+        pgImageFile: typeof pgImageFile === "string" ? null : pgImageFile,
         amenityIds: formData.amenityIds,
       });
       toast.success("PG updated successfully!");
@@ -294,9 +301,9 @@ export default function PGManagement() {
     // Fetch current amenities for this PG
     let currentAmenityIds: number[] = [];
     try {
-      const response = await api.get(`/api/pg/${pg.id}/amenities`);
-      const amenities = response.data;
-      currentAmenityIds = amenities.map((a: any) => a.amenityId);
+      const response = await api.get(`/api/pgAmenities/${pg.id}`);
+      const pgAmenitiesData = response.data;
+      currentAmenityIds = pgAmenitiesData.map((a: any) => Number(a.amenityId || a.id));
     } catch (error: any) {
       console.error("Failed to fetch PG amenities:", error);
       toast.error(error.response?.data?.error || "Failed to load PG amenities");
@@ -308,7 +315,7 @@ export default function PGManagement() {
       pgLocation: pg.pgLocation || "",
       latitude: pg.latitude || "",
       longitude: pg.longitude || "",
-      imageUrl: pg.imageUrl || "",
+      imageUrl: pg.imageUrl || null,
       totalRooms: pg.totalRooms?.toString() || "",
       pgType: ((pg as any).pgType || "common") as "common" | "boys" | "girls",
       registrationNumber: (pg as any).registrationNumber || "",
@@ -316,6 +323,9 @@ export default function PGManagement() {
       fssaiCertificateUrl: (pg as any).fssaiCertificateUrl || "",
       amenityIds: currentAmenityIds,
     });
+    setRegistrationFile(null);
+    setFssaiFile(null);
+    setPgImageFile(null);
     setIsEditDialogOpen(true);
   };
 
@@ -572,13 +582,14 @@ export default function PGManagement() {
             />
             
             <ImageUploader 
-              onImageSelect={(base64Image) => {
-                setFormData(prev => ({
-                  ...prev,
-                  imageUrl: base64Image
-                }));
-              }}
-              currentImage={formData.imageUrl}
+              onImageSelect={handleImageSelect}
+              currentImage={
+                (pgImageFile as any) instanceof File || (pgImageFile as any) instanceof Blob
+                  ? URL.createObjectURL(pgImageFile as any)
+                  : typeof pgImageFile === "string"
+                  ? pgImageFile
+                  : ""
+              }
               label="PG Image (Optional)"
             />
 
@@ -668,17 +679,17 @@ export default function PGManagement() {
                   <div className="flex items-center gap-2">
                     <Button
                       type="button"
-                      variant={formData.registrationDocumentUrl ? "secondary" : "outline"}
+                      variant={registrationFile || formData.registrationDocumentUrl ? "secondary" : "outline"}
                       size="sm"
                       className="flex-1"
                       onClick={() => document.getElementById('registrationDocument')?.click()}
-                      disabled={isUploadingRegistration}
+                      disabled={isSubmitting}
                       data-testid="button-upload-registration"
                     >
                       <Upload className="h-3.5 w-3.5 mr-2" />
-                      {isUploadingRegistration ? "Uploading..." : formData.registrationDocumentUrl ? "Change" : "Upload"}
+                      {registrationFile || formData.registrationDocumentUrl ? "Change" : "Upload"}
                     </Button>
-                    {formData.registrationDocumentUrl && (
+                    {!registrationFile && formData.registrationDocumentUrl && (
                       <Button
                         type="button"
                         variant="outline"
@@ -690,10 +701,10 @@ export default function PGManagement() {
                       </Button>
                     )}
                   </div>
-                  {formData.registrationDocumentUrl && (
+                  {(registrationFile || formData.registrationDocumentUrl) && (
                     <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
-                      <Check className="h-3 w-3 text-green-600" />
-                      Document uploaded
+                      <Check className="h-3 w-3 text-green-600 shrink-0" />
+                      {registrationFile ? `${registrationFile.name} selected` : "Document uploaded"}
                     </p>
                   )}
                 </div>
@@ -783,17 +794,17 @@ export default function PGManagement() {
                     <div className="flex items-center gap-2">
                       <Button
                         type="button"
-                        variant={formData.fssaiCertificateUrl ? "secondary" : "default"}
+                        variant={fssaiFile || formData.fssaiCertificateUrl ? "secondary" : "default"}
                         size="sm"
                         className="flex-1"
                         onClick={() => document.getElementById('fssaiCertificate')?.click()}
-                        disabled={isUploadingFssai}
+                        disabled={isSubmitting}
                         data-testid="button-upload-fssai"
                       >
                         <Upload className="h-3.5 w-3.5 mr-2" />
-                        {isUploadingFssai ? "Uploading..." : formData.fssaiCertificateUrl ? "Change" : "Upload"}
+                        {fssaiFile || formData.fssaiCertificateUrl ? "Change" : "Upload"}
                       </Button>
-                      {formData.fssaiCertificateUrl && (
+                      {!fssaiFile && formData.fssaiCertificateUrl && (
                         <Button
                           type="button"
                           variant="outline"
@@ -805,10 +816,10 @@ export default function PGManagement() {
                         </Button>
                       )}
                     </div>
-                    {formData.fssaiCertificateUrl && (
+                    {(fssaiFile || formData.fssaiCertificateUrl) && (
                       <p className="text-xs text-green-700 dark:text-green-400 mt-2 flex items-center gap-1">
-                        <Check className="h-3 w-3" />
-                        Certificate uploaded
+                        <Check className="h-3 w-3 shrink-0" />
+                        {fssaiFile ? `${fssaiFile.name} selected` : "Certificate uploaded"}
                       </p>
                     )}
                   </Card>
@@ -867,13 +878,14 @@ export default function PGManagement() {
               />
               
               <ImageUploader 
-                onImageSelect={(base64Image) => {
-                  setFormData(prev => ({
-                    ...prev,
-                    imageUrl: base64Image
-                  }));
-                }}
-                currentImage={formData.imageUrl}
+                onImageSelect={handleImageSelect}
+                currentImage={
+                  (pgImageFile as any) instanceof File || (pgImageFile as any) instanceof Blob
+                    ? URL.createObjectURL(pgImageFile as any)
+                    : typeof pgImageFile === "string"
+                    ? pgImageFile
+                    : (formData.imageUrl || "")
+                }
                 label="PG Image (Optional)"
               />
             </div>
@@ -976,17 +988,17 @@ export default function PGManagement() {
                   <div className="flex items-center gap-2">
                     <Button
                       type="button"
-                      variant={formData.registrationDocumentUrl ? "secondary" : "outline"}
+                      variant={registrationFile || formData.registrationDocumentUrl ? "secondary" : "outline"}
                       size="sm"
                       className="flex-1"
                       onClick={() => document.getElementById('edit-registrationDocument')?.click()}
-                      disabled={isUploadingRegistration}
+                      disabled={isSubmitting}
                       data-testid="button-edit-upload-registration"
                     >
                       <Upload className="h-3.5 w-3.5 mr-2" />
-                      {isUploadingRegistration ? "Uploading..." : formData.registrationDocumentUrl ? "Change" : "Upload"}
+                      {registrationFile || formData.registrationDocumentUrl ? "Change" : "Upload"}
                     </Button>
-                    {formData.registrationDocumentUrl && (
+                    {!registrationFile && formData.registrationDocumentUrl && (
                       <Button
                         type="button"
                         variant="outline"
@@ -998,10 +1010,10 @@ export default function PGManagement() {
                       </Button>
                     )}
                   </div>
-                  {formData.registrationDocumentUrl && (
+                  {(registrationFile || formData.registrationDocumentUrl) && (
                     <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
-                      <Check className="h-3 w-3 text-green-600" />
-                      Document uploaded
+                      <Check className="h-3 w-3 text-green-600 shrink-0" />
+                      {registrationFile ? `${registrationFile.name} selected` : "Document uploaded"}
                     </p>
                   )}
                 </div>
@@ -1091,17 +1103,17 @@ export default function PGManagement() {
                     <div className="flex items-center gap-2">
                       <Button
                         type="button"
-                        variant={formData.fssaiCertificateUrl ? "secondary" : "default"}
+                        variant={fssaiFile || formData.fssaiCertificateUrl ? "secondary" : "default"}
                         size="sm"
                         className="flex-1"
                         onClick={() => document.getElementById('edit-fssaiCertificate')?.click()}
-                        disabled={isUploadingFssai}
+                        disabled={isSubmitting}
                         data-testid="button-edit-upload-fssai"
                       >
                         <Upload className="h-3.5 w-3.5 mr-2" />
-                        {isUploadingFssai ? "Uploading..." : formData.fssaiCertificateUrl ? "Change" : "Upload"}
+                        {fssaiFile || formData.fssaiCertificateUrl ? "Change" : "Upload"}
                       </Button>
-                      {formData.fssaiCertificateUrl && (
+                      {!fssaiFile && formData.fssaiCertificateUrl && (
                         <Button
                           type="button"
                           variant="outline"
@@ -1113,10 +1125,10 @@ export default function PGManagement() {
                         </Button>
                       )}
                     </div>
-                    {formData.fssaiCertificateUrl && (
+                    {(fssaiFile || formData.fssaiCertificateUrl) && (
                       <p className="text-xs text-green-700 dark:text-green-400 mt-2 flex items-center gap-1">
-                        <Check className="h-3 w-3" />
-                        Certificate uploaded
+                        <Check className="h-3 w-3 shrink-0" />
+                        {fssaiFile ? `${fssaiFile.name} selected` : "Certificate uploaded"}
                       </p>
                     )}
                   </Card>
@@ -1221,11 +1233,11 @@ export default function PGManagement() {
               {selectedPg.fssaiCertificateUrl && (
                 <div className="p-4 rounded-lg border space-y-3">
                   <h4 className="font-semibold flex items-center gap-2">
-                    <File className="h-4 w-4" />
+                    <FileIcon className="h-4 w-4" />
                     FSSAI Certificate
                   </h4>
                   <div className="flex items-center gap-2 text-sm">
-                    <File className="h-4 w-4 text-muted-foreground" />
+                    <FileIcon className="h-4 w-4 text-muted-foreground" />
                     <span className="text-muted-foreground">Certificate:</span>
                     <Button
                       variant="link"

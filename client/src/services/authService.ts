@@ -70,7 +70,7 @@ export const authService = {
   /**
    * Register a new user
    */
-  register: async (payload: RegisterRequest, registrationDoc?: File, fssaiCert?: File) => {
+  register: async (payload: RegisterRequest, registrationDoc?: File, fssaiCert?: File, pgImageFile?: File) => {
     const formData = new FormData();
     // The backend @RequestPart("req") expects a JSON Blob
     formData.append("req", new Blob([JSON.stringify(payload)], { type: "application/json" }));
@@ -80,6 +80,9 @@ export const authService = {
     }
     if (fssaiCert) {
       formData.append("fssaiCert", fssaiCert);
+    }
+    if (pgImageFile) {
+      formData.append("pgImageFile", pgImageFile);
     }
 
     await api.post("/api/auth/register", formData);
@@ -97,7 +100,7 @@ export const authService = {
    * Get all amenities
    */
   getAmenities: async () => {
-    const { data } = await api.get<AmenityResponse[]>("/api/common/registration/amenities");
+    const { data } = await api.get<AmenityResponse[]>("/api/amenities");
     return data;
   },
 
