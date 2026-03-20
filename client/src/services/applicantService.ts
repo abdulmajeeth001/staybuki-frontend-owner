@@ -10,10 +10,23 @@ import type {
   VisitRequestApiResponse,
   CreateVisitRequest,
   BedResponse,
-  BedListApiResponse
+  BedListApiResponse,
+  AmenityResponse
 } from "@/types/applicant";
 
 export const applicantService = {
+  /**
+   * Get all amenities
+   */
+  getAmenities: async (activeOnly: boolean = true): Promise<AmenityResponse[]> => {
+    try {
+      const { data } = await api.get<AmenityResponse[]>(`/api/amenities?activeOnly=${activeOnly}`);
+      return data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.error || error.message || "Failed to fetch amenities");
+    }
+  },
+
   /**
    * Search for PGs based on various filters including location, amenities, and PG type.
    */

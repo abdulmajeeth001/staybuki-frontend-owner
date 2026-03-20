@@ -280,7 +280,7 @@ function VisitRequestsContent({
                           <p className="font-semibold text-gray-800 mb-1">Requested Time</p>
                           <p className="text-gray-600">
                             <span data-testid={`text-requested-date-${request.id}`}>
-                              {format(new Date(request.requestedDate), "MMM dd, yyyy")}
+                              {request.requestedDate ? format(new Date(request.requestedDate), "MMM dd, yyyy") : "N/A"}
                             </span>
                             {" at "}
                             <span data-testid={`text-requested-time-${request.id}`}>{request.requestedTime}</span>

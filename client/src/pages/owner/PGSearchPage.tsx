@@ -8,8 +8,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -34,11 +32,24 @@ import {
   X,
   ChevronRight,
   Building2,
+  DoorOpen,
   Search,
+  Users,
+  Check,
+  Zap,
+  Flame,
+  Sparkles,
+  BookOpen,
+  Gamepad2,
+  ShieldCheck,
+  Refrigerator,
+  Microwave,
+  Droplets,
+  Bath,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { applicantService } from "@/services/applicantService";
-import type { PgSearchRequest, PgSearchResult } from "@/types/applicant";
+import type { PgSearchRequest, PgSearchResult, AmenityResponse } from "@/types/applicant";
 import { toast } from "@/hooks/use-toast";
 
 const DISTANCE_PRESETS = [
@@ -58,6 +69,28 @@ const AMENITY_ICONS = {
   hasGym: { icon: Dumbbell, label: "Gym" },
 };
 
+const getDynamicAmenityIcon = (name: string) => {
+  const lower = name.toLowerCase();
+  if (lower.includes("wifi")) return Wifi;
+  if (lower.includes("food") || lower.includes("meal")) return Utensils;
+  if (lower.includes("parking")) return Car;
+  if (lower.includes("ac ") || lower === "ac" || lower.includes("air")) return Wind;
+  if (lower.includes("cctv") || lower.includes("camera")) return Camera;
+  if (lower.includes("laundry") || lower.includes("wash")) return Shirt;
+  if (lower.includes("gym") || lower.includes("fit")) return Dumbbell;
+  if (lower.includes("power") || lower.includes("backup")) return Zap;
+  if (lower.includes("hot water") || lower.includes("geyser")) return Flame;
+  if (lower.includes("housekeeping") || lower.includes("clean")) return Sparkles;
+  if (lower.includes("study") || lower.includes("read") || lower.includes("library")) return BookOpen;
+  if (lower.includes("recreation") || lower.includes("play") || lower.includes("game") || lower.includes("tv")) return Gamepad2;
+  if (lower.includes("security") || lower.includes("guard")) return ShieldCheck;
+  if (lower.includes("fridge") || lower.includes("refrigerator")) return Refrigerator;
+  if (lower.includes("microwave") || lower.includes("oven")) return Microwave;
+  if (lower.includes("purifier") || lower.includes("water")) return Droplets;
+  if (lower.includes("bath") || lower.includes("washroom")) return Bath;
+  return Check;
+};
+
 function PGSearchContent() {
   const isMobile = useIsMobile();
   const [, navigate] = useLocation();
@@ -68,15 +101,25 @@ function PGSearchContent() {
   });
   const [tempFilters, setTempFilters] = useState<PgSearchRequest>({ ...filters });
   const [isGettingLocation, setIsGettingLocation] = useState(false);
-  const [showFilters, setShowFilters] = useState(false);
+  const [showFilters, setShowFilters] = useState(!isMobile);
   const [sortBy, setSortBy] = useState<"distance" | "rating" | "both">("both");
   const [hasSearched, setHasSearched] = useState(false);
+  const [showAllAmenities, setShowAllAmenities] = useState(false);
+
+  const { data: amenities = [] } = useQuery<AmenityResponse[]>({
+    queryKey: ["/api/amenities"],
+    queryFn: () => applicantService.getAmenities(true),
+  });
 
   const { data: pgs, isLoading, refetch } = useQuery<PgSearchResult[]>({
     queryKey: ["/api/applicant/search", filters],
     enabled: hasSearched,
     queryFn: () => applicantService.searchPgs(filters),
   });
+
+  useEffect(() => {
+    setShowFilters(!isMobile);
+  }, [isMobile]);
 
   useEffect(() => {
     if (navigator.geolocation) {
@@ -170,6 +213,12 @@ function PGSearchContent() {
     });
     setHasSearched(false);
   }, []);
+
+  const sortedAmenities = useMemo(() => {
+    return [...amenities].sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
+  }, [amenities]);
+
+  const visibleAmenities = showAllAmenities ? sortedAmenities : sortedAmenities.slice(0, 10);
 
   const loadMore = useCallback(() => {
     setFilters((prev) => ({
@@ -297,13 +346,14 @@ function PGSearchContent() {
 
         <div className={cn(!isMobile ? "grid grid-cols-12 gap-8 px-6 pb-12" : "space-y-4")}>
           {/* Sidebar / Filters */}
-          <div className={cn(!isMobile ? "col-span-3 space-y-6" : "")}>
-            {/* Filter Toggle Button - Mobile */}
-            <div className="lg:hidden mb-4">
+          {(!isMobile && showFilters) || isMobile ? (
+            <div className={cn(!isMobile ? "col-span-4 space-y-6" : "")}>
+            {/* Filter Toggle Button */}
+            <div className="mb-4">
               <Button
                 onClick={() => setShowFilters(!showFilters)}
                 variant="outline"
-                className="w-full border-2 hover:border-purple-300 hover:bg-purple-50"
+                className="w-full border-2 hover:border-purple-300 hover:bg-purple-50 transition-colors rounded-xl h-11 font-semibold text-gray-700 shadow-sm"
                 data-testid="button-toggle-filters"
               >
                 <SlidersHorizontal className="w-4 h-4 mr-2" />
@@ -312,100 +362,115 @@ function PGSearchContent() {
             </div>
 
             {/* Filters Section */}
-            <div className={cn("space-y-4", !showFilters && "hidden lg:block", !isMobile && "sticky top-24")}>
-              <Card className="border-2 shadow-lg">
-                <CardHeader className="flex flex-row items-center justify-between bg-gradient-to-r from-purple-50 to-blue-50 border-b p-4">
-                  <CardTitle className="text-base font-bold text-gray-800 flex items-center gap-2">
+            <div className={cn("space-y-4", !showFilters && "hidden", !isMobile && "sticky top-24")}>
+              <Card className="border-0 shadow-2xl bg-white/80 backdrop-blur-xl ring-1 ring-black/5 rounded-2xl overflow-hidden">
+                <CardHeader className="flex flex-row items-center justify-between pb-4 pt-5 px-5 bg-gradient-to-br from-white to-gray-50/50">
+                  <CardTitle className="text-lg font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent flex items-center gap-2">
                     <SlidersHorizontal className="w-5 h-5 text-purple-600" />
-                    Filters
+                    Refine Search
                   </CardTitle>
                   <Button
                     variant="ghost"
-                    size="sm"
-                    className="lg:hidden hover:bg-white/50 h-8 w-8 p-0"
+                    size="icon"
+                    className="hover:bg-gray-100 rounded-full h-8 w-8 transition-colors"
                     onClick={() => setShowFilters(false)}
                     data-testid="button-close-filters"
                   >
-                    <X className="w-4 h-4" />
+                    <X className="w-4 h-4 text-gray-500" />
                   </Button>
                 </CardHeader>
-                <CardContent className="space-y-6 pt-6 px-4 pb-6">
+                <div className="h-px bg-gradient-to-r from-transparent via-gray-200 to-transparent w-full" />
+                <CardContent className="space-y-8 pt-6 px-5 pb-6">
                   {/* PG Type */}
                   <div>
-                    <Label className="text-sm font-bold mb-3 block text-gray-800">PG Type</Label>
-                    <RadioGroup
-                      value={tempFilters.pgType || "all"}
-                      onValueChange={(value) =>
-                        setTempFilters({
-                          ...tempFilters,
-                            pgType: value === "all" ? undefined : (value as any),
-                        })
-                      }
-                      className="space-y-2"
-                    >
-                      <div className="flex items-center space-x-3 p-2 rounded-lg hover:bg-purple-50 transition-colors">
-                        <RadioGroupItem value="all" id="type-all" data-testid="radio-type-all" className="border-2" />
-                        <Label htmlFor="type-all" className="font-medium cursor-pointer flex-1">
-                          All Types
-                        </Label>
-                      </div>
-                      <div className="flex items-center space-x-3 p-2 rounded-lg hover:bg-blue-50 transition-colors">
-                        <RadioGroupItem value="male" id="type-male" data-testid="radio-type-male" className="border-2" />
-                        <Label htmlFor="type-male" className="font-medium cursor-pointer flex-1">
-                          Male Only
-                        </Label>
-                      </div>
-                      <div className="flex items-center space-x-3 p-2 rounded-lg hover:bg-pink-50 transition-colors">
-                        <RadioGroupItem value="female" id="type-female" data-testid="radio-type-female" className="border-2" />
-                        <Label htmlFor="type-female" className="font-medium cursor-pointer flex-1">
-                          Female Only
-                        </Label>
-                      </div>
-                      <div className="flex items-center space-x-3 p-2 rounded-lg hover:bg-purple-50 transition-colors">
-                        <RadioGroupItem value="common" id="type-common" data-testid="radio-type-common" className="border-2" />
-                        <Label htmlFor="type-common" className="font-medium cursor-pointer flex-1">
-                          Common
-                        </Label>
-                      </div>
-                    </RadioGroup>
+                    <Label className="text-sm font-bold mb-4 block text-gray-800 uppercase tracking-wider">PG Type</Label>
+                    <div className="grid grid-cols-2 gap-3">
+                      {[
+                        { value: "all", label: "All Types", icon: Building2 },
+                        { value: "male", label: "Male Only", icon: Users },
+                        { value: "female", label: "Female Only", icon: Users },
+                        { value: "common", label: "Co-ed", icon: Users },
+                      ].map((type) => {
+                        const isSelected = (tempFilters.pgType || "all") === type.value;
+                        const Icon = type.icon;
+                        return (
+                          <button
+                            key={type.value}
+                            type="button"
+                            onClick={() =>
+                              setTempFilters({
+                                ...tempFilters,
+                                pgType: type.value === "all" ? undefined : (type.value as any),
+                              })
+                            }
+                            className={cn(
+                              "flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all duration-200 outline-none focus-visible:ring-2 focus-visible:ring-purple-500",
+                              isSelected
+                                ? "border-purple-600 bg-purple-50 text-purple-700 shadow-sm"
+                                : "border-gray-100 bg-white text-gray-600 hover:border-purple-300 hover:bg-purple-50/50 hover:shadow-sm"
+                            )}
+                            data-testid={`btn-type-${type.value}`}
+                          >
+                            <Icon className={cn("w-5 h-5 mb-1.5 transition-colors shrink-0", isSelected ? "text-purple-600" : "text-gray-400")} />
+                            <span className="text-[11px] md:text-xs font-bold text-center leading-tight whitespace-normal">{type.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
 
                   {/* Amenities */}
                   <div>
-                    <Label className="text-sm font-bold mb-3 block text-gray-800">Amenities</Label>
-                    <div className="grid grid-cols-1 gap-2">
-                      {Object.entries(AMENITY_ICONS).map(([key, { icon: Icon, label }]) => (
-                        <div key={key} className="flex items-center space-x-3 p-2 rounded-lg hover:bg-blue-50 transition-colors">
-                          <Checkbox
-                            id={key}
-                            checked={!!(tempFilters as any)[key]}
-                            onCheckedChange={(checked) =>
+                    <Label className="text-sm font-bold mb-4 block text-gray-800 uppercase tracking-wider">Amenities</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {visibleAmenities.map((amenity) => {
+                        const currentIds: number[] = (tempFilters as any).amenityIds || [];
+                        const isSelected = currentIds.includes(amenity.id);
+                        const Icon = getDynamicAmenityIcon(amenity.name);
+                        return (
+                          <button
+                            key={amenity.id}
+                            type="button"
+                            onClick={() => {
                               setTempFilters({
                                 ...tempFilters,
-                              [key as keyof PgSearchRequest]: checked || undefined,
-                            })
-                            }
-                            className="border-2"
-                            data-testid={`checkbox-${key}`}
-                          />
-                          <Label
-                            htmlFor={key}
-                            className="font-medium cursor-pointer flex items-center gap-2 flex-1"
+                                amenityIds: isSelected 
+                                  ? currentIds.filter((id) => id !== amenity.id)
+                                  : [...currentIds, amenity.id],
+                              } as any);
+                            }}
+                            className={cn(
+                              "flex items-center gap-2 px-2.5 py-2 rounded-xl border-2 transition-all duration-200 outline-none focus-visible:ring-2 focus-visible:ring-blue-500 w-full justify-start h-full min-h-[44px]",
+                              isSelected
+                                ? "border-blue-600 bg-blue-50 text-blue-700 shadow-sm"
+                                : "border-gray-100 bg-white text-gray-600 hover:border-blue-300 hover:bg-blue-50/50 hover:shadow-sm"
+                            )}
+                            title={amenity.name}
+                            data-testid={`btn-amenity-${amenity.id}`}
                           >
-                            <Icon className="w-4 h-4 text-purple-600" />
-                            {label}
-                          </Label>
-                        </div>
-                      ))}
+                            <Icon className={cn("w-4 h-4 transition-colors shrink-0", isSelected ? "text-blue-600" : "text-gray-400")} />
+                            <span className="text-[11px] lg:text-xs font-bold text-left leading-tight break-words whitespace-normal flex-1 min-w-0">{amenity.name}</span>
+                          </button>
+                        );
+                      })}
+                      {sortedAmenities.length > 10 && (
+                        <button
+                          type="button"
+                          onClick={() => setShowAllAmenities(!showAllAmenities)}
+                          className="flex items-center justify-center gap-1 px-4 py-2 rounded-xl border-2 border-dashed border-gray-300 text-gray-500 hover:text-purple-600 hover:border-purple-300 hover:bg-purple-50 transition-all text-xs font-bold col-span-2"
+                        >
+                          {showAllAmenities ? "Show Less" : `+${sortedAmenities.length - 10} More`}
+                        </button>
+                      )}
                     </div>
                   </div>
 
                   {/* Filter Actions */}
-                  <div className="pt-4 border-t">
+                  <div className="pt-2">
                     <Button
                       onClick={clearFilters}
                       variant="outline"
-                      className="w-full border-2 hover:border-purple-300 hover:bg-purple-50 font-semibold"
+                      className="w-full border-2 hover:border-purple-300 hover:bg-purple-50 font-bold h-11 rounded-xl text-gray-600 hover:text-purple-700 transition-all"
                       data-testid="button-clear-filters"
                     >
                       Clear All Filters
@@ -414,10 +479,25 @@ function PGSearchContent() {
                 </CardContent>
               </Card>
             </div>
-          </div>
+            </div>
+          ) : null}
 
           {/* Main Content Area */}
-          <div className={cn(!isMobile ? "col-span-9 space-y-6" : "space-y-4")}>
+          <div className={cn(!isMobile ? (showFilters ? "col-span-8" : "col-span-12") : "", "space-y-4 md:space-y-6")}>
+            {/* Desktop Filter Toggle (When Sidebar is closed) */}
+            {!isMobile && !showFilters && (
+              <div className="flex items-center mb-2">
+                <Button
+                  onClick={() => setShowFilters(true)}
+                  variant="outline"
+                  className="bg-white/80 backdrop-blur-sm border-2 hover:border-purple-300 hover:bg-purple-50 transition-colors rounded-xl h-11 font-semibold text-gray-700 shadow-sm"
+                >
+                  <SlidersHorizontal className="w-4 h-4 mr-2" />
+                  Show Filters
+                </Button>
+              </div>
+            )}
+
             {/* Welcome State - Show before first search */}
             {!hasSearched && (
               <Card className="border-2 border-dashed border-purple-200 bg-gradient-to-br from-purple-50/50 to-blue-50/50">
@@ -464,14 +544,14 @@ function PGSearchContent() {
                 <div className="flex items-center justify-between gap-4">
                   <div className="flex-1">
                     <Select value={sortBy} onValueChange={(value: "distance" | "rating" | "both") => setSortBy(value)}>
-                      <SelectTrigger data-testid="select-sort">
+                      <SelectTrigger data-testid="select-sort" className="bg-white/80 backdrop-blur-sm border-2 hover:border-purple-300 transition-colors rounded-xl h-11 font-semibold text-gray-700">
                         <SelectValue placeholder="Sort by" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="both" data-testid="sort-both">Best Match</SelectItem>
-                        <SelectItem value="rating" data-testid="sort-rating">Rating</SelectItem>
+                        <SelectItem value="both" data-testid="sort-both" className="font-medium cursor-pointer">Best Match</SelectItem>
+                        <SelectItem value="rating" data-testid="sort-rating" className="font-medium cursor-pointer">Highest Rated</SelectItem>
                         {filters.latitude && filters.longitude && (
-                          <SelectItem value="distance" data-testid="sort-distance">Distance</SelectItem>
+                          <SelectItem value="distance" data-testid="sort-distance" className="font-medium cursor-pointer">Nearest First</SelectItem>
                         )}
                       </SelectContent>
                     </Select>
@@ -504,7 +584,7 @@ function PGSearchContent() {
               <>
                 <div className={cn("grid gap-6", !isMobile ? "grid-cols-2" : "grid-cols-1")}>
                   {sortedPgs.map((pg) => {
-                    const amenities = getAmenityIcons(pg);
+                    const pgAmenitiesList = getAmenityIcons(pg);
                     const rating = parseFloat(String(pg.averageRating || 0));
 
                     return (
@@ -559,23 +639,31 @@ function PGSearchContent() {
                               </p>
                             </div>
 
-                            <div className="flex items-center gap-2">
-                              {pg.distance != null && (
-                                <div className="flex items-center gap-1 bg-green-50 text-green-700 px-3 py-1.5 rounded-full text-xs font-semibold" data-testid={`badge-distance-${pg.id}`}>
-                                  <Navigation className="w-3 h-3" />
-                                  {pg.distance.toFixed(1)} km
-                                </div>
-                              )}
-                              {rating > 0 && pg.totalRatings > 0 && (
-                                <div className="flex items-center gap-1 bg-yellow-50 text-yellow-700 px-3 py-1.5 rounded-full text-xs font-semibold">
-                                  {pg.totalRatings} {pg.totalRatings === 1 ? 'review' : 'reviews'}
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-2">
+                                {pg.distance != null && (
+                                  <div className="flex items-center gap-1 bg-green-50 text-green-700 px-3 py-1.5 rounded-full text-xs font-semibold" data-testid={`badge-distance-${pg.id}`}>
+                                    <Navigation className="w-3 h-3" />
+                                    {pg.distance.toFixed(1)} km
+                                  </div>
+                                )}
+                                {rating > 0 && pg.totalRatings > 0 && (
+                                  <div className="flex items-center gap-1 bg-yellow-50 text-yellow-700 px-3 py-1.5 rounded-full text-xs font-semibold">
+                                    {pg.totalRatings} {pg.totalRatings === 1 ? 'review' : 'reviews'}
+                                  </div>
+                                )}
+                              </div>
+                              {(pg as any).availableRoomCount !== undefined && (
+                                <div className="flex items-center gap-1 bg-blue-50 text-blue-700 px-3 py-1.5 rounded-full text-xs font-semibold shrink-0" data-testid={`badge-rooms-${pg.id}`}>
+                                  <DoorOpen className="w-3 h-3" />
+                                  {(pg as any).availableRoomCount} {(pg as any).availableRoomCount === 1 ? 'room' : 'rooms'} available
                                 </div>
                               )}
                             </div>
 
-                            {amenities.length > 0 && (
+                            {pgAmenitiesList.length > 0 && (
                               <div className="flex items-center gap-2 flex-wrap">
-                                {amenities.map(([key, { icon: Icon, label }]) => (
+                                {pgAmenitiesList.map(([key, { icon: Icon, label }]) => (
                                   <div
                                     key={key}
                                     className="flex items-center gap-1.5 text-xs font-medium text-purple-700 bg-purple-50 px-2.5 py-1.5 rounded-lg border border-purple-100"

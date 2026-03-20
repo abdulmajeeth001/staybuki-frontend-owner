@@ -1292,6 +1292,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/pgAmenities/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getPgAmenities"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/pg/status": {
         parameters: {
             query?: never;
@@ -1501,22 +1517,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/common/registration/amenities": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["getAmenities_1"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/beds/pg/{pgId}": {
         parameters: {
             query?: never;
@@ -1573,6 +1573,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["getTenantAnnouncements"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/amenities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getAmenities_1"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1740,7 +1756,9 @@ export interface components {
             hasCCTV?: boolean;
             hasLaundry?: boolean;
             hasGym?: boolean;
+            imageUrl?: string;
             isActive?: boolean;
+            amenityIds?: number[];
         };
         PgResponseDto: {
             /** Format: int32 */
@@ -1775,6 +1793,7 @@ export interface components {
             totalRatings?: number;
             /** Format: date-time */
             createdAt?: string;
+            imageUrl?: string;
         };
         PaymentUpdateRequestDto: {
             paymentMethod?: string;
@@ -1981,9 +2000,13 @@ export interface components {
             id?: number;
             /** Format: int32 */
             pgId?: number;
+            pgName?: string;
+            pgAddress?: string;
             /** Format: int32 */
             roomId?: number;
+            roomNumber?: string;
             status?: string;
+            ownerNotes?: string;
             /** Format: date-time */
             requestedDate?: string;
             requestedTime?: string;
@@ -1991,6 +2014,9 @@ export interface components {
             confirmedDate?: string;
             confirmedTime?: string;
             notes?: string;
+            /** Format: date-time */
+            rescheduledDate?: string;
+            rescheduledTime?: string;
             /** Format: date-time */
             createdAt?: string;
         };
@@ -2007,6 +2033,7 @@ export interface components {
             registrationNumber?: string;
             registrationDocumentUrl?: string;
             fssaiCertificateUrl?: string;
+            imageUrl?: string;
             pgType?: string;
             hasFood?: boolean;
             hasParking?: boolean;
@@ -2087,7 +2114,7 @@ export interface components {
             pgId: number;
             /** Format: int32 */
             roomId?: number;
-            /** Format: date-time */
+            /** Format: date */
             requestedDate: string;
             requestedTime: string;
             notes?: string;
@@ -2377,7 +2404,7 @@ export interface components {
             errorCode?: string;
         };
         PgSearchResponseDto: {
-            /** Format: int64 */
+            /** Format: int32 */
             id?: number;
             pgName?: string;
             pgLocation?: string;
@@ -2394,6 +2421,9 @@ export interface components {
             hasWifi?: boolean;
             hasLaundry?: boolean;
             hasGym?: boolean;
+            imageUrl?: string;
+            /** Format: int32 */
+            availableRoomCount?: number;
         };
         OwnerDto: {
             /** Format: int64 */
@@ -2862,9 +2892,17 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody: {
+        requestBody?: {
             content: {
-                "application/json": components["schemas"]["PgUpdateRequestDto"];
+                "application/json": {
+                    pgData: components["schemas"]["PgUpdateRequestDto"];
+                    /** Format: binary */
+                    pgImageFile?: string;
+                    /** Format: binary */
+                    registrationDoc?: string;
+                    /** Format: binary */
+                    fssaiCert?: string;
+                };
             };
         };
         responses: {
@@ -3718,9 +3756,17 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody: {
+        requestBody?: {
             content: {
-                "application/json": components["schemas"]["PgCreateRequestDto"];
+                "multipart/form-data": {
+                    pgData: components["schemas"]["PgCreateRequestDto"];
+                    /** Format: binary */
+                    pgImageFile?: string;
+                    /** Format: binary */
+                    registrationDoc?: string;
+                    /** Format: binary */
+                    fssaiCert?: string;
+                };
             };
         };
         responses: {
@@ -4358,6 +4404,8 @@ export interface operations {
                     registrationDoc?: string;
                     /** Format: binary */
                     fssaiCert?: string;
+                    /** Format: binary */
+                    pgImageFile?: string;
                 };
             };
         };
@@ -5163,6 +5211,28 @@ export interface operations {
             };
         };
     };
+    getPgAmenities: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AmenityResponseDto"][];
+                };
+            };
+        };
+    };
     getPgStatus: {
         parameters: {
             query?: never;
@@ -5433,28 +5503,6 @@ export interface operations {
             };
         };
     };
-    getAmenities_1: {
-        parameters: {
-            query?: {
-                activeOnly?: boolean;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["AmenityResponseDto"][];
-                };
-            };
-        };
-    };
     getRoomsWithBeds: {
         parameters: {
             query?: never;
@@ -5535,6 +5583,28 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["AnnouncementResponseDto"][];
+                };
+            };
+        };
+    };
+    getAmenities_1: {
+        parameters: {
+            query?: {
+                activeOnly?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["AmenityResponseDto"][];
                 };
             };
         };

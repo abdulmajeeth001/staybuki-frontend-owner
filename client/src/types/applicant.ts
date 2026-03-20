@@ -23,6 +23,8 @@ export type VisitRequestListApiResponse = {
   errorCode?: string;
 };
 
+export type AmenityResponse = components["schemas"]["AmenityResponseDto"];
+
 export type CreateVisitRequest = components["schemas"]["CreateVisitRequestDto"];
 export type VisitRequestApiResponse = {
   success?: boolean;

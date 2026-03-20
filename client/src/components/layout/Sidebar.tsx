@@ -1,5 +1,5 @@
 import { useLocation } from "wouter";
-import { Home, Users, CreditCard, Bell, Settings, DoorOpen, Wrench, AlertCircle, BarChart3, LogOut, Building2, Shield, CalendarCheck, UtensilsCrossed, Tag, Megaphone, Search } from "lucide-react";
+import { Home, Users, CreditCard, Bell, Settings, DoorOpen, Wrench, AlertCircle, BarChart3, LogOut, Building2, Shield, CalendarCheck, UtensilsCrossed, Tag, Megaphone, Search, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -128,38 +128,49 @@ export default function Sidebar({ className, onClose }: SidebarProps = {}) {
       <div className="w-64 flex flex-col min-h-full">
       {/* Header */}
       <div className="p-6 border-b border-border">
-        <div 
-          onClick={() => {
-            if (isApplicant) return;
-              if (isAdmin) handleNavigation("/admin-dashboard");
-              else if (isTenant) handleNavigation("/tenant-dashboard");
-              else handleNavigation("/dashboard");
-          }}
-          className={cn("rounded-lg transition-colors p-2 -m-2 mb-4", 
-            !isApplicant ? "cursor-pointer hover:bg-secondary/50" : "")}
-        >
-          <div className="flex items-center gap-3">
-            <img 
-              src="/logo.png"
-              alt="StayBuki" 
-              className="h-12 w-auto"
-            />
-            {(isOwner || isTenant) && (
-              <Avatar className="h-10 w-10 border-2 border-primary/20" data-testid="avatar-profile">
-                {avatarImage ? (
-                  <AvatarImage src={avatarImage} alt="Profile" />
-                ) : null}
-                <AvatarFallback className="bg-primary/10 text-primary font-semibold text-sm">
-                  {avatarFallback}
-                </AvatarFallback>
-              </Avatar>
+        <div className="flex items-start justify-between mb-4">
+          <div 
+            onClick={() => {
+              if (isApplicant) return;
+                if (isAdmin) handleNavigation("/admin-dashboard");
+                else if (isTenant) handleNavigation("/tenant-dashboard");
+                else handleNavigation("/dashboard");
+            }}
+            className={cn("rounded-lg transition-colors p-2 -m-2", 
+              !isApplicant ? "cursor-pointer hover:bg-secondary/50" : "")}
+          >
+            <div className="flex items-center gap-3">
+              <img 
+                src="/logo.png"
+                alt="StayBuki" 
+                className="h-12 w-auto"
+              />
+              {(isOwner || isTenant) && (
+                <Avatar className="h-10 w-10 border-2 border-primary/20" data-testid="avatar-profile">
+                  {avatarImage ? (
+                    <AvatarImage src={avatarImage} alt="Profile" />
+                  ) : null}
+                  <AvatarFallback className="bg-primary/10 text-primary font-semibold text-sm">
+                    {avatarFallback}
+                  </AvatarFallback>
+                </Avatar>
+              )}
+            </div>
+            {isAdmin && (
+              <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                <Shield className="h-3 w-3" />
+                Admin Panel
+              </p>
             )}
           </div>
-          {isAdmin && (
-            <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
-              <Shield className="h-3 w-3" />
-              Admin Panel
-            </p>
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="p-2 -mr-2 -mt-2 text-muted-foreground hover:bg-secondary rounded-full transition-colors lg:hidden"
+              aria-label="Close menu"
+            >
+              <X className="w-5 h-5" />
+            </button>
           )}
         </div>
         {isOwner && (
