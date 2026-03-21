@@ -281,7 +281,7 @@ export default function MobileLayout({
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Top Bar */}
-        <header className="bg-card border-b border-border h-14 flex items-center justify-between px-4 shrink-0">
+        <header className="bg-card border-b border-border h-14 flex items-center justify-between px-4 shrink-0 relative z-50">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setSidebarOpen(true)}

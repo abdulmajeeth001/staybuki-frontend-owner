@@ -5,6 +5,9 @@ import { PGSwitcher } from "@/components/PGSwitcher";
 import { PendingApprovalBanner } from "@/components/PendingApprovalBanner";
 import { NotificationBell } from "@/components/NotificationBell";
 import { UserProfileMenu } from "@/components/UserProfileMenu";
+import { Menu } from "lucide-react";
+import { useState } from "react";
+import { cn } from "@/lib/utils";
 
 interface DesktopLayoutProps {
   children: React.ReactNode;
@@ -23,14 +26,26 @@ export default function DesktopLayout({
   const isOwner = user?.userType === "owner";
   const isAdmin = user?.userType === "admin";
   const isTenant = user?.userType === "tenant";
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   
   return (
     <div className="flex h-screen bg-background">
-      <Sidebar />
+      <div className={cn("hidden lg:block transition-all duration-300 overflow-hidden shrink-0", sidebarOpen ? "w-64" : "w-0")}>
+        <Sidebar className="w-64 h-screen" />
+      </div>
       <div className="flex-1 overflow-hidden">
         {/* Desktop Header */}
         <header className="hidden lg:flex bg-card border-b border-border h-16 items-center justify-between px-8 sticky top-0 z-40">
-          <h1 className="text-2xl font-bold text-foreground">{title}</h1>
+          <div className="flex items-center gap-4">
+            <button 
+              onClick={() => setSidebarOpen(!sidebarOpen)} 
+              className="p-2 -ml-2 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-lg transition-colors"
+              aria-label="Toggle Sidebar"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+            <h1 className="text-2xl font-bold text-foreground">{title}</h1>
+          </div>
           <div className="flex items-center gap-4">
             {isOwner && <PGSwitcher variant="header" />}
             {isOwner && <NotificationBell />}
