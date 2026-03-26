@@ -85,7 +85,7 @@ export function usePG(enabled: boolean = true) {
       // Invalidate queries to refresh data for new PG context
       const keysToInvalidate = [
         "tenants", "rooms", "payments", "notifications", "dashboard",
-        "available-tenants", "active-rooms", "/api/visit-requests", "/api/onboarding-requests"
+        "available-tenants", "active-rooms", "/api/visit-requests", "/api/owner/onboarding-requests"
       ];
       
       await Promise.all(keysToInvalidate.map(key => 
