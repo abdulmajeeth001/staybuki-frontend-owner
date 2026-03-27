@@ -30,7 +30,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 import { format, isPast } from "date-fns";
-import OnboardingRequestModal from "@/components/OnboardingRequestModal";
+import OnboardingRequestModal from "./OnboardingRequestModal";
 import { tenantService } from "@/services/tenantService";
 import type { VisitRequestResponse, OnboardingRequestResponse } from "@/types/tenant";
 

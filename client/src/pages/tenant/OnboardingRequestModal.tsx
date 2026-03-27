@@ -79,8 +79,8 @@ export default function OnboardingRequestModal({
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [monthlyRent, setMonthlyRent] = useState<number | null>(null);
-  const [tenantImage, setTenantImage] = useState<string | null>(null);
-  const [aadharCard, setAadharCard] = useState<string | null>(null);
+  const [tenantImage, setTenantImage] = useState<File | null>(null);
+  const [aadharCard, setAadharCard] = useState<File | null>(null);
   const [emergencyContactName, setEmergencyContactName] = useState("");
   const [emergencyContactPhone, setEmergencyContactPhone] = useState("");
   const [emergencyContactRelationship, setEmergencyContactRelationship] = useState("");
@@ -136,8 +136,14 @@ export default function OnboardingRequestModal({
 
   // Create onboarding request mutation
   const createOnboardingMutation = useMutation({
-    mutationFn: async (data: any) => {
-      const res = await api.post("/api/tenant/onboarding-requests", data);
+    mutationFn: async (formData: FormData) => {
+      // Axios automatically sets Content-Type to multipart/form-data when sending FormData
+      const res = await api.post("/api/tenant/onboarding-requests", formData, {
+        headers: {
+          // No need to manually set Content-Type, Axios handles it for FormData
+          // 'Content-Type': 'multipart/form-data',
+        },
+      });
       return res.data;
     },
     onSuccess: () => {
@@ -163,7 +169,7 @@ export default function OnboardingRequestModal({
 
   const handleFileUpload = async (
     file: File,
-    setBase64: (value: string) => void,
+    setFile: (value: File) => void,
     setPreview: (value: string) => void
   ) => {
     // Validate file size
@@ -190,7 +196,7 @@ export default function OnboardingRequestModal({
     const reader = new FileReader();
     reader.onloadend = () => {
       const base64String = reader.result as string;
-      setBase64(base64String);
+      setFile(file); // Store the actual File object
       setPreview(base64String);
     };
     reader.onerror = () => {
@@ -252,21 +258,32 @@ export default function OnboardingRequestModal({
       return;
     }
 
-    // Submit the form
-    createOnboardingMutation.mutate({
-      visitRequestId: visitRequestId || undefined,
-      pgId,
-      roomId,
-      name,
-      email,
-      phone,
-      monthlyRent,
-      tenantImage: tenantImage || undefined,
-      aadharCard: aadharCard || undefined,
-      emergencyContactName,
-      emergencyContactPhone,
-      emergencyContactRelationship,
-    });
+    const formData = new FormData();
+
+    // Append the DTO as a JSON string under the 'req' part
+    const dto = {
+      visitRequestId: visitRequestId, // Can be undefined, backend handles it
+      pgId: pgId,
+      roomId: roomId,
+      name: name,
+      email: email,
+      phone: phone,
+      monthlyRent: monthlyRent,
+      emergencyContactName: emergencyContactName,
+      emergencyContactPhone: emergencyContactPhone,
+      emergencyContactRelationship: emergencyContactRelationship,
+    };
+    formData.append("req", new Blob([JSON.stringify(dto)], { type: "application/json" }));
+
+    // Append files if they exist
+    if (tenantImage) {
+      formData.append("tenantImage", tenantImage);
+    }
+    if (aadharCard) {
+      formData.append("aadharCard", aadharCard);
+    }
+
+    createOnboardingMutation.mutate(formData);
   };
 
   return (
@@ -676,17 +693,29 @@ export default function OnboardingRequestModal({
                   <div className="bg-white p-4 rounded-lg border border-gray-200">
                     <h4 className="font-semibold text-sm text-gray-700 mb-3">Documents</h4>
                     <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Photo:</span>
-                        <span className={cn("font-medium", tenantImage ? "text-green-600" : "text-gray-400")}>
-                          {tenantImage ? "✓ Uploaded" : "Not uploaded"}
-                        </span>
+                      <div className="flex flex-col gap-2">
+                        <span className="text-gray-600">Your Photo:</span>
+                        {tenantImagePreview ? (
+                          <img
+                            src={tenantImagePreview}
+                            alt="Tenant Photo Preview"
+                            className="w-24 h-24 object-cover rounded-md border border-gray-200"
+                          />
+                        ) : (
+                          <span className="font-medium text-gray-400">Not uploaded</span>
+                        )}
                       </div>
-                      <div className="flex justify-between">
+                      <div className="flex flex-col gap-2">
                         <span className="text-gray-600">ID Card:</span>
-                        <span className={cn("font-medium", aadharCard ? "text-green-600" : "text-gray-400")}>
-                          {aadharCard ? "✓ Uploaded" : "Not uploaded"}
-                        </span>
+                        {aadharCardPreview ? (
+                          <img
+                            src={aadharCardPreview}
+                            alt="Aadhar Card Preview"
+                            className="w-32 h-24 object-cover rounded-md border border-gray-200"
+                          />
+                        ) : (
+                          <span className="font-medium text-gray-400">Not uploaded</span>
+                        )}
                       </div>
                     </div>
                   </div>

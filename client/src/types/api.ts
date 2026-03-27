@@ -535,6 +535,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/owner/onboarding-requests/{id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reject an onboarding request with a reason */
+        post: operations["reject_1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/owner/onboarding-requests/{id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve an onboarding request */
+        post: operations["approve_2"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/notifications/{id}/read": {
         parameters: {
             query?: never;
@@ -1017,40 +1051,6 @@ export interface paths {
         patch: operations["acceptReschedule"];
         trace?: never;
     };
-    "/api/owner/onboarding-requests/{id}/reject": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        /** Reject an onboarding request with a reason */
-        patch: operations["reject_1"];
-        trace?: never;
-    };
-    "/api/owner/onboarding-requests/{id}/approve": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        /** Approve an onboarding request */
-        patch: operations["approve_2"];
-        trace?: never;
-    };
     "/api/visit-requests": {
         parameters: {
             query?: never;
@@ -1107,6 +1107,22 @@ export interface paths {
             cookie?: never;
         };
         get: operations["getAvailableTenants"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenant/rooms/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getRoomById"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1735,8 +1751,10 @@ export interface components {
             sharing?: number;
             /** Format: int32 */
             floor?: number;
-            status?: string;
+            hasAC?: boolean;
+            hasAttachedBathroom?: boolean;
             amenities?: string[];
+            status?: string;
             tenantIds?: number[];
         };
         PgUpdateRequestDto: {
@@ -2165,6 +2183,8 @@ export interface components {
             email?: string;
             phone?: string;
             monthlyRent?: number;
+            tenantImage?: string;
+            aadharCard?: string;
             status?: string;
             rejectionReason?: string;
             /** Format: date-time */
@@ -2254,6 +2274,9 @@ export interface components {
             type: string;
             /** Format: date-time */
             dueDate?: string;
+        };
+        RejectOnboardingRequestDto: {
+            reason: string;
         };
         Keys: {
             p256dh?: string;
@@ -2439,9 +2462,6 @@ export interface components {
             status?: string;
             isActive?: boolean;
             owner?: components["schemas"]["OwnerDto"];
-        };
-        RejectOnboardingRequestDto: {
-            reason: string;
         };
         TenantResponseDto: {
             /** Format: int32 */
@@ -3541,9 +3561,15 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody: {
+        requestBody?: {
             content: {
-                "application/json": components["schemas"]["CreateOnboardingRequestDto"];
+                "application/json": {
+                    req: components["schemas"]["CreateOnboardingRequestDto"];
+                    /** Format: binary */
+                    tenantImage?: string;
+                    /** Format: binary */
+                    aadharCard?: string;
+                };
             };
         };
         responses: {
@@ -3991,6 +4017,54 @@ export interface operations {
                     "*/*": {
                         [key: string]: Record<string, never>;
                     };
+                };
+            };
+        };
+    };
+    reject_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RejectOnboardingRequestDto"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseOnboardingRequestResponseDto"];
+                };
+            };
+        };
+    };
+    approve_2: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseOnboardingRequestResponseDto"];
                 };
             };
         };
@@ -4829,54 +4903,6 @@ export interface operations {
             };
         };
     };
-    reject_1: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["RejectOnboardingRequestDto"];
-            };
-        };
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiResponseOnboardingRequestResponseDto"];
-                };
-            };
-        };
-    };
-    approve_2: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiResponseOnboardingRequestResponseDto"];
-                };
-            };
-        };
-    };
     list_1: {
         parameters: {
             query?: never;
@@ -4985,6 +5011,28 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["TenantResponseDto"][];
+                };
+            };
+        };
+    };
+    getRoomById: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": Record<string, never>;
                 };
             };
         };
