@@ -2185,6 +2185,9 @@ export interface components {
             monthlyRent?: number;
             tenantImage?: string;
             aadharCard?: string;
+            emergencyContactName?: string;
+            emergencyContactPhone?: string;
+            emergencyContactRelationship?: string;
             status?: string;
             rejectionReason?: string;
             /** Format: date-time */

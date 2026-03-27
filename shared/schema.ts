@@ -316,7 +316,7 @@ export const rooms = pgTable("rooms", {
   pgId: integer("pg_id").references(() => pgMaster.id),
   roomNumber: text("room_number").notNull(),
   monthlyRent: decimal("monthly_rent", { precision: 10, scale: 2 }).notNull(),
-  tenantIds: integer("tenant_ids").array().default([]), // Array of tenant IDs
+  tenantIds: integer("tenant_ids").array().default([]), // Array of tenant IDs, This column needs to be created in the database.
   sharing: integer("sharing").default(1), // 1-6 for number of people sharing
   floor: integer("floor").default(1), // Floor number
   hasAttachedBathroom: boolean("has_attached_bathroom").default(false), // true for attached, false for common
