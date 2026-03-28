@@ -167,6 +167,7 @@ function NotificationsDesktop() {
           setLocation("/owner-visit-requests");
           break;
         case "onboarding_request":
+        case "onboarding":
           setLocation("/owner-onboarding-requests");
           break;
         case "payment":
@@ -188,6 +189,7 @@ function NotificationsDesktop() {
     switch (type.toLowerCase()) {
       case "visit_request":
       case "onboarding_request":
+      case "onboarding":
         return MessageSquare;
       case "payment":
         return CheckCheck;
@@ -547,6 +549,7 @@ function NotificationsMobile() {
           setLocation("/owner-visit-requests");
           break;
         case "onboarding_request":
+        case "onboarding":
           setLocation("/owner-onboarding-requests");
           break;
         case "payment":
@@ -568,6 +571,7 @@ function NotificationsMobile() {
     switch (type.toLowerCase()) {
       case "visit_request":
       case "onboarding_request":
+      case "onboarding":
         return MessageSquare;
       case "payment":
         return CheckCheck;

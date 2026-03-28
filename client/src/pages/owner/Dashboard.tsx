@@ -1,7 +1,7 @@
 import DesktopLayout from "@/components/layout/DesktopLayout";
 import MobileLayout from "@/components/layout/MobileLayout";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Users, Wallet, AlertCircle, TrendingUp, UserPlus, Building2, ArrowUpRight, ArrowDownRight, Loader2 } from "lucide-react";
+import { Users, Wallet, AlertCircle, TrendingUp, UserPlus, Building2, ArrowUpRight, ArrowDownRight, Loader2, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
 import { cn } from "@/lib/utils";
@@ -189,17 +189,31 @@ function DashboardDesktop() {
                   payment: Wallet,
                   tenant: UserPlus,
                   complaint: AlertCircle,
+                  onboarding_request: UserPlus,
+                  onboarding: UserPlus,
+                  visit_request: Calendar,
                 };
                 const gradientMap: Record<string, string> = {
                   payment: "from-emerald-500 to-green-600",
                   tenant: "from-blue-500 to-cyan-600",
                   complaint: "from-orange-500 to-red-600",
+                  onboarding_request: "from-purple-500 to-pink-600",
+                  onboarding: "from-purple-500 to-pink-600",
+                  visit_request: "from-indigo-500 to-blue-600",
                 };
                 const ActivityIcon = iconMap[activity.type] || AlertCircle;
                 const gradient = gradientMap[activity.type] || "from-gray-500 to-gray-600";
                 
+                const handleActivityClick = () => {
+                  if (activity.type === 'payment') navigate('/payments');
+                  else if (activity.type === 'complaint') navigate('/complaints');
+                  else if (activity.type === 'onboarding_request' || activity.type === 'onboarding') navigate('/owner-onboarding-requests');
+                  else if (activity.type === 'visit_request') navigate('/owner-visit-requests');
+                  else if (activity.type === 'tenant') navigate('/tenants');
+                };
+                
                 return (
-                  <div key={activity.id} className="group flex items-center gap-4 p-4 bg-gradient-to-r from-white to-gray-50 hover:from-purple-50 hover:to-blue-50 rounded-xl border-2 border-transparent hover:border-purple-200 transition-all duration-300 cursor-pointer" data-testid={`activity-${activity.id}`}>
+                  <div key={activity.id} onClick={handleActivityClick} className="group flex items-center gap-4 p-4 bg-gradient-to-r from-white to-gray-50 hover:from-purple-50 hover:to-blue-50 rounded-xl border-2 border-transparent hover:border-purple-200 transition-all duration-300 cursor-pointer" data-testid={`activity-${activity.id}`}>
                     <div className={cn(
                       "w-12 h-12 rounded-xl flex items-center justify-center shrink-0 shadow-md transition-transform duration-300 group-hover:scale-110",
                       `bg-gradient-to-br ${gradient}`
@@ -371,17 +385,31 @@ function DashboardMobile() {
                 payment: Wallet,
                 tenant: UserPlus,
                 complaint: AlertCircle,
+                onboarding_request: UserPlus,
+                onboarding: UserPlus,
+                visit_request: Calendar,
               };
               const gradientMap: Record<string, string> = {
                 payment: "from-emerald-500 to-green-600",
                 tenant: "from-blue-500 to-cyan-600",
                 complaint: "from-orange-500 to-red-600",
+                onboarding_request: "from-purple-500 to-pink-600",
+                onboarding: "from-purple-500 to-pink-600",
+                visit_request: "from-indigo-500 to-blue-600",
               };
               const ActivityIcon = iconMap[activity.type] || AlertCircle;
               const gradient = gradientMap[activity.type] || "from-gray-500 to-gray-600";
               
+              const handleActivityClick = () => {
+                if (activity.type === 'payment') navigate('/payments');
+                else if (activity.type === 'complaint') navigate('/complaints');
+                else if (activity.type === 'onboarding_request' || activity.type === 'onboarding') navigate('/owner-onboarding-requests');
+                else if (activity.type === 'visit_request') navigate('/owner-visit-requests');
+                else if (activity.type === 'tenant') navigate('/tenants');
+              };
+              
               return (
-                <div key={activity.id} className="group flex items-start gap-3 p-4 bg-gradient-to-r from-white to-gray-50 hover:from-purple-50 hover:to-blue-50 rounded-xl border-2 border-transparent hover:border-purple-200 shadow-sm hover:shadow-lg transition-all duration-300" data-testid={`activity-${activity.id}`}>
+                <div key={activity.id} onClick={handleActivityClick} className="group flex items-start gap-3 p-4 bg-gradient-to-r from-white to-gray-50 hover:from-purple-50 hover:to-blue-50 rounded-xl border-2 border-transparent hover:border-purple-200 shadow-sm hover:shadow-lg transition-all duration-300 cursor-pointer" data-testid={`activity-${activity.id}`}>
                   <div className={cn(
                     "w-11 h-11 rounded-xl flex items-center justify-center shrink-0 shadow-md transition-transform duration-300 group-hover:scale-110",
                     `bg-gradient-to-br ${gradient}`
