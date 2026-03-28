@@ -331,7 +331,7 @@ export default function EditRoom() {
                           <div>
                             <p className="font-medium text-slate-900">{bed.position}</p>
                             <p className="text-xs text-slate-500">
-                              {bed.status === "occupied" ? "Occupied" : "Available"}
+                              {bed.status?.toLowerCase() === "occupied" ? "Occupied" : "Available"}
                             </p>
                           </div>
                         </div>

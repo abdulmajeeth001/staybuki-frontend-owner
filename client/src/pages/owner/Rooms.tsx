@@ -413,7 +413,7 @@ function RoomsDesktop() {
                                   <Bed className="h-4 w-4 text-blue-600" />
                                 </div>
                                 <p className="text-sm font-semibold text-foreground">
-                                  Bed Layout ({beds.filter(b => b.status === "occupied").length}/{beds.length} occupied)
+                                  Bed Layout ({beds.filter(b => b.status.toLowerCase() === "occupied").length}/{beds.length} occupied)
                                 </p>
                               </div>
                               <div className="grid grid-cols-2 gap-2">
@@ -422,7 +422,7 @@ function RoomsDesktop() {
                                     key={bed.id} 
                                     className={cn(
                                       "p-2 rounded-lg border-2 transition-all",
-                                      bed.status === "occupied" 
+                                      bed.status.toLowerCase() === "occupied" 
                                         ? "bg-red-50 border-red-200" 
                                         : "bg-green-50 border-green-200"
                                     )}
@@ -431,9 +431,9 @@ function RoomsDesktop() {
                                     <div className="flex items-center gap-2">
                                       <div className={cn(
                                         "w-6 h-6 rounded flex items-center justify-center",
-                                        bed.status === "occupied" ? "bg-red-200" : "bg-green-200"
+                                        bed.status.toLowerCase() === "occupied" ? "bg-red-200" : "bg-green-200"
                                       )}>
-                                        {bed.status === "occupied" ? (
+                                        {bed.status.toLowerCase() === "occupied" ? (
                                           <User className="w-3 h-3 text-red-600" />
                                         ) : (
                                           <Bed className="w-3 h-3 text-green-600" />
@@ -443,9 +443,9 @@ function RoomsDesktop() {
                                         <p className="text-xs font-medium truncate">{bed.position}</p>
                                         <p className={cn(
                                           "text-[10px]",
-                                          bed.status === "occupied" ? "text-red-600" : "text-green-600"
+                                          bed.status.toLowerCase() === "occupied" ? "text-red-600" : "text-green-600"
                                         )}>
-                                          {bed.status === "occupied" 
+                                          {bed.status.toLowerCase() === "occupied" 
                                             ? (bed.tenant?.name || "Occupied") 
                                             : "Available"}
                                         </p>
@@ -842,7 +842,7 @@ function RoomsMobile() {
                             <div className="flex items-center gap-2 mb-2">
                               <Bed className="h-4 w-4 text-blue-600" />
                               <p className="text-sm font-semibold">
-                                Beds ({beds.filter(b => b.status === "occupied").length}/{beds.length} occupied)
+                                Beds ({beds.filter(b => b.status.toLowerCase() === "occupied").length}/{beds.length} occupied)
                               </p>
                             </div>
                             <div className="grid grid-cols-2 gap-2">
@@ -851,7 +851,7 @@ function RoomsMobile() {
                                   key={bed.id} 
                                   className={cn(
                                     "p-2 rounded-lg border-2",
-                                    bed.status === "occupied" 
+                                    bed.status.toLowerCase() === "occupied" 
                                       ? "bg-red-50 border-red-200" 
                                       : "bg-green-50 border-green-200"
                                   )}
@@ -860,9 +860,9 @@ function RoomsMobile() {
                                   <div className="flex items-center gap-2">
                                     <div className={cn(
                                       "w-5 h-5 rounded flex items-center justify-center",
-                                      bed.status === "occupied" ? "bg-red-200" : "bg-green-200"
+                                      bed.status.toLowerCase() === "occupied" ? "bg-red-200" : "bg-green-200"
                                     )}>
-                                      {bed.status === "occupied" ? (
+                                      {bed.status.toLowerCase() === "occupied" ? (
                                         <User className="w-3 h-3 text-red-600" />
                                       ) : (
                                         <Bed className="w-3 h-3 text-green-600" />
@@ -872,9 +872,9 @@ function RoomsMobile() {
                                       <p className="text-xs font-medium truncate">{bed.position}</p>
                                       <p className={cn(
                                         "text-[10px]",
-                                        bed.status === "occupied" ? "text-red-600" : "text-green-600"
+                                        bed.status.toLowerCase() === "occupied" ? "text-red-600" : "text-green-600"
                                       )}>
-                                        {bed.status === "occupied" 
+                                        {bed.status.toLowerCase() === "occupied" 
                                           ? (bed.tenant?.name || "Occupied") 
                                           : "Available"}
                                       </p>

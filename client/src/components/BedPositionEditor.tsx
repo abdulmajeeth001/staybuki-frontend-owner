@@ -86,7 +86,7 @@ export function BedPositionEditor({
   };
 
   const getStatusColor = (status?: string) => {
-    switch (status) {
+    switch (status?.toLowerCase()) {
       case "occupied":
         return "bg-red-100 border-red-300 text-red-700";
       case "reserved":
@@ -97,7 +97,7 @@ export function BedPositionEditor({
   };
 
   const getStatusBadge = (status?: string) => {
-    switch (status) {
+    switch (status?.toLowerCase()) {
       case "occupied":
         return <Badge className="bg-red-500 text-xs">Occupied</Badge>;
       case "reserved":
@@ -157,9 +157,9 @@ export function BedPositionEditor({
                 <div className="flex items-center gap-2">
                   <div className={cn(
                     "w-8 h-8 rounded-lg flex items-center justify-center",
-                    bed.status === "occupied" ? "bg-red-200" : "bg-blue-100"
+                    bed.status?.toLowerCase() === "occupied" ? "bg-red-200" : "bg-blue-100"
                   )}>
-                    {bed.status === "occupied" ? (
+                    {bed.status?.toLowerCase() === "occupied" ? (
                       <User className="w-4 h-4 text-red-600" />
                     ) : (
                       <Bed className="w-4 h-4 text-blue-600" />
@@ -279,7 +279,7 @@ export function BedPositionViewer({
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
       {beds.map((bed) => {
-        const isAvailable = bed.status === "available";
+        const isAvailable = bed.status?.toLowerCase() === "available";
         const isSelected = selectedBedId === bed.id;
 
         return (

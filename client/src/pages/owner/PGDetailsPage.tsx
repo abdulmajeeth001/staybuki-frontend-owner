@@ -502,7 +502,7 @@ export default function PGDetailsPage() {
                                 key={bed.id}
                                 className={cn(
                                   "p-2 rounded-lg text-center border transition-all",
-                                  bed.status === "AVAILABLE"
+                                  bed.status?.toLowerCase() === "available"
                                     ? "bg-green-50 border-green-200 text-green-700"
                                     : "bg-red-50 border-red-200 text-red-600 opacity-75"
                                 )}
@@ -513,12 +513,12 @@ export default function PGDetailsPage() {
                                   variant="secondary" 
                                   className={cn(
                                     "text-[10px] mt-1 px-1.5 capitalize",
-                                    bed.status === "AVAILABLE" 
+                                    bed.status?.toLowerCase() === "available" 
                                       ? "bg-green-100 text-green-700" 
                                       : "bg-red-100 text-red-600"
                                   )}
                                 >
-                                  {bed.status}
+                                  {bed.status?.toLowerCase()}
                                 </Badge>
                               </div>
                             ))}
