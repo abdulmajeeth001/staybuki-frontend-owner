@@ -165,7 +165,7 @@ export default function OwnerOnboardingRequestsPage() {
 
   const filteredRequests = onboardingRequests
     .filter((req) => statusFilter === "all" || req.status === statusFilter)
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
 
   const counts = {
     all: onboardingRequests.length,
@@ -190,12 +190,20 @@ export default function OwnerOnboardingRequestsPage() {
         setDetailsDialog={setDetailsDialog}
         rejectDialog={rejectDialog}
         setRejectDialog={setRejectDialog}
-        handleReject={() => rejectMutation.mutate({ id: rejectDialog.request!.id, reason: rejectDialog.reason })}
+        handleReject={() => {
+          if (rejectDialog.request?.id) {
+            rejectMutation.mutate({ id: rejectDialog.request.id, reason: rejectDialog.reason });
+          }
+        }}
         rejectMutation={rejectMutation}
         bedSelectDialog={bedSelectDialog}
         setBedSelectDialog={setBedSelectDialog}
         handleApprove={handleApprove}
-        handleConfirmApprove={() => approveMutation.mutate({ id: bedSelectDialog.request!.id, bedId: bedSelectDialog.selectedBedId || undefined })}
+        handleConfirmApprove={() => {
+          if (bedSelectDialog.request?.id) {
+            approveMutation.mutate({ id: bedSelectDialog.request.id, bedId: bedSelectDialog.selectedBedId || undefined });
+          }
+        }}
         approveMutation={approveMutation}
         imagePreview={imagePreview}
         setImagePreview={setImagePreview}
@@ -312,130 +320,219 @@ function OwnerOnboardingRequestsContent({
 
       {/* Details Dialog */}
       <Dialog open={detailsDialog.open} onOpenChange={(v) => !v && setDetailsDialog({ open: false })}>
-        <DialogContent className="max-w-3xl p-0">
+        <DialogContent className="max-w-3xl p-0 overflow-hidden border-0 shadow-2xl [&>button]:text-white [&>button]:top-5 [&>button]:right-5">
           {detailsDialog.request && (
             <>
-              <DialogHeader className="p-6 pb-4">
-                <DialogTitle className="text-2xl font-bold">Onboarding Request Details</DialogTitle>
-              </DialogHeader>
-              <div className="max-h-[75vh] overflow-y-auto px-6 pb-6 space-y-6">
-                {/* Profile Header */}
-                <div className="flex flex-col sm:flex-row items-center gap-6 p-4 bg-secondary/50 rounded-xl border">
-                  <div className="w-24 h-24 rounded-full bg-slate-200 overflow-hidden flex-shrink-0 border-4 border-background shadow-md">
-                    {detailsDialog.request.tenantImage ? (
-                      <img src={detailsDialog.request.tenantImage} alt={detailsDialog.request.name} className="w-full h-full object-cover" />
-                    ) : (
-                      <User className="w-16 h-16 text-muted-foreground m-auto" />
-                    )}
-                  </div>
-                  <div className="space-y-1 text-center sm:text-left">
-                    <h3 className="text-2xl font-bold">{detailsDialog.request.name}</h3>
-                    <div className="flex items-center gap-2 text-muted-foreground justify-center sm:justify-start">
-                      <Mail size={14} />
-                      <span>{detailsDialog.request.email}</span>
+              <div className="bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 px-6 py-5 flex justify-between items-center shadow-md z-10 relative">
+                <DialogTitle className="text-xl font-bold text-white tracking-wide">
+                  Onboarding Request Details
+                </DialogTitle>
+              </div>
+              <div className="max-h-[80vh] overflow-y-auto p-6 space-y-8 bg-slate-50">
+                {/* Premium Profile Header */}
+                <div className="relative overflow-hidden rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-100/60 to-white p-6 shadow-sm">
+                  <div className="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-gradient-to-br from-purple-200 to-blue-200 rounded-full blur-3xl opacity-50" />
+                  <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 relative">
+                    <div className="w-24 h-24 rounded-full bg-slate-100 flex-shrink-0 border-4 border-white shadow-md overflow-hidden">
+                      {detailsDialog.request.tenantImage ? (
+                        <img src={detailsDialog.request.tenantImage} alt={detailsDialog.request.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <User className="w-12 h-12 text-slate-400 m-auto h-full" />
+                      )}
                     </div>
-                    <div className="flex items-center gap-2 text-muted-foreground justify-center sm:justify-start">
-                      <Phone size={14} />
-                      <span>{detailsDialog.request.phone}</span>
+                    <div className="space-y-3 text-center sm:text-left flex-1 w-full">
+                      <div>
+                        <h3 className="text-2xl font-bold text-gray-900">{detailsDialog.request.name}</h3>
+                        <p className="text-sm text-purple-600 font-medium mt-1">Applicant</p>
+                      </div>
+                      <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
+                        <div className="flex items-center gap-1.5 text-sm text-gray-700 bg-gray-50 px-3 py-1.5 rounded-full border border-gray-200">
+                          <Mail size={14} className="text-blue-500" />
+                          <span>{detailsDialog.request.email}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 text-sm text-gray-700 bg-gray-50 px-3 py-1.5 rounded-full border border-gray-200">
+                          <Phone size={14} className="text-green-500" />
+                          <span>{detailsDialog.request.phone}</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
 
                 {/* Details Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="p-4 border rounded-lg space-y-3">
-                    <h4 className="font-semibold text-sm flex items-center gap-2"><Building2 size={16} className="text-primary" /> Request Details</h4>
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-muted-foreground">Room</span>
-                      <span className="font-medium">{detailsDialog.request.roomNumber}</span>
-                    </div>
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-muted-foreground">Monthly Rent</span>
-                      <span className="font-bold text-green-600">₹{detailsDialog.request.monthlyRent}</span>
-                    </div>
-                    {detailsDialog.request.profession && (
-                      <div className="flex justify-between items-center text-sm">
-                        <span className="text-muted-foreground">Profession</span>
-                        <span className="font-medium">{detailsDialog.request.profession}</span>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Stay Info */}
+                  <div className="space-y-4">
+                    <h4 className="font-semibold text-gray-900 flex items-center gap-2 border-b border-purple-100 pb-2">
+                      <div className="p-1.5 bg-purple-100 rounded-md">
+                        <Building2 size={16} className="text-purple-600" />
                       </div>
-                    )}
+                      Stay Details
+                    </h4>
+                    <div className="space-y-3 bg-gradient-to-br from-purple-100/60 to-white p-5 rounded-xl border border-purple-200/80 shadow-sm">
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-muted-foreground">Room</span>
+                        <span className="font-medium bg-gray-50 px-2 py-0.5 rounded border shadow-sm">{detailsDialog.request.roomNumber}</span>
+                      </div>
+                      {detailsDialog.request.gender && (
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-muted-foreground">Gender</span>
+                          <span className="font-medium">{detailsDialog.request.gender.charAt(0).toUpperCase() + detailsDialog.request.gender.slice(1).toLowerCase()}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-muted-foreground">Monthly Rent</span>
+                        <span className="font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded border border-green-100">₹{detailsDialog.request.monthlyRent}</span>
+                      </div>
+                      {(detailsDialog.request as any).advanceAmount != null && (
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-muted-foreground">Advance Amount</span>
+                          <span className="font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded border border-green-100">₹{(detailsDialog.request as any).advanceAmount}</span>
+                        </div>
+                      )}
+                      {detailsDialog.request.profession && (
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-muted-foreground">Profession</span>
+                          <span className="font-medium text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">{detailsDialog.request.profession}</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <div className="p-4 border rounded-lg space-y-3">
-                    <h4 className="font-semibold text-sm flex items-center gap-2"><AlertCircle size={16} className="text-destructive" /> Emergency Contact</h4>
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-muted-foreground">Name</span>
-                      <span className="font-medium">{detailsDialog.request.emergencyContactName}</span>
-                    </div>
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-muted-foreground">Phone</span>
-                      <span className="font-medium">{detailsDialog.request.emergencyContactPhone}</span>
-                    </div>
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-muted-foreground">Relationship</span>
-                      <span className="font-medium">{detailsDialog.request.emergencyContactRelationship}</span>
+
+                  {/* Emergency Contact */}
+                  <div className="space-y-4">
+                    <h4 className="font-semibold text-gray-900 flex items-center gap-2 border-b border-orange-100 pb-2">
+                      <div className="p-1.5 bg-orange-100 rounded-md">
+                        <AlertCircle size={16} className="text-orange-600" />
+                      </div>
+                      Emergency Contact
+                    </h4>
+                    <div className="space-y-3 bg-gradient-to-br from-orange-100/60 to-white p-5 rounded-xl border border-orange-200/80 shadow-sm h-[calc(100%-2.5rem)]">
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-muted-foreground">Name</span>
+                        <span className="font-medium">{detailsDialog.request.emergencyContactName}</span>
+                      </div>
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-muted-foreground">Phone</span>
+                        <span className="font-medium">{detailsDialog.request.emergencyContactPhone}</span>
+                      </div>
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-muted-foreground">Relationship</span>
+                        <span className="font-medium bg-gray-50 px-2 py-0.5 rounded border shadow-sm">{detailsDialog.request.emergencyContactRelationship}</span>
+                      </div>
                     </div>
                   </div>
                 </div>
 
+                {/* Documents Section */}
                 {(detailsDialog.request.tenantImage || detailsDialog.request.aadharCard || (detailsDialog.request as any).professionIdDocUrl) && (
-                  <div className="space-y-3">
-                    <h4 className="font-semibold text-sm flex items-center gap-2"><FileText size={16} className="text-primary" /> Documents</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-4">
+                    <h4 className="font-semibold text-gray-900 flex items-center gap-2 border-b border-blue-100 pb-2">
+                      <div className="p-1.5 bg-blue-100 rounded-md">
+                        <FileText size={16} className="text-blue-600" />
+                      </div>
+                      Attached Documents
+                    </h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                       {detailsDialog.request.tenantImage && (
-                        <div>
-                          <Label className="text-xs text-muted-foreground">Tenant Photo</Label>
-                          <img src={detailsDialog.request.tenantImage} alt="Tenant" className="mt-2 rounded-lg border w-full h-48 object-cover cursor-pointer" onClick={() => openImagePreview(detailsDialog.request!.tenantImage!, "Tenant Photo")} />
+                        <div 
+                          className="group relative rounded-xl border border-blue-200/80 bg-gradient-to-br from-blue-100/60 to-white overflow-hidden cursor-pointer hover:border-blue-300 hover:shadow-md transition-all flex flex-col"
+                          onClick={() => openImagePreview(detailsDialog.request!.tenantImage!, "Tenant Photo")}
+                        >
+                          <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                            <Eye className="w-8 h-8 text-white drop-shadow-md" />
+                          </div>
+                          <div className="h-32 p-2 bg-white/50 flex-1">
+                            <img src={detailsDialog.request.tenantImage} alt="Tenant" className="w-full h-full object-cover rounded-lg shadow-sm" />
+                          </div>
+                          <div className="py-2.5 px-3 bg-white/80 border-t border-blue-100 text-sm font-medium text-center text-gray-700">Tenant Photo</div>
                         </div>
                       )}
                       {detailsDialog.request.aadharCard && (
-                        <div>
-                          <Label className="text-xs text-muted-foreground">Aadhar Card</Label>
-                          {detailsDialog.request.aadharCard.toLowerCase().endsWith('.pdf') ? (
-                            <iframe src={detailsDialog.request.aadharCard} title="Aadhar Card" className="mt-2 rounded-lg border w-full h-48" />
-                          ) : (
-                            <img src={detailsDialog.request.aadharCard} alt="Aadhar Card" className="mt-2 rounded-lg border w-full h-48 object-cover cursor-pointer" onClick={() => openImagePreview(detailsDialog.request!.aadharCard!, "Aadhar Card")} />
+                        <div 
+                          className="group relative rounded-xl border border-blue-200/80 bg-gradient-to-br from-blue-100/60 to-white overflow-hidden cursor-pointer hover:border-blue-300 hover:shadow-md transition-all flex flex-col"
+                          onClick={() => {
+                            if (!detailsDialog.request!.aadharCard!.toLowerCase().endsWith('.pdf')) {
+                               openImagePreview(detailsDialog.request!.aadharCard!, "Aadhar Card");
+                            }
+                          }}
+                        >
+                          {!detailsDialog.request.aadharCard.toLowerCase().endsWith('.pdf') && (
+                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none">
+                              <Eye className="w-8 h-8 text-white drop-shadow-md" />
+                            </div>
                           )}
+                          <div className="h-32 p-2 bg-white/50 flex-1">
+                            {detailsDialog.request.aadharCard.toLowerCase().endsWith('.pdf') ? (
+                              <iframe src={detailsDialog.request.aadharCard} title="Aadhar Card" className="w-full h-full rounded-lg shadow-sm" />
+                            ) : (
+                              <img src={detailsDialog.request.aadharCard} alt="Aadhar Card" className="w-full h-full object-cover rounded-lg shadow-sm" />
+                            )}
+                          </div>
+                          <div className="py-2.5 px-3 bg-white/80 border-t border-blue-100 text-sm font-medium text-center text-gray-700">Aadhar Card</div>
                         </div>
                       )}
                       {(detailsDialog.request as any).professionIdDocUrl && (
-                        <div>
-                          <Label className="text-xs text-muted-foreground">Profession ID</Label>
-                          {(detailsDialog.request as any).professionIdDocUrl.toLowerCase().endsWith('.pdf') ? (
-                            <iframe src={(detailsDialog.request as any).professionIdDocUrl} title="Profession ID" className="mt-2 rounded-lg border w-full h-48" />
-                          ) : (
-                            <img src={(detailsDialog.request as any).professionIdDocUrl} alt="Profession ID" className="mt-2 rounded-lg border w-full h-48 object-cover cursor-pointer" onClick={() => openImagePreview((detailsDialog.request as any).professionIdDocUrl, "Profession ID")} />
+                        <div 
+                          className="group relative rounded-xl border border-blue-200/80 bg-gradient-to-br from-blue-100/60 to-white overflow-hidden cursor-pointer hover:border-blue-300 hover:shadow-md transition-all flex flex-col"
+                          onClick={() => {
+                            if (!(detailsDialog.request as any).professionIdDocUrl.toLowerCase().endsWith('.pdf')) {
+                               openImagePreview((detailsDialog.request as any).professionIdDocUrl, "Profession ID");
+                            }
+                          }}
+                        >
+                          {!(detailsDialog.request as any).professionIdDocUrl.toLowerCase().endsWith('.pdf') && (
+                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none">
+                              <Eye className="w-8 h-8 text-white drop-shadow-md" />
+                            </div>
                           )}
+                          <div className="h-32 p-2 bg-white/50 flex-1">
+                            {(detailsDialog.request as any).professionIdDocUrl.toLowerCase().endsWith('.pdf') ? (
+                              <iframe src={(detailsDialog.request as any).professionIdDocUrl} title="Profession ID" className="w-full h-full rounded-lg shadow-sm" />
+                            ) : (
+                              <img src={(detailsDialog.request as any).professionIdDocUrl} alt="Profession ID" className="w-full h-full object-cover rounded-lg shadow-sm" />
+                            )}
+                          </div>
+                          <div className="py-2.5 px-3 bg-white/80 border-t border-blue-100 text-sm font-medium text-center text-gray-700">Profession ID</div>
                         </div>
                       )}
                     </div>
                   </div>
                 )}
 
+                {/* Stay History Section */}
                 {isDesktop && (detailsDialog.request as any).tenantHistory && (detailsDialog.request as any).tenantHistory.length > 0 && (
-                  <div className="space-y-3">
-                    <h4 className="font-semibold text-sm flex items-center gap-2"><History size={16} className="text-primary" /> Previous Stay History</h4>
-                    <div className="space-y-3 max-h-60 overflow-y-auto pr-2">
+                  <div className="space-y-4">
+                    <h4 className="font-semibold text-gray-900 flex items-center gap-2 border-b border-emerald-100 pb-2">
+                      <div className="p-1.5 bg-emerald-100 rounded-md">
+                        <History size={16} className="text-emerald-600" />
+                      </div>
+                      Previous Stay History
+                    </h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-60 overflow-y-auto pr-2">
                       {(detailsDialog.request as any).tenantHistory.map((history: any) => (
-                        <div key={history.id} className="p-4 border rounded-lg bg-secondary/50">
-                          <div className="flex justify-between items-start">
+                        <div key={history.id} className="p-5 border border-emerald-100 rounded-xl bg-gradient-to-br from-emerald-100/60 to-white hover:shadow-md transition-shadow">
+                          <div className="flex justify-between items-start mb-2">
                             <div>
-                              <p className="font-semibold">{history.pgName}</p>
-                              <p className="text-xs text-muted-foreground">{history.pgAddress}</p>
+                              <p className="font-bold text-gray-900">{history.pgName}</p>
+                              <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                                <MapPin size={12} /> {history.pgAddress}
+                              </p>
                             </div>
                             {history.rating && (
-                              <div className="flex items-center gap-1">
+                              <div className="flex items-center gap-0.5 bg-yellow-50 px-2 py-1 rounded-full border border-yellow-100">
                                 {Array.from({ length: 5 }).map((_, i) => (
-                                  <Star key={i} className={cn("w-4 h-4", i < history.rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300")} />
+                                  <Star key={i} className={cn("w-3 h-3", i < history.rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300")} />
                                 ))}
                               </div>
                             )}
                           </div>
-                          <div className="grid grid-cols-2 gap-2 text-xs mt-3 text-muted-foreground">
-                            <div className="flex items-center gap-1"><Calendar size={14} /> Move-in: {format(new Date(history.moveInDate), "MMM yyyy")}</div>
-                            <div className="flex items-center gap-1"><Calendar size={14} /> Move-out: {format(new Date(history.moveOutDate), "MMM yyyy")}</div>
+                          <div className="grid grid-cols-2 gap-2 text-xs mt-4 py-2 border-y border-dashed border-gray-100 text-muted-foreground">
+                            <div className="flex items-center gap-1.5"><Calendar size={14} className="text-blue-500" /> <span className="font-medium text-gray-700">{format(new Date(history.moveInDate), "MMM yyyy")}</span></div>
+                            <div className="flex items-center gap-1.5"><Calendar size={14} className="text-orange-500" /> <span className="font-medium text-gray-700">{format(new Date(history.moveOutDate), "MMM yyyy")}</span></div>
                           </div>
                           {history.ownerFeedback && (
-                            <p className="text-xs italic mt-2 text-muted-foreground">"{history.ownerFeedback}"</p>
+                            <p className="text-sm italic mt-3 text-gray-600 border-l-2 border-purple-300 pl-3">"{history.ownerFeedback}"</p>
                           )}
                         </div>
                       ))}
@@ -443,8 +540,8 @@ function OwnerOnboardingRequestsContent({
                   </div>
                 )}
               </div>
-              <DialogFooter className="p-6 pt-0 bg-background rounded-b-lg">
-                <Button variant="outline" onClick={() => setDetailsDialog({ open: false })}>Close</Button>
+              <DialogFooter className="p-4 px-6 border-t bg-gray-50/50 rounded-b-lg flex sm:justify-end gap-2">
+                <Button variant="outline" className="border-2" onClick={() => setDetailsDialog({ open: false })}>Close</Button>
               </DialogFooter>
             </>
           )}

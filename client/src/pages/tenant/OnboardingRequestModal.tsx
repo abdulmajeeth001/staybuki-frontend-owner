@@ -79,6 +79,7 @@ const onboardingSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters" }),
   email: z.string().email({ message: "Please enter a valid email" }),
   phone: z.string().min(10, { message: "Please enter a valid phone number" }),
+  gender: z.enum(["MALE", "FEMALE", "OTHER"], { required_error: "Please select your gender" }),
   monthlyRent: z.number().nullable(),
   advanceAmount: z.number().nullable(),
   tenantImage: z.instanceof(File).nullable(),
@@ -93,7 +94,7 @@ const onboardingSchema = z.object({
 type OnboardingFormData = z.infer<typeof onboardingSchema>;
 
 const stepFields: (keyof OnboardingFormData)[][] = [
-  ["name", "email", "phone"],
+  ["name", "email", "phone", "gender"],
   [], // No required fields for documents step
   ["emergencyContactName", "emergencyContactPhone", "emergencyContactRelationship"],
 ];
@@ -130,6 +131,7 @@ export default function OnboardingRequestModal({
       name: "",
       email: "",
       phone: "",
+      gender: undefined as any,
       monthlyRent: null,
       advanceAmount: null,
       profession: "",
@@ -154,8 +156,11 @@ export default function OnboardingRequestModal({
       setValue("name", user.name || "");
       setValue("email", user.email || "");
       setValue("phone", user.mobile || "");
+      if (user.gender) {
+        setValue("gender", user.gender.toUpperCase() as "MALE" | "FEMALE" | "OTHER");
+      }
     }
-  }, [open, user]);
+  }, [open, user, setValue]);
 
   // Set monthly rent and advance amount from room data
   useEffect(() => {
@@ -274,7 +279,9 @@ export default function OnboardingRequestModal({
       name: data.name,
       email: data.email,
       phone: data.phone,
+      gender: data.gender,
       monthlyRent: data.monthlyRent,
+      advanceAmount: data.advanceAmount,
       profession: data.profession,
       emergencyContactName: data.emergencyContactName,
       emergencyContactPhone: data.emergencyContactPhone,
@@ -436,6 +443,37 @@ export default function OnboardingRequestModal({
                     {errors.phone && (
                       <p className="text-xs text-red-600 flex items-center gap-1 mt-1">
                         <AlertCircleIcon className="w-3 h-3" /> {errors.phone.message}
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <Label htmlFor="gender" className="text-sm font-semibold text-gray-700">
+                      Gender <span className="text-red-500">*</span>
+                    </Label>
+                    <Controller
+                      name="gender"
+                      control={control}
+                      render={({ field }) => (
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <SelectTrigger
+                            id="gender"
+                            className="mt-1 border-2 focus:border-purple-400 bg-white"
+                            data-testid="select-gender"
+                          >
+                            <SelectValue placeholder="Select your gender" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="MALE">Male</SelectItem>
+                            <SelectItem value="FEMALE">Female</SelectItem>
+                            <SelectItem value="OTHER">Other</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+                    {errors.gender && (
+                      <p className="text-xs text-red-600 flex items-center gap-1 mt-1">
+                        <AlertCircleIcon className="w-3 h-3" /> {errors.gender.message}
                       </p>
                     )}
                   </div>
@@ -820,6 +858,10 @@ export default function OnboardingRequestModal({
                       <div className="flex justify-between">
                         <span className="text-gray-600">Phone:</span>
                         <span className="font-medium text-gray-800">{watchedValues.phone}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Gender:</span>
+                        <span className="font-medium text-gray-800">{watchedValues.gender ? watchedValues.gender.charAt(0) + watchedValues.gender.slice(1).toLowerCase() : ''}</span>
                       </div>
                       {watchedValues.monthlyRent && (
                         <div className="flex justify-between">

@@ -2157,7 +2157,10 @@ export interface components {
             name: string;
             email?: string;
             phone: string;
+            /** @enum {string} */
+            gender: "MALE" | "FEMALE" | "OTHER";
             monthlyRent: number;
+            advanceAmount?: number;
             tenantImage?: string;
             aadharCard?: string;
             profession?: string;
@@ -2186,7 +2189,10 @@ export interface components {
             name?: string;
             email?: string;
             phone?: string;
+            /** @enum {string} */
+            gender?: "MALE" | "FEMALE" | "OTHER";
             monthlyRent?: number;
+            advanceAmount?: number;
             tenantImage?: string;
             aadharCard?: string;
             profession?: string;
