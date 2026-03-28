@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { useLocation } from "wouter";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Dialog,
@@ -31,9 +30,15 @@ import {
   ArrowRight,
   ArrowLeft,
   Sparkles,
+  Briefcase,
+  AlertCircle as AlertCircleIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { api } from "@/apiClient";
+import { applicantService } from "@/services/applicantService";
+import type { RoomDetailsResponse, CreateOnboardingRequest } from "@/types/applicant";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 
 interface OnboardingRequestModalProps {
   open: boolean;
@@ -52,6 +57,15 @@ const RELATIONSHIP_OPTIONS = [
   { value: "Other", label: "Other" },
 ];
 
+const PROFESSION_OPTIONS = [
+  { value: "Student", label: "Student" },
+  { value: "Employee", label: "Employee" },
+  { value: "Entrepreneur", label: "Entrepreneur" },
+  { value: "Business", label: "Business" },
+  { value: "Freelancer", label: "Freelancer" },
+  { value: "Other", label: "Other" },
+];
+
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
 const STEPS = [
@@ -61,6 +75,29 @@ const STEPS = [
   { id: 4, title: "Review", icon: CheckCircle2 },
 ];
 
+const onboardingSchema = z.object({
+  name: z.string().min(2, { message: "Name must be at least 2 characters" }),
+  email: z.string().email({ message: "Please enter a valid email" }),
+  phone: z.string().min(10, { message: "Please enter a valid phone number" }),
+  monthlyRent: z.number().nullable(),
+  advanceAmount: z.number().nullable(),
+  tenantImage: z.instanceof(File).nullable(),
+  aadharCard: z.instanceof(File).nullable(),
+  profession: z.string().optional(),
+  professionIdDoc: z.instanceof(File).nullable(),
+  emergencyContactName: z.string().min(2, { message: "Contact name is required" }),
+  emergencyContactPhone: z.string().min(10, { message: "Valid phone number is required" }),
+  emergencyContactRelationship: z.string().min(1, { message: "Relationship is required" }),
+});
+
+type OnboardingFormData = z.infer<typeof onboardingSchema>;
+
+const stepFields: (keyof OnboardingFormData)[][] = [
+  ["name", "email", "phone"],
+  [], // No required fields for documents step
+  ["emergencyContactName", "emergencyContactPhone", "emergencyContactRelationship"],
+];
+
 export default function OnboardingRequestModal({
   open,
   onClose,
@@ -68,95 +105,92 @@ export default function OnboardingRequestModal({
   pgId,
   roomId,
 }: OnboardingRequestModalProps) {
-  const [, navigate] = useLocation();
   const queryClient = useQueryClient();
   const { user } = useUser();
 
   const [currentStep, setCurrentStep] = useState(1);
 
-  // Form state
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
-  const [monthlyRent, setMonthlyRent] = useState<number | null>(null);
-  const [tenantImage, setTenantImage] = useState<File | null>(null);
-  const [aadharCard, setAadharCard] = useState<File | null>(null);
-  const [emergencyContactName, setEmergencyContactName] = useState("");
-  const [emergencyContactPhone, setEmergencyContactPhone] = useState("");
-  const [emergencyContactRelationship, setEmergencyContactRelationship] = useState("");
-
   // Preview states
   const [tenantImagePreview, setTenantImagePreview] = useState<string | null>(null);
   const [aadharCardPreview, setAadharCardPreview] = useState<string | null>(null);
+  const [professionIdPreview, setProfessionIdPreview] = useState<string | null>(null);
+
+  const {
+    control,
+    register,
+    handleSubmit,
+    watch,
+    setValue,
+    reset,
+    trigger,
+    formState: { errors },
+  } = useForm<OnboardingFormData>({
+    resolver: zodResolver(onboardingSchema),
+    defaultValues: {
+      name: "",
+      email: "",
+      phone: "",
+      monthlyRent: null,
+      advanceAmount: null,
+      profession: "",
+      emergencyContactName: "",
+      emergencyContactPhone: "",
+      emergencyContactRelationship: "",
+    },
+  });
+
+  const watchedValues = watch();
 
   // Fetch room details to get monthly rent
-  const { data: roomData } = useQuery({
-    queryKey: ["/api/tenant/rooms", roomId],
-    queryFn: async () => {
-      if (!roomId) return null;
-      const res = await api.get(`/api/tenant/rooms/${roomId}`);
-      return res.data;
-    },
+  const { data: roomData } = useQuery<RoomDetailsResponse | null>({
+    queryKey: ["tenant-room-details", roomId],
+    queryFn: () => (roomId ? applicantService.getRoomDetails(roomId) : null),
     enabled: !!roomId && open,
   });
 
   // Pre-fill user data when modal opens
   useEffect(() => {
     if (open && user) {
-      setName(user.name || "");
-      setEmail(user.email || "");
-      setPhone(user.mobile || "");
+      setValue("name", user.name || "");
+      setValue("email", user.email || "");
+      setValue("phone", user.mobile || "");
     }
   }, [open, user]);
 
-  // Set monthly rent from room data
+  // Set monthly rent and advance amount from room data
   useEffect(() => {
-    if (roomData && roomData.monthlyRent) {
-      setMonthlyRent(parseFloat(roomData.monthlyRent));
+    if (roomData) {
+      if ((roomData as any).monthlyRent) {
+        setValue("monthlyRent", parseFloat((roomData as any).monthlyRent));
+      }
+      if ((roomData as any).advanceAmount) {
+        setValue("advanceAmount", parseFloat((roomData as any).advanceAmount));
+      }
     }
-  }, [roomData]);
+  }, [roomData, setValue]);
 
   // Reset form when modal closes
   useEffect(() => {
     if (!open) {
       setCurrentStep(1);
-      setName("");
-      setEmail("");
-      setPhone("");
-      setMonthlyRent(null);
-      setTenantImage(null);
-      setAadharCard(null);
-      setEmergencyContactName("");
-      setEmergencyContactPhone("");
-      setEmergencyContactRelationship("");
+      reset();
       setTenantImagePreview(null);
       setAadharCardPreview(null);
+      setProfessionIdPreview(null);
     }
   }, [open]);
 
   // Create onboarding request mutation
   const createOnboardingMutation = useMutation({
-    mutationFn: async (formData: FormData) => {
-      // Axios automatically sets Content-Type to multipart/form-data when sending FormData
-      const res = await api.post("/api/tenant/onboarding-requests", formData, {
-        headers: {
-          // No need to manually set Content-Type, Axios handles it for FormData
-          // 'Content-Type': 'multipart/form-data',
-        },
-      });
-      return res.data;
-    },
+    mutationFn: (formData: FormData) => applicantService.createOnboardingRequest(formData),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/tenant/visit-requests"] });
+      queryClient.invalidateQueries({ queryKey: ["tenantVisitRequests"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/tenant/onboarding-requests"] });
       toast({
         title: "Success",
         description: "Your onboarding request has been submitted successfully! The owner will review it shortly.",
       });
       onClose();
-      // Redirect to tenant dashboard after a short delay
-      setTimeout(() => {
-        navigate("/tenant-dashboard");
-      }, 1500);
     },
     onError: (error: any) => {
       toast({
@@ -169,8 +203,8 @@ export default function OnboardingRequestModal({
 
   const handleFileUpload = async (
     file: File,
-    setFile: (value: File) => void,
-    setPreview: (value: string) => void
+    fieldName: keyof OnboardingFormData,
+    setPreview: (value: string | null) => void
   ) => {
     // Validate file size
     if (file.size > MAX_FILE_SIZE) {
@@ -196,7 +230,7 @@ export default function OnboardingRequestModal({
     const reader = new FileReader();
     reader.onloadend = () => {
       const base64String = reader.result as string;
-      setFile(file); // Store the actual File object
+      setValue(fieldName, file, { shouldValidate: true });
       setPreview(base64String);
     };
     reader.onerror = () => {
@@ -209,37 +243,10 @@ export default function OnboardingRequestModal({
     reader.readAsDataURL(file);
   };
 
-  const validateStep = (step: number): boolean => {
-    switch (step) {
-      case 1:
-        if (!name || !email || !phone) {
-          toast({
-            title: "Missing Information",
-            description: "Please fill in all required fields",
-            variant: "destructive",
-          });
-          return false;
-        }
-        return true;
-      case 2:
-        return true; // Documents are optional
-      case 3:
-        if (!emergencyContactName || !emergencyContactPhone || !emergencyContactRelationship) {
-          toast({
-            title: "Missing Information",
-            description: "Please provide emergency contact details",
-            variant: "destructive",
-          });
-          return false;
-        }
-        return true;
-      default:
-        return true;
-    }
-  };
-
-  const handleNext = () => {
-    if (validateStep(currentStep)) {
+  const handleNext = async () => {
+    const fieldsToValidate = stepFields[currentStep - 1];
+    const isValid = await trigger(fieldsToValidate);
+    if (isValid) {
       setCurrentStep(currentStep + 1);
     }
   };
@@ -248,8 +255,8 @@ export default function OnboardingRequestModal({
     setCurrentStep(currentStep - 1);
   };
 
-  const handleSubmit = () => {
-    if (!pgId || !roomId || !monthlyRent) {
+  const onSubmit = (data: OnboardingFormData) => {
+    if (!pgId || !roomId || !data.monthlyRent) {
       toast({
         title: "Missing Information",
         description: "Room information is required",
@@ -257,30 +264,33 @@ export default function OnboardingRequestModal({
       });
       return;
     }
-
     const formData = new FormData();
 
     // Append the DTO as a JSON string under the 'req' part
-    const dto = {
+    const dto: CreateOnboardingRequest = {
       visitRequestId: visitRequestId, // Can be undefined, backend handles it
       pgId: pgId,
       roomId: roomId,
-      name: name,
-      email: email,
-      phone: phone,
-      monthlyRent: monthlyRent,
-      emergencyContactName: emergencyContactName,
-      emergencyContactPhone: emergencyContactPhone,
-      emergencyContactRelationship: emergencyContactRelationship,
+      name: data.name,
+      email: data.email,
+      phone: data.phone,
+      monthlyRent: data.monthlyRent,
+      profession: data.profession,
+      emergencyContactName: data.emergencyContactName,
+      emergencyContactPhone: data.emergencyContactPhone,
+      emergencyContactRelationship: data.emergencyContactRelationship,
     };
     formData.append("req", new Blob([JSON.stringify(dto)], { type: "application/json" }));
 
     // Append files if they exist
-    if (tenantImage) {
-      formData.append("tenantImage", tenantImage);
+    if (data.tenantImage) {
+      formData.append("tenantImage", data.tenantImage);
     }
-    if (aadharCard) {
-      formData.append("aadharCard", aadharCard);
+    if (data.aadharCard) {
+      formData.append("aadharCard", data.aadharCard);
+    }
+    if (data.professionIdDoc) {
+      formData.append("professionIdDoc", data.professionIdDoc);
     }
 
     createOnboardingMutation.mutate(formData);
@@ -380,12 +390,16 @@ export default function OnboardingRequestModal({
                     </Label>
                     <Input
                       id="name"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
+                      {...register("name")}
                       placeholder="Your full name"
                       className="mt-1 border-2 focus:border-purple-400 bg-white"
                       data-testid="input-name"
                     />
+                    {errors.name && (
+                      <p className="text-xs text-red-600 flex items-center gap-1 mt-1">
+                        <AlertCircleIcon className="w-3 h-3" /> {errors.name.message}
+                      </p>
+                    )}
                   </div>
 
                   <div>
@@ -395,12 +409,16 @@ export default function OnboardingRequestModal({
                     <Input
                       id="email"
                       type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
+                      {...register("email")}
                       placeholder="your.email@example.com"
                       className="mt-1 border-2 focus:border-purple-400 bg-white"
                       data-testid="input-email"
                     />
+                    {errors.email && (
+                      <p className="text-xs text-red-600 flex items-center gap-1 mt-1">
+                        <AlertCircleIcon className="w-3 h-3" /> {errors.email.message}
+                      </p>
+                    )}
                   </div>
 
                   <div>
@@ -410,12 +428,16 @@ export default function OnboardingRequestModal({
                     <Input
                       id="phone"
                       type="tel"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
+                      {...register("phone")}
                       placeholder="Your phone number"
                       className="mt-1 border-2 focus:border-purple-400 bg-white"
                       data-testid="input-phone"
                     />
+                    {errors.phone && (
+                      <p className="text-xs text-red-600 flex items-center gap-1 mt-1">
+                        <AlertCircleIcon className="w-3 h-3" /> {errors.phone.message}
+                      </p>
+                    )}
                   </div>
 
                   <div>
@@ -425,12 +447,31 @@ export default function OnboardingRequestModal({
                     <Input
                       id="monthly-rent"
                       type="number"
-                      value={monthlyRent || ""}
+                      value={watchedValues.monthlyRent || ""}
                       disabled
                       readOnly
                       placeholder="Loading..."
                       className="mt-1 bg-gray-50 border-2"
                       data-testid="input-rent"
+                    />
+                    <p className="text-xs text-gray-600 mt-1.5">
+                      This value is set by the room configuration
+                    </p>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="advance-amount" className="text-sm font-semibold text-gray-700">
+                      Advance Amount
+                    </Label>
+                    <Input
+                      id="advance-amount"
+                      type="number"
+                      value={watchedValues.advanceAmount || ""}
+                      disabled
+                      readOnly
+                      placeholder="Loading..."
+                      className="mt-1 bg-gray-50 border-2"
+                      data-testid="input-advance"
                     />
                     <p className="text-xs text-gray-600 mt-1.5">
                       This value is set by the room configuration
@@ -488,7 +529,7 @@ export default function OnboardingRequestModal({
                             onChange={(e) => {
                               const file = e.target.files?.[0];
                               if (file) {
-                                handleFileUpload(file, setTenantImage, setTenantImagePreview);
+                                handleFileUpload(file, "tenantImage", setTenantImagePreview);
                               }
                             }}
                             className="hidden"
@@ -551,7 +592,7 @@ export default function OnboardingRequestModal({
                             onChange={(e) => {
                               const file = e.target.files?.[0];
                               if (file) {
-                                handleFileUpload(file, setAadharCard, setAadharCardPreview);
+                                handleFileUpload(file, "aadharCard", setAadharCardPreview);
                               }
                             }}
                             className="hidden"
@@ -577,6 +618,93 @@ export default function OnboardingRequestModal({
                       )}
                     </div>
                   </div>
+
+                  {/* Profession Section */}
+                  <div>
+                    <Label className="text-sm font-semibold text-gray-700 mb-2 block">
+                      Profession (Optional)
+                    </Label>
+                    <Controller
+                      name="profession"
+                      control={control}
+                      render={({ field }) => (
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <SelectTrigger className="border-2 focus:border-blue-400 bg-white">
+                            <SelectValue placeholder="Select your profession" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {PROFESSION_OPTIONS.map((opt) => (
+                              <SelectItem key={opt.value} value={opt.value}>
+                                {opt.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+                  </div>
+
+                  {/* Profession ID Card */}
+                  {watchedValues.profession && (
+                    <div>
+                      <Label className="text-sm font-semibold text-gray-700 mb-2 block">
+                        {watchedValues.profession === "Student" ? "Student ID Card" : watchedValues.profession === "Employee" ? "Employee ID Card" : "Profession ID/Proof"} (Optional)
+                      </Label>
+                      <div className="mt-2">
+                        {professionIdPreview ? (
+                          <div className="relative inline-block">
+                            <img
+                              src={professionIdPreview}
+                              alt="Profession ID Card"
+                              className="w-56 h-40 object-cover rounded-xl border-2 border-indigo-200 shadow-lg"
+                            />
+                            <Button
+                              type="button"
+                              size="icon"
+                              className="absolute -top-2 -right-2 h-8 w-8 rounded-full bg-gradient-to-br from-red-500 to-pink-600 hover:from-red-600 hover:to-pink-700 shadow-lg"
+                              onClick={() => {
+                                setValue("professionIdDoc", null);
+                                setProfessionIdPreview(null);
+                              }}
+                            >
+                              <XIcon className="h-4 w-4 text-white" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="relative">
+                            <Input
+                              id="profession-id"
+                              type="file"
+                              accept="image/*"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  handleFileUpload(file, "professionIdDoc", setProfessionIdPreview);
+                                }
+                              }}
+                              className="hidden"
+                            />
+                            <Label
+                              htmlFor="profession-id"
+                              className="flex flex-col items-center justify-center gap-3 p-8 border-2 border-dashed border-indigo-300 rounded-xl cursor-pointer hover:bg-indigo-50 transition-all duration-300 bg-white group"
+                            >
+                              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-indigo-100 to-blue-100 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                                <Briefcase className="w-8 h-8 text-indigo-600" />
+                              </div>
+                              <div className="text-center">
+                                <span className="text-sm font-semibold text-gray-700 block">
+                                  Upload ID Card
+                                </span>
+                                <span className="text-xs text-gray-500 mt-1 block">
+                                  Maximum 5MB
+                                </span>
+                              </div>
+                            </Label>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -599,12 +727,16 @@ export default function OnboardingRequestModal({
                     </Label>
                     <Input
                       id="emergency-name"
-                      value={emergencyContactName}
-                      onChange={(e) => setEmergencyContactName(e.target.value)}
+                      {...register("emergencyContactName")}
                       placeholder="Emergency contact name"
                       className="mt-1 border-2 focus:border-orange-400 bg-white"
                       data-testid="input-emergency-name"
                     />
+                    {errors.emergencyContactName && (
+                      <p className="text-xs text-red-600 flex items-center gap-1 mt-1">
+                        <AlertCircleIcon className="w-3 h-3" /> {errors.emergencyContactName.message}
+                      </p>
+                    )}
                   </div>
 
                   <div>
@@ -614,41 +746,49 @@ export default function OnboardingRequestModal({
                     <Input
                       id="emergency-phone"
                       type="tel"
-                      value={emergencyContactPhone}
-                      onChange={(e) => setEmergencyContactPhone(e.target.value)}
+                      {...register("emergencyContactPhone")}
                       placeholder="Emergency contact phone"
                       className="mt-1 border-2 focus:border-orange-400 bg-white"
                       data-testid="input-emergency-phone"
                     />
+                    {errors.emergencyContactPhone && (
+                      <p className="text-xs text-red-600 flex items-center gap-1 mt-1">
+                        <AlertCircleIcon className="w-3 h-3" /> {errors.emergencyContactPhone.message}
+                      </p>
+                    )}
                   </div>
 
                   <div>
                     <Label htmlFor="emergency-relationship" className="text-sm font-semibold text-gray-700">
                       Relationship <span className="text-red-500">*</span>
                     </Label>
-                    <Select
-                      value={emergencyContactRelationship}
-                      onValueChange={setEmergencyContactRelationship}
-                    >
-                      <SelectTrigger 
-                        id="emergency-relationship" 
-                        className="mt-1 border-2 focus:border-orange-400 bg-white" 
-                        data-testid="select-relationship"
-                      >
-                        <SelectValue placeholder="Select relationship" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {RELATIONSHIP_OPTIONS.map((option) => (
-                          <SelectItem
-                            key={option.value}
-                            value={option.value}
-                            data-testid={`relationship-${option.value.toLowerCase()}`}
+                    <Controller
+                      name="emergencyContactRelationship"
+                      control={control}
+                      render={({ field }) => (
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <SelectTrigger
+                            id="emergency-relationship"
+                            className="mt-1 border-2 focus:border-orange-400 bg-white"
+                            data-testid="select-relationship"
                           >
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                            <SelectValue placeholder="Select relationship" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {RELATIONSHIP_OPTIONS.map((option) => (
+                              <SelectItem key={option.value} value={option.value} data-testid={`relationship-${option.value.toLowerCase()}`}>
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    />
+                    {errors.emergencyContactRelationship && (
+                      <p className="text-xs text-red-600 flex items-center gap-1 mt-1">
+                        <AlertCircleIcon className="w-3 h-3" /> {errors.emergencyContactRelationship.message}
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -671,22 +811,34 @@ export default function OnboardingRequestModal({
                     <div className="space-y-2 text-sm">
                       <div className="flex justify-between">
                         <span className="text-gray-600">Name:</span>
-                        <span className="font-medium text-gray-800">{name}</span>
+                        <span className="font-medium text-gray-800">{watchedValues.name}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-600">Email:</span>
-                        <span className="font-medium text-gray-800">{email}</span>
+                        <span className="font-medium text-gray-800">{watchedValues.email}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-600">Phone:</span>
-                        <span className="font-medium text-gray-800">{phone}</span>
+                        <span className="font-medium text-gray-800">{watchedValues.phone}</span>
                       </div>
-                      {monthlyRent && (
+                      {watchedValues.monthlyRent && (
                         <div className="flex justify-between">
                           <span className="text-gray-600">Monthly Rent:</span>
-                          <span className="font-bold text-purple-600">₹{monthlyRent.toLocaleString("en-IN")}</span>
+                          <span className="font-bold text-purple-600">₹{watchedValues.monthlyRent.toLocaleString("en-IN")}</span>
                         </div>
                       )}
+                    {watchedValues.advanceAmount && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Advance Amount:</span>
+                        <span className="font-bold text-purple-600">₹{watchedValues.advanceAmount.toLocaleString("en-IN")}</span>
+                      </div>
+                    )}
+                  {watchedValues.profession && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Profession:</span>
+                      <span className="font-medium text-gray-800">{watchedValues.profession}</span>
+                    </div>
+                  )}
                     </div>
                   </div>
 
@@ -717,6 +869,20 @@ export default function OnboardingRequestModal({
                           <span className="font-medium text-gray-400">Not uploaded</span>
                         )}
                       </div>
+                  {watchedValues.profession && (
+                    <div className="flex flex-col gap-2">
+                      <span className="text-gray-600">{watchedValues.profession} ID:</span>
+                      {professionIdPreview ? (
+                        <img
+                          src={professionIdPreview}
+                          alt="Profession ID Preview"
+                          className="w-32 h-24 object-cover rounded-md border border-gray-200"
+                        />
+                      ) : (
+                        <span className="font-medium text-gray-400">Not uploaded</span>
+                      )}
+                    </div>
+                  )}
                     </div>
                   </div>
 
@@ -725,15 +891,15 @@ export default function OnboardingRequestModal({
                     <div className="space-y-2 text-sm">
                       <div className="flex justify-between">
                         <span className="text-gray-600">Name:</span>
-                        <span className="font-medium text-gray-800">{emergencyContactName}</span>
+                        <span className="font-medium text-gray-800">{watchedValues.emergencyContactName}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-600">Phone:</span>
-                        <span className="font-medium text-gray-800">{emergencyContactPhone}</span>
+                        <span className="font-medium text-gray-800">{watchedValues.emergencyContactPhone}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-600">Relationship:</span>
-                        <span className="font-medium text-gray-800">{emergencyContactRelationship}</span>
+                        <span className="font-medium text-gray-800">{watchedValues.emergencyContactRelationship}</span>
                       </div>
                     </div>
                   </div>
@@ -767,7 +933,7 @@ export default function OnboardingRequestModal({
             </Button>
           ) : (
             <Button
-              onClick={handleSubmit}
+              onClick={handleSubmit(onSubmit)}
               disabled={createOnboardingMutation.isPending}
               className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 shadow-lg"
               data-testid="button-submit"

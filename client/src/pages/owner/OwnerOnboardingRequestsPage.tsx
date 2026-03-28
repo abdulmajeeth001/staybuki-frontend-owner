@@ -353,6 +353,12 @@ function OwnerOnboardingRequestsContent({
                       <span className="text-muted-foreground">Monthly Rent</span>
                       <span className="font-bold text-green-600">₹{detailsDialog.request.monthlyRent}</span>
                     </div>
+                    {detailsDialog.request.profession && (
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-muted-foreground">Profession</span>
+                        <span className="font-medium">{detailsDialog.request.profession}</span>
+                      </div>
+                    )}
                   </div>
                   <div className="p-4 border rounded-lg space-y-3">
                     <h4 className="font-semibold text-sm flex items-center gap-2"><AlertCircle size={16} className="text-destructive" /> Emergency Contact</h4>
@@ -371,7 +377,7 @@ function OwnerOnboardingRequestsContent({
                   </div>
                 </div>
 
-                {(detailsDialog.request.tenantImage || detailsDialog.request.aadharCard) && (
+                {(detailsDialog.request.tenantImage || detailsDialog.request.aadharCard || (detailsDialog.request as any).professionIdDocUrl) && (
                   <div className="space-y-3">
                     <h4 className="font-semibold text-sm flex items-center gap-2"><FileText size={16} className="text-primary" /> Documents</h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -388,6 +394,16 @@ function OwnerOnboardingRequestsContent({
                             <iframe src={detailsDialog.request.aadharCard} title="Aadhar Card" className="mt-2 rounded-lg border w-full h-48" />
                           ) : (
                             <img src={detailsDialog.request.aadharCard} alt="Aadhar Card" className="mt-2 rounded-lg border w-full h-48 object-cover cursor-pointer" onClick={() => openImagePreview(detailsDialog.request!.aadharCard!, "Aadhar Card")} />
+                          )}
+                        </div>
+                      )}
+                      {(detailsDialog.request as any).professionIdDocUrl && (
+                        <div>
+                          <Label className="text-xs text-muted-foreground">Profession ID</Label>
+                          {(detailsDialog.request as any).professionIdDocUrl.toLowerCase().endsWith('.pdf') ? (
+                            <iframe src={(detailsDialog.request as any).professionIdDocUrl} title="Profession ID" className="mt-2 rounded-lg border w-full h-48" />
+                          ) : (
+                            <img src={(detailsDialog.request as any).professionIdDocUrl} alt="Profession ID" className="mt-2 rounded-lg border w-full h-48 object-cover cursor-pointer" onClick={() => openImagePreview((detailsDialog.request as any).professionIdDocUrl, "Profession ID")} />
                           )}
                         </div>
                       )}

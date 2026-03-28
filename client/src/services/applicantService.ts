@@ -11,7 +11,11 @@ import type {
   CreateVisitRequest,
   BedResponse,
   BedListApiResponse,
-  AmenityResponse
+  AmenityResponse,
+  RoomDetailsResponse,
+  RoomDetailsApiResponse,
+  OnboardingRequestResponse,
+  OnboardingRequestApiResponse
 } from "@/types/applicant";
 
 export const applicantService = {
@@ -139,5 +143,50 @@ export const applicantService = {
     } catch (error: any) {
       throw new Error(error.response?.data?.error || error.message || "Failed to fetch room beds");
     }
-  }
+  },
+
+  /**
+   * Get Room Details by ID for an applicant/tenant.
+   */
+  getRoomDetails: async (roomId: number): Promise<RoomDetailsResponse> => {
+    try {
+      const { data } = await api.get<RoomDetailsApiResponse | RoomDetailsResponse>(
+        `/api/tenant/rooms/${roomId}`
+      );
+      
+      if (data && typeof data === "object" && "success" in data) {
+        if (!(data as RoomDetailsApiResponse).success) {
+          throw new Error((data as RoomDetailsApiResponse).message || "Failed to fetch room details");
+        }
+        return (data as RoomDetailsApiResponse).data as RoomDetailsResponse;
+      }
+      
+      return data as RoomDetailsResponse;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.error || error.message || "Failed to fetch room details");
+    }
+  },
+
+  /**
+   * Create a new onboarding request.
+   */
+  createOnboardingRequest: async (formData: FormData): Promise<OnboardingRequestResponse> => {
+    try {
+      const { data } = await api.post<OnboardingRequestApiResponse | OnboardingRequestResponse>(
+        `/api/tenant/onboarding-requests`,
+        formData
+      );
+      
+      if (data && typeof data === "object" && "success" in data) {
+        if (!(data as OnboardingRequestApiResponse).success) {
+          throw new Error((data as OnboardingRequestApiResponse).message || "Failed to create onboarding request");
+        }
+        return (data as OnboardingRequestApiResponse).data as OnboardingRequestResponse;
+      }
+      
+      return data as OnboardingRequestResponse;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.error || error.message || "Failed to create onboarding request");
+    }
+  },
 };

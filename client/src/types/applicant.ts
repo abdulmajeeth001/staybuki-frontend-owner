@@ -14,6 +14,13 @@ export type PgSearchApiResponse = Omit<components["schemas"]["ApiResponseListPgS
 export type PgDetailsResponse = components["schemas"]["PgWithRoomsResponseDto"];
 export type PgDetailsApiResponse = components["schemas"]["ApiResponsePgWithRoomsResponseDto"];
 
+export type RoomDetailsResponse = components["schemas"]["RoomResponseDto"];
+export type RoomDetailsApiResponse = components["schemas"]["ApiResponseRoomResponseDto"];
+
+export type OnboardingRequestResponse = components["schemas"]["OnboardingRequestResponseDto"];
+export type OnboardingRequestApiResponse = components["schemas"]["ApiResponseOnboardingRequestResponseDto"];
+export type CreateOnboardingRequest = components["schemas"]["CreateOnboardingRequestDto"];
+
 export type VisitRequestResponse = components["schemas"]["VisitRequestResponseDto"];
 export type VisitRequestListApiResponse = {
   success?: boolean;

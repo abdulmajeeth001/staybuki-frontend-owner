@@ -1735,6 +1735,7 @@ export interface components {
             pgId?: number;
             roomNumber?: string;
             monthlyRent?: number;
+            advanceAmount?: number;
             /** Format: int32 */
             sharing?: number;
             /** Format: int32 */
@@ -1747,6 +1748,7 @@ export interface components {
             id?: number;
             roomNumber?: string;
             monthlyRent?: number;
+            advanceAmount?: number;
             /** Format: int32 */
             sharing?: number;
             /** Format: int32 */
@@ -2158,6 +2160,8 @@ export interface components {
             monthlyRent: number;
             tenantImage?: string;
             aadharCard?: string;
+            profession?: string;
+            professionIdDocUrl?: string;
             emergencyContactName?: string;
             emergencyContactPhone?: string;
             emergencyContactRelationship?: string;
@@ -2185,6 +2189,8 @@ export interface components {
             monthlyRent?: number;
             tenantImage?: string;
             aadharCard?: string;
+            profession?: string;
+            professionIdDocUrl?: string;
             emergencyContactName?: string;
             emergencyContactPhone?: string;
             emergencyContactRelationship?: string;
@@ -2606,6 +2612,7 @@ export interface components {
             id?: number;
             roomNumber?: string;
             monthlyRent?: string;
+            advanceAmount?: number;
             /** Format: int32 */
             sharing?: number;
             /** Format: int32 */
@@ -3572,6 +3579,8 @@ export interface operations {
                     tenantImage?: string;
                     /** Format: binary */
                     aadharCard?: string;
+                    /** Format: binary */
+                    professionIdDoc?: string;
                 };
             };
         };

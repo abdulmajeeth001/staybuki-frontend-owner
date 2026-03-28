@@ -494,7 +494,7 @@ export default function TenantVisitRequestsPage() {
   }>({ open: false });
 
   const { data: visitRequests = [], isLoading, error } = useQuery<VisitRequestResponse[]>({
-    queryKey: ["/api/tenant/visit-requests"],
+    queryKey: ["tenantVisitRequests"],
     queryFn: tenantService.getVisitRequests,
     staleTime: 0,
     refetchOnMount: "always",
