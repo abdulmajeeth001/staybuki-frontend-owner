@@ -425,13 +425,14 @@ function PGSearchContent() {
                     <div className="grid grid-cols-2 gap-2">
                       {visibleAmenities.map((amenity) => {
                         const currentIds: number[] = (tempFilters as any).amenityIds || [];
-                        const isSelected = currentIds.includes(amenity.id);
+                        const isSelected = amenity.id !== undefined ? currentIds.includes(amenity.id) : false;
                         const Icon = getDynamicAmenityIcon(amenity.name);
                         return (
                           <button
                             key={amenity.id}
                             type="button"
                             onClick={() => {
+                              if (amenity.id === undefined) return;
                               setTempFilters({
                                 ...tempFilters,
                                 amenityIds: isSelected 
@@ -647,9 +648,9 @@ function PGSearchContent() {
                                     {pg.distance.toFixed(1)} km
                                   </div>
                                 )}
-                                {rating > 0 && pg.totalRatings > 0 && (
+                                {rating > 0 && (pg.totalRatings || 0) > 0 && (
                                   <div className="flex items-center gap-1 bg-yellow-50 text-yellow-700 px-3 py-1.5 rounded-full text-xs font-semibold">
-                                    {pg.totalRatings} {pg.totalRatings === 1 ? 'review' : 'reviews'}
+                                    {pg.totalRatings || 0} {(pg.totalRatings || 0) === 1 ? 'review' : 'reviews'}
                                   </div>
                                 )}
                               </div>

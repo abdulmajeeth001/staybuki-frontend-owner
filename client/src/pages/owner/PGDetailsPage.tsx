@@ -229,7 +229,7 @@ export default function PGDetailsPage() {
       requestedTime: visitTime,
       notes: visitNotes,
       gender: needsGenderInput ? visitGender : undefined,
-    });
+    } as any);
   };
 
   const resetForm = () => {
