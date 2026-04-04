@@ -13,7 +13,8 @@ export function useLogout() {
     setIsLoggingOut(true);
     try {
       // Optional: Notify backend (good for analytics or blacklisting if implemented)
-      await api.post("/api/auth/logout");
+      await api.post("/api/auth/logout", {}, { withCredentials: true });
+      toast.success("Logged out successfully");
     } catch (error) {
       console.error("Logout failed:", error);
       // We continue to clear client state even if API fails
@@ -26,6 +27,9 @@ export function useLogout() {
       // 2. Navigate to login
       setLocation("/login");
       setIsLoggingOut(false);
+
+      // Optional: Force a hard reload to ensure all memory state is wiped
+      window.location.reload();
     }
   };
 

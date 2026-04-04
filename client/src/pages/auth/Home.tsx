@@ -2,16 +2,48 @@ import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
 import { Users, Building2, TrendingUp, Lock, Download } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query"; // Added
+import { api } from "@/apiClient"; // Added
 
 export default function Home() {
   const [, navigate] = useLocation();
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
 
+  // --- 1. SILENT AUTH CHECK ---
+  const { data: user, isLoading } = useQuery({
+    queryKey: ["/api/auth/me"],
+    queryFn: async () => {
+      try {
+        const res = await api.get("/api/auth/me");
+        return res.data;
+      } catch (err) {
+        return null; // Return null if not logged in (401 error)
+      }
+    },
+    retry: false, // Don't retry for the landing page check
+    staleTime: 1000 * 60 * 5, // Keep check valid for 5 mins
+  });
+
+  // --- 2. AUTO-REDIRECT LOGIC ---
+  useEffect(() => {
+    // Ensure user is truly authenticated by verifying userType exists
+    if (user && user.userType && !isLoading) {
+      const userType = user.userType.toLowerCase().trim();
+      if (userType === "tenant") {
+        navigate("/tenant-dashboard");
+      } else if (userType === "admin") {
+        navigate("/admin-dashboard");
+      } else if (userType === "applicant") {
+        navigate("/tenant-search-pgs");
+      } else {
+        navigate("/dashboard");
+      }
+    }
+  }, [user, isLoading, navigate]);
+
   useEffect(() => {
     const handleBeforeInstallPrompt = (e: Event) => {
-      // Prevent Chrome 67 and earlier from automatically showing the prompt
       e.preventDefault();
-      // Stash the event so it can be triggered later.
       setDeferredPrompt(e);
     };
 
@@ -28,6 +60,16 @@ export default function Home() {
       }
     }
   };
+
+  // If still loading the auth check, we just show the background 
+  // to prevent "flickering" of the landing page content for logged-in users.
+  if (isLoading && !user) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <img src="/logo.png" alt="StayBuki" className="h-16 w-auto animate-pulse" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/10 via-background to-primary/5">

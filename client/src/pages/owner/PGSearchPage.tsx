@@ -69,8 +69,8 @@ const AMENITY_ICONS = {
   hasGym: { icon: Dumbbell, label: "Gym" },
 };
 
-const getDynamicAmenityIcon = (name: string) => {
-  const lower = name.toLowerCase();
+const getDynamicAmenityIcon = (name: any) => {
+  const lower = (typeof name === 'string' ? name : "").toLowerCase();
   if (lower.includes("wifi")) return Wifi;
   if (lower.includes("food") || lower.includes("meal")) return Utensils;
   if (lower.includes("parking")) return Car;

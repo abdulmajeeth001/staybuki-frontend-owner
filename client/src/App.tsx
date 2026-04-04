@@ -63,17 +63,14 @@ const PageLoader = () => (
   </div>
 );
 
-function Router() {
+/**
+ * PROTECTED ROUTER
+ * Only contains routes that require a valid login session via AuthGate.
+ */
+function ProtectedRouter() {
   return (
     <Suspense fallback={<PageLoader />}>
       <Switch>
-        {/* Basic Routes */}
-        <Route path="/" component={Home} />
-        <Route path="/login" component={Login} />
-        <Route path="/register" component={Register} />
-        <Route path="/subscription" component={SubscriptionPlan} />
-        <Route path="/forgot-password" component={ForgotPassword} />
-
         {/* Owner/General Dashboards */}
         <Route path="/dashboard" component={Dashboard} />
         <Route path="/tenants" component={TenantsList} />
@@ -155,12 +152,27 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
-        <AuthGate>
-          <Router />
-        </AuthGate>
+        <Suspense fallback={<PageLoader />}>
+          <Switch>
+            {/* --- PUBLIC ROUTES: Loaded instantly without AuthGate --- */}
+            <Route path="/" component={Home} />
+            <Route path="/login" component={Login} />
+            <Route path="/register" component={Register} />
+            <Route path="/subscription" component={SubscriptionPlan} />
+            <Route path="/forgot-password" component={ForgotPassword} />
+
+            {/* --- PROTECTED ROUTES: Wrapped in AuthGate --- */}
+            <Route path="/:rest*">
+              <AuthGate>
+                <ProtectedRouter />
+              </AuthGate>
+            </Route>
+          </Switch>
+        </Suspense>
       </TooltipProvider>
     </QueryClientProvider>
   );
 }
+
 
 export default App;

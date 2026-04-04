@@ -40,10 +40,11 @@ export default function MobileLayout({
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const { logout, isLoggingOut } = useLogout();
   const { user, isTenantOnboarded, isApplicant } = useUser();
-  const isOwner = user?.userType === "owner";
+  const normalizedUserType = (user?.userType || "").toLowerCase().trim();
+  const isOwner = normalizedUserType === "owner";
   const { pg } = usePG(isOwner);
-  const isAdmin = user?.userType === "admin";
-  const isTenant = user?.userType === "tenant";
+  const isAdmin = normalizedUserType === "admin";
+  const isTenant = normalizedUserType === "tenant";
 
   const { data: tenantData } = useQuery<{ photoUrl?: string }>({
     queryKey: ["/api/users/profile"],
@@ -168,20 +169,20 @@ export default function MobileLayout({
   // Select navigation based on user type
   // Note: userType now reflects actual state - "applicant" = searching for housing, "tenant" = has housing
   // When a tenant is removed, their userType reverts to "applicant"
-  const sideNavItems = user?.userType === "admin" ? adminSideNavItems 
-    : user?.userType === "applicant" ? applicantSideNavItems
-    : user?.userType === "tenant" ? tenantSideNavItems 
+  const sideNavItems = normalizedUserType === "admin" ? adminSideNavItems 
+    : normalizedUserType === "applicant" ? applicantSideNavItems
+    : normalizedUserType === "tenant" ? tenantSideNavItems 
     : ownerSideNavItems;
-  const bottomNavItems = user?.userType === "admin" ? adminBottomNavItems 
-    : user?.userType === "applicant" ? applicantBottomNavItems
-    : user?.userType === "tenant" ? tenantBottomNavItems 
+  const bottomNavItems = normalizedUserType === "admin" ? adminBottomNavItems 
+    : normalizedUserType === "applicant" ? applicantBottomNavItems
+    : normalizedUserType === "tenant" ? tenantBottomNavItems 
     : ownerBottomNavItems;
 
   return (
-    <div className="min-h-[100dvh] bg-background max-w-4xl mx-auto border-x border-border shadow-2xl relative flex flex-col overflow-hidden">
+    <div className="h-[100dvh] bg-background max-w-4xl mx-auto border-x border-border shadow-2xl relative flex flex-col overflow-hidden">
       {/* Side Navigation - Collapsible */}
       <aside className={cn(
-        "bg-card border-r border-border flex flex-col shrink-0 overflow-y-auto transition-all duration-300 absolute lg:relative h-full",
+        "bg-card border-r border-border flex flex-col shrink-0 overflow-hidden transition-all duration-300 absolute lg:relative h-full",
         sidebarOpen ? "w-64 z-40" : "w-0"
       )}>
         {/* Header */}
@@ -225,7 +226,7 @@ export default function MobileLayout({
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 p-4 space-y-2">
+        <nav className="flex-1 overflow-y-auto p-4 space-y-2">
           {sideNavItems.map(({ icon: Icon, label, path }) => {
             const isActive = location === path || (path !== "/dashboard" && location.startsWith(path));
             

@@ -60,8 +60,8 @@ import type { PgDetailsResponse, VisitRequestResponse, CreateVisitRequest, BedRe
 // Using loosely typed Room map for rendering purposes until backend schema is resolved
 type Room = any;
 
-const getAmenityIcon = (amenity: string) => {
-  const name = amenity.toLowerCase();
+const getAmenityIcon = (amenity: any) => {
+  const name = (typeof amenity === 'string' ? amenity : amenity?.name || "").toLowerCase();
   if (name.includes("wifi")) return Wifi;
   if (name.includes("water")) return Droplet;
   if (name.includes("power")) return Zap;
@@ -83,7 +83,8 @@ const TIME_SLOTS = [
 export default function PGDetailsPage() {
   const isMobile = useIsMobile();
   const Layout = isMobile ? MobileLayout : DesktopLayout;
-  const { id } = useParams<{ id: string }>();
+  const params = useParams<{ id?: string }>();
+  const id = params?.id;
   const [, navigate] = useLocation();
   const queryClient = useQueryClient();
   const { user } = useUser();
@@ -121,10 +122,13 @@ export default function PGDetailsPage() {
   // Extract unique amenities from all available rooms
   const roomAmenities = useMemo(() => {
     const amenitiesSet = new Set<string>();
-    if ((pg as any)?.availableRooms) {
+    if (Array.isArray((pg as any)?.availableRooms)) {
       (pg as any).availableRooms.forEach((room: any) => {
         if (Array.isArray(room.amenities)) {
-          room.amenities.forEach((amenity: string) => amenitiesSet.add(amenity));
+            room.amenities.forEach((amenity: any) => {
+              const amenityName = typeof amenity === 'string' ? amenity : amenity?.name;
+              if (amenityName) amenitiesSet.add(amenityName);
+            });
         }
       });
     }
@@ -135,7 +139,7 @@ export default function PGDetailsPage() {
   useEffect(() => {
   const fetchBeds = async () => {
     // 1. Guard against null pg or empty rooms
-    if (!(pg as any)?.availableRooms?.length) return;
+    if (!Array.isArray((pg as any)?.availableRooms) || !(pg as any).availableRooms.length) return;
     const bedsData: Record<number, BedResponse[]> = {};
     await Promise.all(
       (pg as any).availableRooms.map(async (room: Room) => {
@@ -287,7 +291,7 @@ export default function PGDetailsPage() {
     );
   }
 
-  const rating = parseFloat((pg as any).averageRating || "0");
+  const rating = parseFloat(String((pg as any).averageRating || "0"));
 
   return (
     <Layout
@@ -411,11 +415,11 @@ export default function PGDetailsPage() {
         <CardHeader className="relative flex flex-row items-center justify-between">
           <CardTitle className="text-xl font-bold text-gray-800">Available Rooms</CardTitle>
           <Badge className="bg-gradient-to-r from-purple-600 to-blue-600 text-white" data-testid="badge-room-count">
-            {(pg as any).availableRooms?.length || 0} {((pg as any).availableRooms?.length || 0) === 1 ? "room" : "rooms"}
+            {Array.isArray((pg as any).availableRooms) ? (pg as any).availableRooms.length : 0} {Array.isArray((pg as any).availableRooms) && (pg as any).availableRooms.length === 1 ? "room" : "rooms"}
           </Badge>
         </CardHeader>
         <CardContent className="relative">
-          {!(pg as any).availableRooms || (pg as any).availableRooms.length === 0 ? (
+          {!Array.isArray((pg as any).availableRooms) || (pg as any).availableRooms.length === 0 ? (
             <div className="text-center py-12">
               <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-purple-100 to-blue-100 flex items-center justify-center">
                 <DoorOpen className="w-10 h-10 text-purple-600" />
@@ -428,7 +432,7 @@ export default function PGDetailsPage() {
           ) : (
             <div className="space-y-4">
               {(pg as any).availableRooms.map((room: any) => {
-                const availableBeds = room.sharing - (room.tenantIds?.length || 0);
+                const availableBeds = room.sharing - (Array.isArray(room.tenantIds) ? room.tenantIds.length : 0);
                 const isFullyOccupied = availableBeds === 0;
 
                 return (
@@ -466,7 +470,7 @@ export default function PGDetailsPage() {
                         <div className="text-right">
                           <div className="flex items-center gap-1 text-2xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent" data-testid={`text-rent-${room.id}`}>
                             <IndianRupee className="w-5 h-5 text-purple-600" />
-                            {parseFloat(room.monthlyRent).toLocaleString("en-IN")}
+                          {parseFloat(String(room.monthlyRent || "0")).toLocaleString("en-IN")}
                           </div>
                           <p className="text-xs text-gray-600 font-medium">per month</p>
                         </div>
@@ -490,7 +494,7 @@ export default function PGDetailsPage() {
                       )}
 
                       {/* Bed Positions Display */}
-                      {roomBeds[room.id] && roomBeds[room.id].length > 0 && (
+                      {Array.isArray(roomBeds[room.id]) && roomBeds[room.id].length > 0 && (
                         <div className="mb-4 p-3 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl border border-indigo-100">
                           <div className="flex items-center gap-2 mb-2">
                             <Bed className="w-4 h-4 text-indigo-600" />
@@ -551,7 +555,7 @@ export default function PGDetailsPage() {
           )}
 
           {/* General Request Visit Button */}
-          {(pg as any).availableRooms && (pg as any).availableRooms.length > 0 && (
+          {Array.isArray((pg as any).availableRooms) && (pg as any).availableRooms.length > 0 && (
             <div className="mt-6 pt-6 border-t-2 border-dashed border-gray-200">
               <Button
                 onClick={() => handleRequestVisit()}

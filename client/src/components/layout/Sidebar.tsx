@@ -124,8 +124,8 @@ export default function Sidebar({ className, onClose }: SidebarProps = {}) {
   };
 
   return (
-    <aside className={cn(className || "hidden lg:flex w-64 h-screen sticky top-0", "bg-card border-r border-border flex flex-col overflow-y-auto overflow-x-hidden")}>
-      <div className="w-64 flex flex-col min-h-full">
+    <aside className={cn(className || "hidden lg:flex w-64 h-screen sticky top-0", "bg-card border-r border-border flex flex-col overflow-hidden")}>
+      <div className="w-64 flex flex-col h-full">
       {/* Header */}
       <div className="p-6 border-b border-border">
         <div className="flex items-start justify-between mb-4">
@@ -179,7 +179,7 @@ export default function Sidebar({ className, onClose }: SidebarProps = {}) {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 p-4 space-y-2">
+      <nav className="flex-1 overflow-y-auto p-4 space-y-2">
         {navItems.map(({ icon: Icon, label, path }) => {
           const isActive = location === path || (path !== "/dashboard" && location.startsWith(path));
           

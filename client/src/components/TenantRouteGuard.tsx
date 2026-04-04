@@ -21,22 +21,17 @@ export function TenantRouteGuard({ children, requiresOnboarding = false }: Tenan
       return;
     }
 
-    // 2. Extract onboarding status (Matches your Java Response Logic)
-    // We assume your Java DTO fix provides this inside the user object
-    const isOnboarded = user.tenantProfile?.onboardingStatus === "onboarded" && user.tenantProfile?.status === "active";
+    const userType = (user.userType || "").toLowerCase().trim();
 
-    // 3. User is a tenant
-    if (user.userType === "tenant") {
-      if (requiresOnboarding && !isOnboarded) {
-        // Trying to access dashboard but NOT onboarded
-        setLocation("/tenant-search-pgs");
-      } else if (!requiresOnboarding && isOnboarded && !window.location.pathname.startsWith('/pg/')) {
-        // Trying to access search but ALREADY onboarded (except for specific PG detail views)
+    // 2. User is a tenant
+    if (userType === "tenant") {
+      // A user with userType "tenant" inherently has a PG and is onboarded.
+      if (!requiresOnboarding && !window.location.pathname.startsWith('/pg/')) {
         setLocation("/tenant-dashboard");
       }
     } 
-    // 4. User is still an applicant
-    else if (user.userType === "applicant" && requiresOnboarding) {
+    // 3. User is still an applicant
+    else if (userType === "applicant" && requiresOnboarding) {
       setLocation("/tenant-search-pgs");
     }
     
