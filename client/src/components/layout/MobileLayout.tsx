@@ -295,8 +295,9 @@ export default function MobileLayout({
           </div>
           <div className="flex items-center gap-2">
             {action}
-            {isTenant && isTenantOnboarded && <NotificationBell />}
+            {isOwner && <PGSwitcher variant="header" />}
             {isOwner && <NotificationBell />}
+            {isTenant && <NotificationBell />}
             {isAdmin && <NotificationBell />}
             {isApplicant && <NotificationBell />}
             <UserProfileMenu />

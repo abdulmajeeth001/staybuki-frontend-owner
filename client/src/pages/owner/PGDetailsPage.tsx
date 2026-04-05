@@ -81,6 +81,7 @@ const TIME_SLOTS = [
 ];
 
 export default function PGDetailsPage() {
+  console.log("PGDetailsPage mounted", window.location.pathname);
   const isMobile = useIsMobile();
   const Layout = isMobile ? MobileLayout : DesktopLayout;
   const params = useParams<{ id?: string }>();
@@ -98,6 +99,8 @@ export default function PGDetailsPage() {
   const [roomBeds, setRoomBeds] = useState<Record<number, BedResponse[]>>({});
 
   const pgId = parseInt(id || "0");
+  console.log("Current Params:", params);
+  console.log("Calculated pgId:", pgId);
 
   // Fetch PG details
   const { data: pg, isLoading, error } = useQuery<PgDetailsResponse>({

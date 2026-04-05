@@ -49,7 +49,7 @@ export default function DesktopLayout({
           <div className="flex items-center gap-4">
             {isOwner && <PGSwitcher variant="header" />}
             {isOwner && <NotificationBell />}
-            {isTenant && isTenantOnboarded && <NotificationBell />}
+            {isTenant && <NotificationBell />}
             {isAdmin && <NotificationBell />}
             {isApplicant && <NotificationBell />}
             {action}

@@ -11,7 +11,7 @@ interface TenantRouteGuardProps {
 export function TenantRouteGuard({ children, requiresOnboarding = false }: TenantRouteGuardProps) {
   const [, setLocation] = useLocation();
   const { user, isLoading } = useUser();
-
+  console.log("TenantRouteGuard", { userType: user?.userType, isLoading, requiresOnboarding, path: window.location.pathname });
   useEffect(() => {
     if (isLoading) return;
 

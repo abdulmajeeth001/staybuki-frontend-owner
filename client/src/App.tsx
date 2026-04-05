@@ -67,86 +67,6 @@ const PageLoader = () => (
  * PROTECTED ROUTER
  * Only contains routes that require a valid login session via AuthGate.
  */
-function ProtectedRouter() {
-  return (
-    <Suspense fallback={<PageLoader />}>
-      <Switch>
-        {/* Owner/General Dashboards */}
-        <Route path="/dashboard" component={Dashboard} />
-        <Route path="/tenants" component={TenantsList} />
-        <Route path="/tenants/add" component={AddTenant} />
-        <Route path="/tenants/view/:id" component={ViewTenant} />
-        <Route path="/tenants/edit/:id" component={EditTenant} />
-        <Route path="/payments" component={Payments} />
-        <Route path="/electricity-history" component={ElectricityHistory} />
-        <Route path="/notifications" component={Notifications} />
-        <Route path="/rooms" component={Rooms} />
-        <Route path="/rooms/add" component={AddRoom} />
-        <Route path="/rooms/edit/:id" component={EditRoom} />
-        <Route path="/complaints" component={Complaints} />
-        <Route path="/maintenance" component={Maintenance} />
-        <Route path="/reports" component={Reports} />
-        <Route path="/settings" component={Settings} />
-        <Route path="/manage-devices" component={ManageDevices} />
-        <Route path="/pg-management" component={PGManagement} />
-        <Route path="/owner-visit-requests" component={OwnerVisitRequestsPage} />
-        <Route path="/owner-onboarding-requests" component={OwnerOnboardingRequestsPage} />
-        <Route path="/announcements" component={Announcements} />
-        <Route path="/food-menu" component={FoodMenu} />
-
-        {/* Admin Routes */}
-        <Route path="/admin-dashboard" component={AdminDashboard} />
-        <Route path="/admin-pgs" component={AdminPGManagement} />
-        <Route path="/admin-subscriptions" component={AdminSubscriptions} />
-        <Route path="/admin-complaints" component={AdminComplaints} />
-        <Route path="/admin-amenities" component={AdminAmenities} />
-        <Route path="/admin-owner-analytics" component={AdminOwnerAnalytics} />
-
-        {/* Tenant Routes (Guarded) */}
-        <Route path="/tenant-reset-password" component={TenantResetPassword} />
-        
-        <Route path="/tenant-dashboard">
-          <TenantRouteGuard requiresOnboarding={true}><TenantDashboard /></TenantRouteGuard>
-        </Route>
-        <Route path="/tenant-profile">
-          <TenantRouteGuard requiresOnboarding={true}><TenantProfile /></TenantRouteGuard>
-        </Route>
-        <Route path="/tenant-room">
-          <TenantRouteGuard requiresOnboarding={true}><TenantRoomDetails /></TenantRouteGuard>
-        </Route>
-        <Route path="/tenant-payments">
-          <TenantRouteGuard requiresOnboarding={true}><TenantPayments /></TenantRouteGuard>
-        </Route>
-        <Route path="/tenant-complaints">
-          <TenantRouteGuard requiresOnboarding={true}><TenantComplaints /></TenantRouteGuard>
-        </Route>
-        <Route path="/tenant-pg">
-          <TenantRouteGuard requiresOnboarding={true}><TenantPgDetails /></TenantRouteGuard>
-        </Route>
-        <Route path="/tenant-facilities">
-          <TenantRouteGuard requiresOnboarding={true}><TenantPgFacilities /></TenantRouteGuard>
-        </Route>
-        <Route path="/tenant-announcements">
-          <TenantRouteGuard requiresOnboarding={true}><TenantAnnouncements /></TenantRouteGuard>
-        </Route>
-
-        {/* Tenant Search/Onboarding Routes */}
-        <Route path="/tenant-search-pgs">
-          <TenantRouteGuard requiresOnboarding={false}><PGSearchPage /></TenantRouteGuard>
-        </Route>
-        <Route path="/pg/:id">
-          <TenantRouteGuard requiresOnboarding={false}><PGDetailsPage /></TenantRouteGuard>
-        </Route>
-        <Route path="/tenant-visit-requests">
-          <TenantRouteGuard requiresOnboarding={false}><TenantVisitRequestsPage /></TenantRouteGuard>
-        </Route>
-
-        <Route component={NotFound} />
-      </Switch>
-    </Suspense>
-  );
-}
-
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
@@ -154,25 +74,142 @@ function App() {
         <Toaster />
         <Suspense fallback={<PageLoader />}>
           <Switch>
-            {/* --- PUBLIC ROUTES: Loaded instantly without AuthGate --- */}
+            {/* PUBLIC ROUTES */}
             <Route path="/" component={Home} />
             <Route path="/login" component={Login} />
             <Route path="/register" component={Register} />
             <Route path="/subscription" component={SubscriptionPlan} />
             <Route path="/forgot-password" component={ForgotPassword} />
 
-            {/* --- PROTECTED ROUTES: Wrapped in AuthGate --- */}
-            <Route path="/:rest*">
-              <AuthGate>
-                <ProtectedRouter />
-              </AuthGate>
+            {/* OWNER ROUTES */}
+            <Route path="/dashboard">
+              <AuthGate><Dashboard /></AuthGate>
             </Route>
+            <Route path="/tenants/add">
+              <AuthGate><AddTenant /></AuthGate>
+            </Route>
+            <Route path="/tenants/view/:id">
+              <AuthGate><ViewTenant /></AuthGate>
+            </Route>
+            <Route path="/tenants/edit/:id">
+              <AuthGate><EditTenant /></AuthGate>
+            </Route>
+            <Route path="/tenants">
+              <AuthGate><TenantsList /></AuthGate>
+            </Route>
+            <Route path="/payments">
+              <AuthGate><Payments /></AuthGate>
+            </Route>
+            <Route path="/electricity-history">
+              <AuthGate><ElectricityHistory /></AuthGate>
+            </Route>
+            <Route path="/notifications">
+              <AuthGate><Notifications /></AuthGate>
+            </Route>
+            <Route path="/rooms/add">
+              <AuthGate><AddRoom /></AuthGate>
+            </Route>
+            <Route path="/rooms/edit/:id">
+              <AuthGate><EditRoom /></AuthGate>
+            </Route>
+            <Route path="/rooms">
+              <AuthGate><Rooms /></AuthGate>
+            </Route>
+            <Route path="/complaints">
+              <AuthGate><Complaints /></AuthGate>
+            </Route>
+            <Route path="/maintenance">
+              <AuthGate><Maintenance /></AuthGate>
+            </Route>
+            <Route path="/reports">
+              <AuthGate><Reports /></AuthGate>
+            </Route>
+            <Route path="/settings">
+              <AuthGate><Settings /></AuthGate>
+            </Route>
+            <Route path="/manage-devices">
+              <AuthGate><ManageDevices /></AuthGate>
+            </Route>
+            <Route path="/pg-management">
+              <AuthGate><PGManagement /></AuthGate>
+            </Route>
+            <Route path="/owner-visit-requests">
+              <AuthGate><OwnerVisitRequestsPage /></AuthGate>
+            </Route>
+            <Route path="/owner-onboarding-requests">
+              <AuthGate><OwnerOnboardingRequestsPage /></AuthGate>
+            </Route>
+            <Route path="/announcements">
+              <AuthGate><Announcements /></AuthGate>
+            </Route>
+            <Route path="/food-menu">
+              <AuthGate><FoodMenu /></AuthGate>
+            </Route>
+
+            {/* ADMIN ROUTES */}
+            <Route path="/admin-dashboard">
+              <AuthGate><AdminDashboard /></AuthGate>
+            </Route>
+            <Route path="/admin-pgs">
+              <AuthGate><AdminPGManagement /></AuthGate>
+            </Route>
+            <Route path="/admin-subscriptions">
+              <AuthGate><AdminSubscriptions /></AuthGate>
+            </Route>
+            <Route path="/admin-complaints">
+              <AuthGate><AdminComplaints /></AuthGate>
+            </Route>
+            <Route path="/admin-amenities">
+              <AuthGate><AdminAmenities /></AuthGate>
+            </Route>
+            <Route path="/admin-owner-analytics">
+              <AuthGate><AdminOwnerAnalytics /></AuthGate>
+            </Route>
+
+            {/* TENANT ROUTES */}
+            <Route path="/tenant-reset-password">
+              <AuthGate><TenantResetPassword /></AuthGate>
+            </Route>
+            <Route path="/tenant-dashboard">
+              <AuthGate><TenantRouteGuard requiresOnboarding={true}><TenantDashboard /></TenantRouteGuard></AuthGate>
+            </Route>
+            <Route path="/tenant-profile">
+              <AuthGate><TenantRouteGuard requiresOnboarding={true}><TenantProfile /></TenantRouteGuard></AuthGate>
+            </Route>
+            <Route path="/tenant-room">
+              <AuthGate><TenantRouteGuard requiresOnboarding={true}><TenantRoomDetails /></TenantRouteGuard></AuthGate>
+            </Route>
+            <Route path="/tenant-payments">
+              <AuthGate><TenantRouteGuard requiresOnboarding={true}><TenantPayments /></TenantRouteGuard></AuthGate>
+            </Route>
+            <Route path="/tenant-complaints">
+              <AuthGate><TenantRouteGuard requiresOnboarding={true}><TenantComplaints /></TenantRouteGuard></AuthGate>
+            </Route>
+            <Route path="/tenant-pg">
+              <AuthGate><TenantRouteGuard requiresOnboarding={true}><TenantPgDetails /></TenantRouteGuard></AuthGate>
+            </Route>
+            <Route path="/tenant-facilities">
+              <AuthGate><TenantRouteGuard requiresOnboarding={true}><TenantPgFacilities /></TenantRouteGuard></AuthGate>
+            </Route>
+            <Route path="/tenant-announcements">
+              <AuthGate><TenantRouteGuard requiresOnboarding={true}><TenantAnnouncements /></TenantRouteGuard></AuthGate>
+            </Route>
+            <Route path="/tenant-search-pgs">
+              <AuthGate><TenantRouteGuard requiresOnboarding={false}><PGSearchPage /></TenantRouteGuard></AuthGate>
+            </Route>
+            <Route path="/pg/:id">
+              <AuthGate><TenantRouteGuard requiresOnboarding={false}><PGDetailsPage /></TenantRouteGuard></AuthGate>
+            </Route>
+            <Route path="/tenant-visit-requests">
+              <AuthGate><TenantRouteGuard requiresOnboarding={false}><TenantVisitRequestsPage /></TenantRouteGuard></AuthGate>
+            </Route>
+
+            <Route component={NotFound} />
           </Switch>
         </Suspense>
       </TooltipProvider>
     </QueryClientProvider>
   );
 }
-
 
 export default App;
