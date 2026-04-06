@@ -82,6 +82,11 @@ const TIME_SLOTS = [
 
 export default function PGDetailsPage() {
   console.log("PGDetailsPage mounted", window.location.pathname);
+  
+  useEffect(() => {
+    sessionStorage.setItem("isFromDetails", "true");
+  }, []);
+
   const isMobile = useIsMobile();
   const Layout = isMobile ? MobileLayout : DesktopLayout;
   const params = useParams<{ id?: string }>();

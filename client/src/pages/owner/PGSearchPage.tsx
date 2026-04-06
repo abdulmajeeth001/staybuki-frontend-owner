@@ -94,17 +94,60 @@ const getDynamicAmenityIcon = (name: any) => {
 function PGSearchContent() {
   const isMobile = useIsMobile();
   const [, navigate] = useLocation();
-  const [filters, setFilters] = useState<PgSearchRequest>({
-    maxDistance: 10,
-    limit: 20,
-    offset: 0,
+  const [filters, setFilters] = useState<PgSearchRequest>(() => {
+    try {
+      const isFromDetails = sessionStorage.getItem("isFromDetails") === "true";
+      if (isFromDetails) {
+        const saved = sessionStorage.getItem("pgSearch_filters");
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          return { maxDistance: 10, limit: 20, offset: 0, ...parsed };
+        }
+      }
+    } catch {}
+    return { maxDistance: 10, limit: 20, offset: 0 };
   });
-  const [tempFilters, setTempFilters] = useState<PgSearchRequest>({ ...filters });
+  const [tempFilters, setTempFilters] = useState<PgSearchRequest>(() => {
+    try {
+      const isFromDetails = sessionStorage.getItem("isFromDetails") === "true";
+      if (isFromDetails) {
+        const saved = sessionStorage.getItem("pgSearch_tempFilters");
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          return { maxDistance: 10, limit: 20, offset: 0, ...parsed };
+        }
+      }
+    } catch {}
+    return { maxDistance: 10, limit: 20, offset: 0 };
+  });
   const [isGettingLocation, setIsGettingLocation] = useState(false);
   const [showFilters, setShowFilters] = useState(!isMobile);
-  const [sortBy, setSortBy] = useState<"distance" | "rating" | "both">("both");
-  const [hasSearched, setHasSearched] = useState(false);
-  const [showAllAmenities, setShowAllAmenities] = useState(false);
+  const [sortBy, setSortBy] = useState<"distance" | "rating" | "both">(() => {
+    const isFromDetails = sessionStorage.getItem("isFromDetails") === "true";
+    if (isFromDetails) {
+      return (sessionStorage.getItem("pgSearch_sortBy") as any) || "both";
+    }
+    return "both";
+  });
+  const [hasSearched, setHasSearched] = useState(() => {
+    const isFromDetails = sessionStorage.getItem("isFromDetails") === "true";
+    if (isFromDetails) {
+      return sessionStorage.getItem("pgSearch_hasSearched") === "true";
+    }
+    return false;
+  });
+  const [showAllAmenities, setShowAllAmenities] = useState(() => {
+    const isFromDetails = sessionStorage.getItem("isFromDetails") === "true";
+    if (isFromDetails) {
+      return sessionStorage.getItem("pgSearch_showAllAmenities") === "true";
+    }
+    return false;
+  });
+
+  useEffect(() => {
+    // Clear the flag so that future navigations to this page (not from details) don't restore state
+    sessionStorage.removeItem("isFromDetails");
+  }, []);
 
   const { data: amenities = [] } = useQuery<AmenityResponse[]>({
     queryKey: ["/api/amenities"],
@@ -116,6 +159,26 @@ function PGSearchContent() {
     enabled: hasSearched,
     queryFn: () => applicantService.searchPgs(filters),
   });
+
+  useEffect(() => {
+    sessionStorage.setItem("pgSearch_filters", JSON.stringify(filters));
+  }, [filters]);
+
+  useEffect(() => {
+    sessionStorage.setItem("pgSearch_tempFilters", JSON.stringify(tempFilters));
+  }, [tempFilters]);
+
+  useEffect(() => {
+    sessionStorage.setItem("pgSearch_hasSearched", String(hasSearched));
+  }, [hasSearched]);
+
+  useEffect(() => {
+    sessionStorage.setItem("pgSearch_sortBy", sortBy);
+  }, [sortBy]);
+
+  useEffect(() => {
+    sessionStorage.setItem("pgSearch_showAllAmenities", String(showAllAmenities));
+  }, [showAllAmenities]);
 
   useEffect(() => {
     setShowFilters(!isMobile);
