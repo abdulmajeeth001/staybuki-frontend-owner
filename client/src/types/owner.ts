@@ -3,6 +3,10 @@ import { components } from "@/types/api";
 // Type aliases for API schemas
 export type OnboardingResponse = components["schemas"]["OnboardingRequestResponseDto"];
 export type BedResponse = components["schemas"]["BedResponseDto"];
+export type TenantResponse = components["schemas"]["TenantResponseDto"];
+export type RoomResponse = components["schemas"]["RoomResponseDto"];
+export type RoomRequest = components["schemas"]["RoomRequestDto"];
+export type BulkBedRequest = components["schemas"]["BulkBedRequestDto"];
 
 // Payloads for mutations
 export type ApproveOnboardingRequestPayload = {

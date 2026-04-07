@@ -4,7 +4,11 @@ import {
   OnboardingResponse,
   ApproveOnboardingRequestPayload,
   RejectOnboardingRequestPayload,
-  Bed,
+  BedResponse,
+  TenantResponse,
+  RoomResponse,
+  RoomRequest,
+  BulkBedRequest,
 } from "@/types/owner";
 
 export const ownerService = {
@@ -57,11 +61,41 @@ export const ownerService = {
    * @returns A promise that resolves to an array of Bed objects.
    * @throws An error if the API call fails or the response indicates an error.
    */
-  async getRoomBeds(roomId: number | undefined): Promise<Bed[]> {
-    const response = await api.get<ApiResponse<Bed[]>>(`/api/rooms/${roomId}/beds`);
+  async getRoomBeds(roomId: number | undefined): Promise<BedResponse[]> {
+    const response = await api.get<ApiResponse<BedResponse[]> | BedResponse[]>(`/api/rooms/${roomId}/beds`);
     if (response.data.success) {
       return response.data.data;
     }
     throw new Error(response.data.message || "Failed to fetch room beds");
+  },
+
+  /**
+   * Fetches a list of available tenants.
+   * @returns A promise that resolves to an array of TenantResponse objects.
+   */
+  async getAvailableTenants(): Promise<TenantResponse[]> {
+    const response = await api.get<ApiResponse<TenantResponse[]> | TenantResponse[]>("/api/tenants/available-tenants");
+    return (response.data as any).data || response.data;
+  },
+
+  /**
+   * Creates a new room.
+   * @param payload The room details payload.
+   * @returns A promise that resolves to the created RoomResponse.
+   */
+  async createRoom(payload: RoomRequest): Promise<RoomResponse> {
+    const response = await api.post<ApiResponse<RoomResponse> | RoomResponse>("/api/rooms", payload);
+    return (response.data as any).data || response.data;
+  },
+
+  /**
+   * Bulk creates bed positions for a specific room.
+   * @param roomId The ID of the room.
+   * @param payload The beds details payload.
+   * @returns A promise that resolves to an array of created Bed objects.
+   */
+  async bulkCreateBeds(roomId: number, payload: BulkBedRequest): Promise<BedResponse[]> {
+    const response = await api.post<ApiResponse<BedResponse[]> | BedResponse[]>(`/api/rooms/${roomId}/beds/bulk`, payload);
+    return (response.data as any).data || response.data;
   },
 };

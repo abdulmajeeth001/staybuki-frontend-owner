@@ -2,7 +2,7 @@ import DesktopLayout from "@/components/layout/DesktopLayout";
 import MobileLayout from "@/components/layout/MobileLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DoorOpen, Plus, Wifi, Droplet, Zap, Wind, Bath, Search, MoreVertical, Upload, Users, Home, DoorClosed, Edit2, Bed, User } from "lucide-react";
+import { DoorOpen, Plus, Wifi, Droplet, Zap, Wind, Bath, Search, MoreVertical, Upload, Users, Home, DoorClosed, Edit2, Bed, User, ChevronDown, ChevronUp } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useEffect, useState, useMemo } from "react";
 import { useLocation } from "wouter";
@@ -69,6 +69,7 @@ function RoomsDesktop() {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"all" | "fully_occupied" | "partially_occupied" | "vacant">("all");
   const [bulkUploadOpen, setBulkUploadOpen] = useState(false);
+  const [expandedRooms, setExpandedRooms] = useState<Record<number, boolean>>({});
 
   const getRoomOccupancyStatus = (room: any) => {
     const tenantCount = room.tenantIds?.length || 0;
@@ -93,6 +94,10 @@ function RoomsDesktop() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const toggleRoomExpanded = (roomId: number) => {
+    setExpandedRooms(prev => ({ ...prev, [roomId]: !prev[roomId] }));
   };
 
   const handleSeedRooms = async () => {
@@ -460,24 +465,34 @@ function RoomsDesktop() {
                           {/* Tenants Section */}
                           {tenants.length > 0 ? (
                             <div className="mb-4">
-                              <div className="flex items-center gap-2 mb-3">
-                                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center">
-                                  <Users className="h-4 w-4 text-purple-600" />
-                                </div>
-                                <p className="text-sm font-semibold text-foreground">
-                                  Tenants ({tenants.length}/{room.sharing})
-                                </p>
-                              </div>
-                              <div className="space-y-2">
-                                {tenants.map((tenant) => (
-                                  <div key={tenant.id} className="p-2.5 rounded-lg bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200">
-                                    <p className="font-semibold text-green-900 text-sm" data-testid={`text-tenant-${room.id}`}>
-                                      {tenant.name}
-                                    </p>
-                                    <p className="text-xs text-green-700">{tenant.phone}</p>
+                              <div 
+                                className="flex items-center justify-between mb-3 cursor-pointer hover:bg-slate-50 p-1 -ml-1 rounded transition-colors"
+                                onClick={() => toggleRoomExpanded(room.id)}
+                              >
+                                <div className="flex items-center gap-2">
+                                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center">
+                                    <Users className="h-4 w-4 text-purple-600" />
                                   </div>
-                                ))}
+                                  <p className="text-sm font-semibold text-foreground">
+                                    Tenants ({tenants.length}/{room.sharing})
+                                  </p>
+                                </div>
+                                <div className="h-6 w-6 flex items-center justify-center text-slate-500">
+                                  {expandedRooms[room.id] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                                </div>
                               </div>
+                              {expandedRooms[room.id] && (
+                                <div className="space-y-2">
+                                  {tenants.map((tenant) => (
+                                    <div key={tenant.id} className="p-2.5 rounded-lg bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200">
+                                      <p className="font-semibold text-green-900 text-sm" data-testid={`text-tenant-${room.id}`}>
+                                        {tenant.name}
+                                      </p>
+                                      <p className="text-xs text-green-700">{tenant.phone}</p>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
                             </div>
                           ) : (
                             <div className="mb-4 py-3 px-3 rounded-lg bg-gradient-to-r from-orange-50 to-red-50 border border-orange-200">
@@ -538,6 +553,7 @@ function RoomsMobile() {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"all" | "fully_occupied" | "partially_occupied" | "vacant">("all");
   const [bulkUploadOpen, setBulkUploadOpen] = useState(false);
+  const [expandedRooms, setExpandedRooms] = useState<Record<number, boolean>>({});
 
   const getRoomOccupancyStatus = (room: any) => {
     const tenantCount = room.tenantIds?.length || 0;
@@ -562,6 +578,10 @@ function RoomsMobile() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const toggleRoomExpanded = (roomId: number) => {
+    setExpandedRooms(prev => ({ ...prev, [roomId]: !prev[roomId] }));
   };
 
   const handleSeedRooms = async () => {
@@ -889,20 +909,30 @@ function RoomsMobile() {
                         {/* Tenants */}
                         {tenants.length > 0 ? (
                           <div className="mb-3">
-                            <div className="flex items-center gap-2 mb-2">
-                              <Users className="h-4 w-4 text-purple-600" />
-                              <p className="text-sm font-semibold">
-                                Tenants ({tenants.length}/{room.sharing})
-                              </p>
+                            <div 
+                              className="flex items-center justify-between mb-2 cursor-pointer p-1 -ml-1 hover:bg-slate-50 rounded transition-colors"
+                              onClick={() => toggleRoomExpanded(room.id)}
+                            >
+                              <div className="flex items-center gap-2">
+                                <Users className="h-4 w-4 text-purple-600" />
+                                <p className="text-sm font-semibold">
+                                  Tenants ({tenants.length}/{room.sharing})
+                                </p>
+                              </div>
+                              <div className="h-6 w-6 flex items-center justify-center text-slate-500">
+                                {expandedRooms[room.id] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                              </div>
                             </div>
-                            <div className="space-y-1.5">
-                              {tenants.map((tenant) => (
-                                <div key={tenant.id} className="p-2 rounded-lg bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200">
-                                  <p className="font-semibold text-green-900 text-sm">{tenant.name}</p>
-                                  <p className="text-xs text-green-700">{tenant.phone}</p>
-                                </div>
-                              ))}
-                            </div>
+                            {expandedRooms[room.id] && (
+                              <div className="space-y-1.5">
+                                {tenants.map((tenant) => (
+                                  <div key={tenant.id} className="p-2 rounded-lg bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200">
+                                    <p className="font-semibold text-green-900 text-sm">{tenant.name}</p>
+                                    <p className="text-xs text-green-700">{tenant.phone}</p>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
                           </div>
                         ) : (
                           <div className="mb-3 p-2 rounded-lg bg-orange-50 border border-orange-200">

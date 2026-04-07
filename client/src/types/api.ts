@@ -1742,6 +1742,9 @@ export interface components {
             floor?: number;
             amenities?: string[];
             meterNumber?: string;
+            hasAC?: boolean;
+            hasAttachedBathroom?: boolean;
+            tenantIds?: number[];
         };
         RoomResponseDto: {
             /** Format: int32 */
@@ -1878,19 +1881,48 @@ export interface components {
             status?: "AVAILABLE" | "OCCUPIED" | "RESERVED" | "SERVING_NOTICE";
         };
         BedResponseDto: {
-            /** Format: int64 */
+            /** Format: int32 */
             id?: number;
-            /** Format: int64 */
+            /** Format: int32 */
             roomId?: number;
-            /** Format: int64 */
+            /** Format: int32 */
             pgId?: number;
             position?: string;
             /** Format: int32 */
             displayOrder?: number;
-            /** Format: int64 */
+            /** Format: int32 */
             tenantId?: number;
+            tenant?: components["schemas"]["TenantResponseDto"];
             /** @enum {string} */
             status?: "AVAILABLE" | "OCCUPIED" | "RESERVED" | "SERVING_NOTICE";
+        };
+        EmergencyContactDto: {
+            name: string;
+            phone: string;
+            relationship: string;
+        };
+        TenantResponseDto: {
+            /** Format: int32 */
+            id?: number;
+            /** Format: int32 */
+            userId?: number;
+            /** Format: int32 */
+            ownerId?: number;
+            /** Format: int32 */
+            pgId?: number;
+            name?: string;
+            email?: string;
+            phone?: string;
+            roomNumber?: string;
+            monthlyRent?: number;
+            tenantImage?: string;
+            aadharCard?: string;
+            status?: string;
+            emergencyContacts?: components["schemas"]["EmergencyContactDto"][];
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: date-time */
+            updatedAt?: string;
         };
         AnnouncementRequestDto: {
             heading?: string;
@@ -2106,11 +2138,6 @@ export interface components {
             createdAt?: string;
             tenantProfile?: components["schemas"]["TenantProfileDto"];
         };
-        EmergencyContactDto: {
-            name: string;
-            phone: string;
-            relationship: string;
-        };
         TenantRequestDto: {
             name: string;
             email: string;
@@ -2236,6 +2263,14 @@ export interface components {
         };
         BulkBedRequestDto: {
             beds: components["schemas"]["CreateBedRequestDto"][];
+        };
+        ApiResponseListBedResponseDto: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["BedResponseDto"][];
+            /** Format: date-time */
+            timestamp?: string;
+            errorCode?: string;
         };
         RoomUploadConfigResponseDto: {
             /** Format: int32 */
@@ -2478,28 +2513,13 @@ export interface components {
             isActive?: boolean;
             owner?: components["schemas"]["OwnerDto"];
         };
-        TenantResponseDto: {
-            /** Format: int32 */
-            id?: number;
-            /** Format: int32 */
-            userId?: number;
-            /** Format: int32 */
-            ownerId?: number;
-            /** Format: int32 */
-            pgId?: number;
-            name?: string;
-            email?: string;
-            phone?: string;
-            roomNumber?: string;
-            monthlyRent?: number;
-            tenantImage?: string;
-            aadharCard?: string;
-            status?: string;
-            emergencyContacts?: components["schemas"]["EmergencyContactDto"][];
+        ApiResponseListTenantResponseDto: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["TenantResponseDto"][];
             /** Format: date-time */
-            createdAt?: string;
-            /** Format: date-time */
-            updatedAt?: string;
+            timestamp?: string;
+            errorCode?: string;
         };
         ApiResponseListVisitRequestResponseDto: {
             success?: boolean;
@@ -3715,7 +3735,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["BedResponseDto"][];
+                    "*/*": components["schemas"]["ApiResponseListBedResponseDto"];
                 };
             };
         };
@@ -5028,7 +5048,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["TenantResponseDto"][];
+                    "*/*": components["schemas"]["ApiResponseListTenantResponseDto"];
                 };
             };
         };
@@ -5606,7 +5626,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["UserResponseDto"];
+                    "*/*": Record<string, never>;
                 };
             };
         };
