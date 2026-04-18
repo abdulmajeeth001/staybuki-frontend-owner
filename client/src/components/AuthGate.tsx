@@ -23,24 +23,25 @@ export function AuthGate({ children }: AuthGateProps) {
         });
         const data = res.data;
 
-          const currentPath = window.location.pathname;
-          
-          // If user is authenticated and on a public page, redirect to dashboard
-          const publicPaths = ["/", "/login", "/register", "/forgot-password"];
-          if (publicPaths.includes(currentPath)) {
-            // Redirect based on user type
-            if (data.userType === "tenant") {
-              setLocation("/tenant-dashboard");
-            } else if (data.userType === "admin") {
-              setLocation("/admin-dashboard");
-            } else if (data.userType === "applicant") {
-              setLocation("/tenant-search-pgs");
-            } else {
-              setLocation("/dashboard");
-            }
+        const currentPath = window.location.pathname;
+        
+        // If user is authenticated and on a public page, redirect to dashboard
+        const publicPaths = ["/", "/login", "/register", "/forgot-password"];
+        if (publicPaths.includes(currentPath)) {
+          // Redirect based on user type
+          if (data.userType === "tenant") {
+            setLocation("/tenant-dashboard");
+          } else if (data.userType === "admin") {
+            setLocation("/admin-dashboard");
+          } else if (data.userType === "applicant") {
+            setLocation("/tenant-search-pgs");
+          } else {
+            setLocation("/dashboard");
           }
+        }
       } catch (error) {
         console.error("Auth check failed:", error);
+        setLocation("/login");
       } finally {
         setIsChecking(false);
       }

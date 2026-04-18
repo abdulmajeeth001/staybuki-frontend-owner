@@ -15,9 +15,10 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { api } from "@/apiClient";
+import { usePG } from "@/hooks/use-pg";
 
 interface BulkUploadResult {
-  success: boolean;
+  success: boolean; 
   dryRun: boolean;
   summary: {
     total: number;
@@ -37,6 +38,7 @@ interface TenantBulkUploadModalProps {
 }
 
 export function TenantBulkUploadModal({ open, onOpenChange, onSuccess }: TenantBulkUploadModalProps) {
+  const { pg } = usePG();
   const [step, setStep] = useState<'upload' | 'processing' | 'results'>('upload');
   const [file, setFile] = useState<File | null>(null);
   const [dryRun, setDryRun] = useState(true);
@@ -55,13 +57,21 @@ export function TenantBulkUploadModal({ open, onOpenChange, onSuccess }: TenantB
   };
 
   const handleClose = () => {
+    if (result && result.success && !result.dryRun) {
+      onSuccess?.();
+    }
     resetState();
     onOpenChange(false);
   };
 
   const handleDownloadTemplate = async () => {
+    if (!pg?.id) {
+      toast.error("No PG selected. Please select a PG to download the template.");
+      return;
+    }
     try {
       const response = await api.get('/api/tenants/bulk-upload-template', {
+        params: { pgId: pg.id },
         responseType: 'blob',
       });
       
@@ -138,10 +148,9 @@ export function TenantBulkUploadModal({ open, onOpenChange, onSuccess }: TenantB
 
       if (data.success && !data.dryRun) {
         toast.success(`Successfully created ${data.summary.created} tenants!`);
-        onSuccess?.();
       }
     } catch (error: any) {
-      toast.error(error.response?.data?.error || error.message || 'Failed to upload file');
+      toast.error(error.response?.data?.message || error.response?.data?.error || error.message || 'Failed to upload file');
       setStep('upload');
     } finally {
       setIsUploading(false);
@@ -180,10 +189,9 @@ export function TenantBulkUploadModal({ open, onOpenChange, onSuccess }: TenantB
 
       if (data.success) {
         toast.success(`Successfully created ${data.summary.created} tenants!`);
-        onSuccess?.();
       }
     } catch (error: any) {
-      toast.error(error.response?.data?.error || error.message || 'Failed to upload file');
+      toast.error(error.response?.data?.message || error.response?.data?.error || error.message || 'Failed to upload file');
       setStep('upload');
     } finally {
       setIsUploading(false);
