@@ -86,7 +86,8 @@ function RoomsDesktop() {
     try {
       setLoading(true);
       const response = await api.get("/api/rooms");
-      setRoomsData(response.data);
+      const responseData = response.data?.data !== undefined ? response.data.data : response.data;
+      setRoomsData(Array.isArray(responseData) ? responseData : []);
       setError(null);
     } catch (err: any) {
       console.error("Error fetching rooms:", err);
@@ -113,19 +114,23 @@ function RoomsDesktop() {
   };
 
   const filteredRooms = useMemo(() => {
-    return roomsData.filter((item) => {
-      const matchSearch = item.room.roomNumber.toLowerCase().includes(search.toLowerCase());
+    const data = Array.isArray(roomsData) ? roomsData : [];
+    return data.filter((item) => {
+      if (!item || !item.room) return false;
+      const roomNum = item.room.roomNumber ? String(item.room.roomNumber).toLowerCase() : "";
+      const matchSearch = roomNum.includes(search.toLowerCase());
       const occupancyStatus = getRoomOccupancyStatus(item.room);
       const matchFilter = filter === "all" || occupancyStatus === filter;
       return matchSearch && matchFilter;
     });
   }, [roomsData, search, filter]);
 
+  const dataToUse = Array.isArray(roomsData) ? roomsData : [];
   const stats = {
-    total: roomsData.length,
-    fully_occupied: roomsData.filter((item) => getRoomOccupancyStatus(item.room) === "fully_occupied").length,
-    partially_occupied: roomsData.filter((item) => getRoomOccupancyStatus(item.room) === "partially_occupied").length,
-    vacant: roomsData.filter((item) => getRoomOccupancyStatus(item.room) === "vacant").length,
+    total: dataToUse.length,
+    fully_occupied: dataToUse.filter((item) => item?.room && getRoomOccupancyStatus(item.room) === "fully_occupied").length,
+    partially_occupied: dataToUse.filter((item) => item?.room && getRoomOccupancyStatus(item.room) === "partially_occupied").length,
+    vacant: dataToUse.filter((item) => item?.room && getRoomOccupancyStatus(item.room) === "vacant").length,
   };
 
   const filterTabs = [
@@ -200,7 +205,7 @@ function RoomsDesktop() {
               <p className="text-white/80 text-sm">Manage rooms, amenities, and occupancy</p>
             </div>
             <div className="flex gap-3">
-              {roomsData.length === 0 && (
+              {dataToUse.length === 0 && (
                 <Button 
                   onClick={handleSeedRooms} 
                   className="bg-white/20 backdrop-blur-sm border-white/30 hover:bg-white/30 text-white transition-all duration-300" 
@@ -232,7 +237,7 @@ function RoomsDesktop() {
       </div>
 
       <div className="space-y-6">
-        {roomsData.length === 0 ? (
+        {dataToUse.length === 0 ? (
           <div className="text-center py-16">
             <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-purple-100 to-blue-100 flex items-center justify-center">
               <DoorOpen className="w-8 h-8 text-purple-600" />
@@ -570,7 +575,8 @@ function RoomsMobile() {
     try {
       setLoading(true);
       const response = await api.get("/api/rooms");
-      setRoomsData(response.data);
+      const responseData = response.data?.data !== undefined ? response.data.data : response.data;
+      setRoomsData(Array.isArray(responseData) ? responseData : []);
       setError(null);
     } catch (err: any) {
       console.error("Error fetching rooms:", err);
@@ -597,19 +603,23 @@ function RoomsMobile() {
   };
 
   const filteredRooms = useMemo(() => {
-    return roomsData.filter((item) => {
-      const matchSearch = item.room.roomNumber.toLowerCase().includes(search.toLowerCase());
+    const data = Array.isArray(roomsData) ? roomsData : [];
+    return data.filter((item) => {
+      if (!item || !item.room) return false;
+      const roomNum = item.room.roomNumber ? String(item.room.roomNumber).toLowerCase() : "";
+      const matchSearch = roomNum.includes(search.toLowerCase());
       const occupancyStatus = getRoomOccupancyStatus(item.room);
       const matchFilter = filter === "all" || occupancyStatus === filter;
       return matchSearch && matchFilter;
     });
   }, [roomsData, search, filter]);
 
+  const dataToUse = Array.isArray(roomsData) ? roomsData : [];
   const stats = {
-    total: roomsData.length,
-    fully_occupied: roomsData.filter((item) => getRoomOccupancyStatus(item.room) === "fully_occupied").length,
-    partially_occupied: roomsData.filter((item) => getRoomOccupancyStatus(item.room) === "partially_occupied").length,
-    vacant: roomsData.filter((item) => getRoomOccupancyStatus(item.room) === "vacant").length,
+    total: dataToUse.length,
+    fully_occupied: dataToUse.filter((item) => item?.room && getRoomOccupancyStatus(item.room) === "fully_occupied").length,
+    partially_occupied: dataToUse.filter((item) => item?.room && getRoomOccupancyStatus(item.room) === "partially_occupied").length,
+    vacant: dataToUse.filter((item) => item?.room && getRoomOccupancyStatus(item.room) === "vacant").length,
   };
 
   if (loading) {
@@ -657,7 +667,7 @@ function RoomsMobile() {
       }
     >
       <div className="space-y-4">
-        {roomsData.length === 0 ? (
+        {dataToUse.length === 0 ? (
           <div className="text-center py-12">
             <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-purple-100 to-blue-100 flex items-center justify-center">
               <DoorOpen className="w-8 h-8 text-purple-600" />
