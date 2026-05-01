@@ -4,8 +4,12 @@ import { components } from "@/types/api";
 export type OnboardingResponse = components["schemas"]["OnboardingRequestResponseDto"];
 export type BedResponse = components["schemas"]["BedResponseDto"];
 export type TenantResponse = components["schemas"]["TenantResponseDto"];
+export type RoomLegacyResponse = components["schemas"]["RoomLegacyResponseDto"];
 export type RoomResponse = components["schemas"]["RoomResponseDto"];
 export type RoomRequest = components["schemas"]["RoomRequestDto"];
+export type TenantRequest = components["schemas"]["TenantRequestDto"];
+export type EmergencyContactRequest = components["schemas"]["EmergencyContactRequestDto"];
+export type EmergencyContactResponse = components["schemas"]["EmergencyContactResponseDto"];
 export type BulkBedRequest = components["schemas"]["BulkBedRequestDto"];
 
 // Payloads for mutations
@@ -15,6 +19,10 @@ export type ApproveOnboardingRequestPayload = {
 
 export type RejectOnboardingRequestPayload = {
   reason: string;
+};
+
+export type AssignBedPayload = {
+  tenantId: number;
 };
 
 // The TenantHistory interface is part of the OnboardingRequestResponseDto,

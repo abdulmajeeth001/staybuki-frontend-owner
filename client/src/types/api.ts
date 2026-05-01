@@ -4,6 +4,38 @@
  */
 
 export interface paths {
+    "/api/v1/beds/{bedId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["updateBed"];
+        post?: never;
+        delete: operations["deleteBed"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tenants/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getTenant"];
+        put: operations["updateTenant"];
+        post?: never;
+        delete: operations["deleteTenant"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/rooms/{id}": {
         parameters: {
             query?: never;
@@ -95,22 +127,6 @@ export interface paths {
         put: operations["update"];
         post?: never;
         delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/beds/{bedId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put: operations["updateBed"];
-        post?: never;
-        delete: operations["deleteBed"];
         options?: never;
         head?: never;
         patch?: never;
@@ -212,6 +228,86 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/beds/{bedId}/vacate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["vacateBed"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/beds/{bedId}/assign": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["assignBed"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/beds/room/{roomId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getBedsByRoom"];
+        put?: never;
+        post: operations["createBed"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/beds/room/{roomId}/bulk": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["bulkCreateBeds"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/beds/bulk-multiple-rooms": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["bulkCreateBedsForMultipleRooms"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/users/profile": {
         parameters: {
             query?: never;
@@ -260,7 +356,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/tenants/tenants/bulk-upload": {
+    "/api/tenants/bulk-upload": {
         parameters: {
             query?: never;
             header?: never;
@@ -321,38 +417,6 @@ export interface paths {
         get: operations["getRooms"];
         put?: never;
         post: operations["createRoom"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/rooms/{roomId}/beds": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["getBedsByRoom"];
-        put?: never;
-        post: operations["createBed"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/rooms/{roomId}/beds/bulk": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["bulkCreateBeds"];
         delete?: never;
         options?: never;
         head?: never;
@@ -713,38 +777,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/beds/{bedId}/vacate": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["vacateBed"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/beds/{bedId}/assign": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post: operations["assignBed"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/auth/verify-password-reset": {
         parameters: {
             query?: never;
@@ -1067,17 +1099,17 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/tenants/{id}": {
+    "/api/v1/beds/pg/{pgId}/summary": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get: operations["getTenant"];
+        get: operations["getRoomsWithBeds"];
         put?: never;
         post?: never;
-        delete: operations["deleteTenant"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -1533,22 +1565,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/beds/pg/{pgId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["getRoomsWithBeds"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/auth/me": {
         parameters: {
             query?: never;
@@ -1730,6 +1746,91 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        CreateBedRequestDto: {
+            position: string;
+            /** Format: int32 */
+            displayOrder?: number;
+            /** @enum {string} */
+            status?: "AVAILABLE" | "OCCUPIED" | "RESERVED" | "SERVING_NOTICE";
+        };
+        ApiResponseBedResponseDto: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["BedResponseDto"];
+            /** Format: date-time */
+            timestamp?: string;
+            errorCode?: string;
+        };
+        BedResponseDto: {
+            /** Format: int32 */
+            id?: number;
+            /** Format: int32 */
+            roomId?: number;
+            /** Format: int32 */
+            pgId?: number;
+            position?: string;
+            /** Format: int32 */
+            displayOrder?: number;
+            /** Format: int32 */
+            tenantId?: number;
+            tenant?: components["schemas"]["TenantResponseDto"];
+            /** @enum {string} */
+            status?: "AVAILABLE" | "OCCUPIED" | "RESERVED" | "SERVING_NOTICE";
+        };
+        EmergencyContactDto: {
+            name: string;
+            phone: string;
+            relationship: string;
+        };
+        TenantResponseDto: {
+            /** Format: int32 */
+            id?: number;
+            /** Format: int32 */
+            userId?: number;
+            /** Format: int32 */
+            ownerId?: number;
+            /** Format: int32 */
+            pgId?: number;
+            name?: string;
+            email?: string;
+            phone?: string;
+            roomNumber?: string;
+            monthlyRent?: number;
+            tenantImage?: string;
+            aadharCard?: string;
+            status?: string;
+            emergencyContacts?: components["schemas"]["EmergencyContactDto"][];
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: date-time */
+            updatedAt?: string;
+        };
+        TenantUpdateRequestDto: {
+            name: string;
+            email: string;
+            phone: string;
+            roomNumber: string;
+            monthlyRent: number;
+            tenantImage?: string;
+            aadharCard?: string;
+            profession?: string;
+            professionIdDoc?: string;
+            emergencyContactName?: string;
+            emergencyContactPhone?: string;
+            relationship?: string;
+            /** Format: date */
+            joinDate?: string;
+            /** Format: int32 */
+            bedId?: number;
+        };
+        ApiResponseTenantResponseDto: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["TenantResponseDto"];
+            /** Format: date-time */
+            timestamp?: string;
+            errorCode?: string;
+        };
         RoomRequestDto: {
             /** Format: int32 */
             pgId?: number;
@@ -1872,57 +1973,6 @@ export interface components {
             tenantId?: number;
             /** Format: int32 */
             roomId?: number;
-        };
-        CreateBedRequestDto: {
-            position: string;
-            /** Format: int32 */
-            displayOrder?: number;
-            /** @enum {string} */
-            status?: "AVAILABLE" | "OCCUPIED" | "RESERVED" | "SERVING_NOTICE";
-        };
-        BedResponseDto: {
-            /** Format: int32 */
-            id?: number;
-            /** Format: int32 */
-            roomId?: number;
-            /** Format: int32 */
-            pgId?: number;
-            position?: string;
-            /** Format: int32 */
-            displayOrder?: number;
-            /** Format: int32 */
-            tenantId?: number;
-            tenant?: components["schemas"]["TenantResponseDto"];
-            /** @enum {string} */
-            status?: "AVAILABLE" | "OCCUPIED" | "RESERVED" | "SERVING_NOTICE";
-        };
-        EmergencyContactDto: {
-            name: string;
-            phone: string;
-            relationship: string;
-        };
-        TenantResponseDto: {
-            /** Format: int32 */
-            id?: number;
-            /** Format: int32 */
-            userId?: number;
-            /** Format: int32 */
-            ownerId?: number;
-            /** Format: int32 */
-            pgId?: number;
-            name?: string;
-            email?: string;
-            phone?: string;
-            roomNumber?: string;
-            monthlyRent?: number;
-            tenantImage?: string;
-            aadharCard?: string;
-            status?: string;
-            emergencyContacts?: components["schemas"]["EmergencyContactDto"][];
-            /** Format: date-time */
-            createdAt?: string;
-            /** Format: date-time */
-            updatedAt?: string;
         };
         AnnouncementRequestDto: {
             heading?: string;
@@ -2072,6 +2122,29 @@ export interface components {
             /** Format: date-time */
             createdAt?: string;
         };
+        AssignBedRequestDto: {
+            /** Format: int32 */
+            tenantId: number;
+        };
+        BulkBedRequestDto: {
+            beds: components["schemas"]["CreateBedRequestDto"][];
+        };
+        ApiResponseListBedResponseDto: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["BedResponseDto"][];
+            /** Format: date-time */
+            timestamp?: string;
+            errorCode?: string;
+        };
+        BulkRoomBedsRequestDto: {
+            roomBeds: components["schemas"]["RoomBedsRequestDto"][];
+        };
+        RoomBedsRequestDto: {
+            /** Format: int32 */
+            roomId: number;
+            beds?: components["schemas"]["CreateBedRequestDto"][];
+        };
         PgCreateRequestDto: {
             pgName?: string;
             pgAddress?: string;
@@ -2155,7 +2228,33 @@ export interface components {
             deposit?: number;
             emergencyContacts?: components["schemas"]["EmergencyContactDto"][];
         };
-        TenantBulkUploadResponseDto: Record<string, never>;
+        RowError: {
+            /** Format: int32 */
+            row?: number;
+            roomNumber?: string;
+            message?: string;
+        };
+        RowWarning: {
+            /** Format: int32 */
+            row?: number;
+            roomNumber?: string;
+            message?: string;
+        };
+        TenantBulkUploadResponseDto: {
+            success?: boolean;
+            dryRun?: boolean;
+            summary?: components["schemas"]["UploadSummary"];
+            errors?: components["schemas"]["RowError"][];
+            warnings?: components["schemas"]["RowWarning"][];
+        };
+        UploadSummary: {
+            /** Format: int32 */
+            total?: number;
+            /** Format: int32 */
+            created?: number;
+            /** Format: int32 */
+            failed?: number;
+        };
         CreateVisitRequestDto: {
             /** Format: int32 */
             pgId: number;
@@ -2261,17 +2360,6 @@ export interface components {
             timestamp?: string;
             errorCode?: string;
         };
-        BulkBedRequestDto: {
-            beds: components["schemas"]["CreateBedRequestDto"][];
-        };
-        ApiResponseListBedResponseDto: {
-            success?: boolean;
-            message?: string;
-            data?: components["schemas"]["BedResponseDto"][];
-            /** Format: date-time */
-            timestamp?: string;
-            errorCode?: string;
-        };
         RoomUploadConfigResponseDto: {
             /** Format: int32 */
             id?: number;
@@ -2289,26 +2377,6 @@ export interface components {
             summary?: components["schemas"]["UploadSummary"];
             errors?: components["schemas"]["RowError"][];
             warnings?: components["schemas"]["RowWarning"][];
-        };
-        RowError: {
-            /** Format: int32 */
-            row?: number;
-            roomNumber?: string;
-            message?: string;
-        };
-        RowWarning: {
-            /** Format: int32 */
-            row?: number;
-            roomNumber?: string;
-            message?: string;
-        };
-        UploadSummary: {
-            /** Format: int32 */
-            total?: number;
-            /** Format: int32 */
-            created?: number;
-            /** Format: int32 */
-            failed?: number;
         };
         PgFileUploadResponseDto: {
             url?: string;
@@ -2400,10 +2468,6 @@ export interface components {
             tenantId?: number;
             /** Format: int32 */
             roomId?: number;
-        };
-        AssignBedRequestDto: {
-            /** Format: int32 */
-            tenantId: number;
         };
         VerifyPasswordResetRequestDto: {
             otp: string;
@@ -2513,6 +2577,52 @@ export interface components {
             isActive?: boolean;
             owner?: components["schemas"]["OwnerDto"];
         };
+        ApiResponseListRoomWithBedsResponseDto: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["RoomWithBedsResponseDto"][];
+            /** Format: date-time */
+            timestamp?: string;
+            errorCode?: string;
+        };
+        BedStatsDto: {
+            /** Format: int32 */
+            total?: number;
+            /** Format: int32 */
+            occupied?: number;
+            /** Format: int32 */
+            available?: number;
+        };
+        BedWithTenantDto: {
+            /** Format: int32 */
+            bedId?: number;
+            position?: string;
+            /** Format: int32 */
+            displayOrder?: number;
+            /** @enum {string} */
+            status?: "AVAILABLE" | "OCCUPIED" | "RESERVED" | "SERVING_NOTICE";
+            /** Format: int32 */
+            tenantId?: number;
+            tenantName?: string;
+            tenantPhone?: string;
+        };
+        RoomWithBedsResponseDto: {
+            /** Format: int32 */
+            roomId?: number;
+            roomNumber?: string;
+            /** Format: int32 */
+            floor?: number;
+            beds?: components["schemas"]["BedWithTenantDto"][];
+            bedStats?: components["schemas"]["BedStatsDto"];
+        };
+        ApiResponseListEmergencyContactDto: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["EmergencyContactDto"][];
+            /** Format: date-time */
+            timestamp?: string;
+            errorCode?: string;
+        };
         ApiResponseListTenantResponseDto: {
             success?: boolean;
             message?: string;
@@ -2579,6 +2689,7 @@ export interface components {
             /** Format: int32 */
             pgId?: number;
             pgName?: string;
+            onboarded?: boolean;
             isOnboarded?: boolean;
         };
         ApiResponseListFacilityDto: {
@@ -2632,6 +2743,14 @@ export interface components {
             pgInfo?: components["schemas"]["PgInfoDto"];
             roomDetails?: components["schemas"]["RoomInfoDto"];
             paymentSummary?: components["schemas"]["PaymentSummaryDto"];
+        };
+        ApiResponseListRoomLegacyResponseDto: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["RoomLegacyResponseDto"][];
+            /** Format: date-time */
+            timestamp?: string;
+            errorCode?: string;
         };
         RoomDetailsDto: {
             /** Format: int32 */
@@ -2743,36 +2862,6 @@ export interface components {
             /** Format: date-time */
             createdAt?: string;
         };
-        BedStatsDto: {
-            /** Format: int32 */
-            total?: number;
-            /** Format: int32 */
-            occupied?: number;
-            /** Format: int32 */
-            available?: number;
-        };
-        BedWithTenantDto: {
-            /** Format: int32 */
-            bedId?: number;
-            position?: string;
-            /** Format: int32 */
-            displayOrder?: number;
-            /** @enum {string} */
-            status?: "AVAILABLE" | "OCCUPIED" | "RESERVED" | "SERVING_NOTICE";
-            /** Format: int32 */
-            tenantId?: number;
-            tenantName?: string;
-            tenantPhone?: string;
-        };
-        RoomWithBedsResponseDto: {
-            /** Format: int32 */
-            roomId?: number;
-            roomNumber?: string;
-            /** Format: int32 */
-            floor?: number;
-            beds?: components["schemas"]["BedWithTenantDto"][];
-            bedStats?: components["schemas"]["BedStatsDto"];
-        };
         ApiResponsePgWithRoomsResponseDto: {
             success?: boolean;
             message?: string;
@@ -2847,6 +2936,134 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    updateBed: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bedId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateBedRequestDto"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBedResponseDto"];
+                };
+            };
+        };
+    };
+    deleteBed: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bedId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getTenant: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseTenantResponseDto"];
+                };
+            };
+        };
+    };
+    updateTenant: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": {
+                    req: components["schemas"]["TenantUpdateRequestDto"];
+                    /** Format: binary */
+                    tenantImage?: string;
+                    /** Format: binary */
+                    aadharCard?: string;
+                    /** Format: binary */
+                    professionIdDoc?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseTenantResponseDto"];
+                };
+            };
+        };
+    };
+    deleteTenant: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["TenantFeedbackDto"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": Record<string, never>;
+                };
+            };
+        };
+    };
     getRoom: {
         parameters: {
             query?: never;
@@ -3121,52 +3338,6 @@ export interface operations {
             };
         };
     };
-    updateBed: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                bedId: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreateBedRequestDto"];
-            };
-        };
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["BedResponseDto"];
-                };
-            };
-        };
-    };
-    deleteBed: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                bedId: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
     updateAnnouncement: {
         parameters: {
             query?: never;
@@ -3381,6 +3552,152 @@ export interface operations {
             };
         };
     };
+    vacateBed: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bedId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBedResponseDto"];
+                };
+            };
+        };
+    };
+    assignBed: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                bedId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AssignBedRequestDto"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBedResponseDto"];
+                };
+            };
+        };
+    };
+    getBedsByRoom: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                roomId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListBedResponseDto"];
+                };
+            };
+        };
+    };
+    createBed: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                roomId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateBedRequestDto"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBedResponseDto"];
+                };
+            };
+        };
+    };
+    bulkCreateBeds: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                roomId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BulkBedRequestDto"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListBedResponseDto"];
+                };
+            };
+        };
+    };
+    bulkCreateBedsForMultipleRooms: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BulkRoomBedsRequestDto"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListBedResponseDto"];
+                };
+            };
+        };
+    };
     getProfile: {
         parameters: {
             query?: never;
@@ -3452,9 +3769,17 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody: {
+        requestBody?: {
             content: {
-                "application/json": components["schemas"]["TenantRequestDto"];
+                "multipart/form-data": {
+                    req: components["schemas"]["TenantRequestDto"];
+                    /** Format: binary */
+                    tenantImage?: string;
+                    /** Format: binary */
+                    aadharCard?: string;
+                    /** Format: binary */
+                    professionIdDoc?: string;
+                };
             };
         };
         responses: {
@@ -3464,7 +3789,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": Record<string, never>;
+                    "*/*": components["schemas"]["ApiResponseTenantResponseDto"];
                 };
             };
         };
@@ -3486,7 +3811,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["EmergencyContactDto"][];
+                    "*/*": components["schemas"]["ApiResponseListEmergencyContactDto"];
                 };
             };
         };
@@ -3637,7 +3962,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["RoomLegacyResponseDto"][];
+                    "*/*": components["schemas"]["ApiResponseListRoomLegacyResponseDto"];
                 };
             };
         };
@@ -3662,80 +3987,6 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseRoomResponseDto"];
-                };
-            };
-        };
-    };
-    getBedsByRoom: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                roomId: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["BedResponseDto"][];
-                };
-            };
-        };
-    };
-    createBed: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                roomId: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreateBedRequestDto"];
-            };
-        };
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["BedResponseDto"];
-                };
-            };
-        };
-    };
-    bulkCreateBeds: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                roomId: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["BulkBedRequestDto"];
-            };
-        };
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiResponseListBedResponseDto"];
                 };
             };
         };
@@ -4359,54 +4610,6 @@ export interface operations {
             };
         };
     };
-    vacateBed: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                bedId: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["BedResponseDto"];
-                };
-            };
-        };
-    };
-    assignBed: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                bedId: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["AssignBedRequestDto"];
-            };
-        };
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["BedResponseDto"];
-                };
-            };
-        };
-    };
     verifyPasswordReset: {
         parameters: {
             query?: never;
@@ -4961,12 +5164,12 @@ export interface operations {
             };
         };
     };
-    getTenant: {
+    getRoomsWithBeds: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                id: number;
+                pgId: number;
             };
             cookie?: never;
         };
@@ -4978,33 +5181,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["TenantResponseDto"];
-                };
-            };
-        };
-    };
-    deleteTenant: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: {
-            content: {
-                "application/json": components["schemas"]["TenantFeedbackDto"];
-            };
-        };
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": Record<string, never>;
+                    "*/*": components["schemas"]["ApiResponseListRoomWithBedsResponseDto"];
                 };
             };
         };
@@ -5585,28 +5762,6 @@ export interface operations {
                 };
                 content: {
                     "*/*": Record<string, never>;
-                };
-            };
-        };
-    };
-    getRoomsWithBeds: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                pgId: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["RoomWithBedsResponseDto"][];
                 };
             };
         };

@@ -9,14 +9,8 @@ import { useState, useEffect } from "react";
 import { ChevronLeft, Wind, Bath, Users, MapPin, Trash2, X, Plus, Edit2, Bed } from "lucide-react";
 import { BedPositionEditor } from "@/components/BedPositionEditor";
 import { useQueryClient } from "@tanstack/react-query";
-import { api } from "@/apiClient";
-
-interface Tenant {
-  id: number;
-  name: string;
-  phone: string;
-  roomId?: number | null;
-}
+import { ownerService } from "@/services/ownerService";
+import type { TenantResponse, BedResponse } from "@/types/owner";
 
 export default function EditRoom() {
   const isMobile = useIsMobile();
@@ -29,8 +23,8 @@ export default function EditRoom() {
   const [isEditing, setIsEditing] = useState(false);
   const [error, setError] = useState("");
   const [isFetching, setIsFetching] = useState(true);
-  const [tenants, setTenants] = useState<Tenant[]>([]);
-  const [beds, setBeds] = useState<Array<{ id?: number; position: string; displayOrder: number; status?: string; tenantId?: number | null }>>([]);
+  const [tenants, setTenants] = useState<TenantResponse[]>([]);
+  const [beds, setBeds] = useState<Array<Partial<BedResponse> & { position: string; displayOrder: number; status?: string; tenantId?: number | null }>>([]);
   
   const [formData, setFormData] = useState({
     roomNumber: "",
@@ -48,26 +42,26 @@ export default function EditRoom() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [roomRes, allTenantsRes, bedsRes] = await Promise.all([
-          api.get(`/api/rooms/${id}`),
-          api.get("/api/tenants"),
-          api.get(`/api/rooms/${id}/beds`)
+        const roomId = parseInt(id || "0");
+        const [roomData, allTenantsData, bedsData] = await Promise.all([
+          ownerService.getRoomById(roomId),
+          ownerService.getAllTenants(),
+          ownerService.getBedsByRoom(roomId)
         ]);
 
-        const data = roomRes.data;
         setFormData({
-          roomNumber: data.roomNumber,
-          monthlyRent: data.monthlyRent,
-          sharing: data.sharing?.toString() || "1",
-          floor: data.floor?.toString() || "1",
-          hasAttachedBathroom: data.hasAttachedBathroom || false,
-          hasAC: data.hasAC || false,
-          tenantIds: Array.isArray(data.tenantIds) ? data.tenantIds : [],
-          amenities: data.amenities || [],
+          roomNumber: roomData.roomNumber,
+          monthlyRent: String(roomData.monthlyRent),
+          sharing: roomData.sharing?.toString() || "1",
+          floor: roomData.floor?.toString() || "1",
+          hasAttachedBathroom: roomData.hasAttachedBathroom || false,
+          hasAC: roomData.hasAC || false,
+          tenantIds: Array.isArray(roomData.tenantIds) ? roomData.tenantIds : [],
+          amenities: roomData.amenities || [],
         });
 
-        setTenants(allTenantsRes.data);
-        setBeds(bedsRes.data);
+        setTenants(allTenantsData);
+        setBeds(bedsData);
       } catch (err) {
         console.error("Error fetching data:", err);
       } finally {
@@ -117,19 +111,20 @@ export default function EditRoom() {
 
     setIsLoading(true);
     try {
-      await api.put(`/api/rooms/${id}`, {
+      const roomId = parseInt(id || "0");
+      await ownerService.updateRoom(roomId, {
         roomNumber: formData.roomNumber,
-        monthlyRent: formData.monthlyRent,
+        monthlyRent: parseFloat(formData.monthlyRent),
         sharing: sharingNum,
         floor: parseInt(formData.floor),
         hasAttachedBathroom: formData.hasAttachedBathroom,
         hasAC: formData.hasAC,
-        tenantIds: formData.tenantIds.length > 0 ? formData.tenantIds : null,
+        tenantIds: formData.tenantIds.length > 0 ? formData.tenantIds : undefined,
         amenities: formData.amenities,
-      });
+      } as any);
 
       // Save bed positions (including empty array to clear all beds)
-      await api.post(`/api/rooms/${id}/beds/bulk`, { beds });
+      await ownerService.bulkUpdateBeds(roomId, { beds: beds as any });
 
       setLocation("/rooms");
     } catch (err: any) {
@@ -143,7 +138,7 @@ export default function EditRoom() {
 
     setIsDeleting(true);
     try {
-      await api.delete(`/api/rooms/${id}`);
+      await ownerService.deleteRoom(parseInt(id || "0"));
 
       setLocation("/rooms");
     } catch (err: any) {
@@ -162,7 +157,7 @@ export default function EditRoom() {
     );
   }
 
-  const selectedTenants = formData.tenantIds.map(id => tenants.find(t => t.id === id)).filter(Boolean) as Tenant[];
+  const selectedTenants = formData.tenantIds.map(id => tenants.find(t => t.id === id)).filter(Boolean) as TenantResponse[];
   const availableTenants = tenants.filter(t => !formData.tenantIds.includes(t.id) && !t.roomId);
   const sharingNum = parseInt(formData.sharing);
   const canAddMore = formData.tenantIds.length < sharingNum;
@@ -350,7 +345,7 @@ export default function EditRoom() {
                                 const previousTenantId = bed.tenantId;
                                 
                                 // Assign tenant to bed
-                                await api.post(`/api/beds/${bedId}/assign`, { tenantId: newTenantId });
+                                await api.post(`/api/v1/beds/${bedId}/assign`, { tenantId: newTenantId });
                                 
                                 // Update local state
                                 setBeds(beds.map(b => 
@@ -370,7 +365,7 @@ export default function EditRoom() {
                               } else {
                                 // Vacate bed - need to know which tenant was unassigned
                                 const oldTenantId = bed.tenantId;
-                                await api.post(`/api/beds/${bedId}/vacate`);
+                                await api.post(`/api/v1/beds/${bedId}/vacate`);
                                 
                                 // Update local state
                                 setBeds(beds.map(b => 
