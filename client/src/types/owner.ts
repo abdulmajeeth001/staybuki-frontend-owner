@@ -25,6 +25,12 @@ export type AssignBedPayload = {
   tenantId: number;
 };
 
+export type DeleteTenantPayload = {
+  ownerFeedback?: string;
+  rating?: number;
+  behaviorTags?: string[];
+};
+
 // The TenantHistory interface is part of the OnboardingRequestResponseDto,
 // but if it were standalone, it would be defined like this:
 export type TenantHistory = components["schemas"]["TenantHistoryDto"];

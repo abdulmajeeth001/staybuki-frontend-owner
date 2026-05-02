@@ -8,7 +8,7 @@ import { ChevronLeft, Download, FileText, User } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useState, useMemo, useEffect } from "react";
 import pako from "pako";
-import { api } from "@/apiClient";
+import { ownerService } from "@/services/ownerService";
 
 export default function ViewTenant() {
   const isMobile = useIsMobile();
@@ -21,27 +21,13 @@ export default function ViewTenant() {
 
   const { data: tenant, isLoading, error } = useQuery({
     queryKey: ["tenant", tenantId],
-    queryFn: async () => {
-      try {
-        const res = await api.get(`/api/tenants/${tenantId}`);
-        return res.data;
-      } catch (error: any) {
-        throw new Error(error.response?.data?.error || error.message || "Failed to fetch tenant");
-      }
-    },
+    queryFn: () => ownerService.getTenantById(tenantId!),
     enabled: !!tenantId,
   });
 
   const { data: emergencyContacts = [] } = useQuery({
     queryKey: ["emergencyContacts", tenantId],
-    queryFn: async () => {
-      try {
-        const res = await api.get(`/api/tenants/${tenantId}/emergency-contacts`);
-        return res.data;
-      } catch (error: any) {
-        throw new Error(error.response?.data?.error || error.message || "Failed to fetch emergency contacts");
-      }
-    },
+    queryFn: () => ownerService.getEmergencyContacts(tenantId!),
     enabled: !!tenantId,
   });
 

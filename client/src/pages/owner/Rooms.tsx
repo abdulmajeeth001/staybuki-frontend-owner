@@ -2,7 +2,7 @@ import DesktopLayout from "@/components/layout/DesktopLayout";
 import MobileLayout from "@/components/layout/MobileLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DoorOpen, Plus, Wifi, Droplet, Zap, Wind, Bath, Search, MoreVertical, Upload, Users, Home, DoorClosed, Edit2, Bed, User, ChevronDown, ChevronUp } from "lucide-react";
+import { DoorOpen, Plus, Wifi, Droplet, Zap, Wind, Bath, Search, MoreVertical, Upload, Users, Home, DoorClosed, Edit2, Bed, User, ChevronDown, ChevronUp, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useEffect, useState, useMemo } from "react";
 import { useLocation } from "wouter";
@@ -12,9 +12,20 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { BulkUploadModal } from "@/components/BulkUploadModal";
 import { cn } from "@/lib/utils";
 import { api } from "@/apiClient";
+import { toast } from "sonner";
 
 interface Tenant {
   id: number;
@@ -70,6 +81,8 @@ function RoomsDesktop() {
   const [filter, setFilter] = useState<"all" | "fully_occupied" | "partially_occupied" | "vacant">("all");
   const [bulkUploadOpen, setBulkUploadOpen] = useState(false);
   const [expandedRooms, setExpandedRooms] = useState<Record<number, boolean>>({});
+  const [expandedBeds, setExpandedBeds] = useState<Record<number, boolean>>({});
+  const [roomToDelete, setRoomToDelete] = useState<number | null>(null);
 
   const getRoomOccupancyStatus = (room: any) => {
     const tenantCount = room.tenantIds?.length || 0;
@@ -101,6 +114,10 @@ function RoomsDesktop() {
     setExpandedRooms(prev => ({ ...prev, [roomId]: !prev[roomId] }));
   };
 
+  const toggleBedsExpanded = (roomId: number) => {
+    setExpandedBeds(prev => ({ ...prev, [roomId]: !prev[roomId] }));
+  };
+
   const handleSeedRooms = async () => {
     try {
       setLoading(true);
@@ -110,6 +127,22 @@ function RoomsDesktop() {
       console.error("Error seeding rooms:", err);
       setError(err.response?.data?.error || "Failed to seed rooms");
       setLoading(false);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!roomToDelete) return;
+    try {
+      setLoading(true);
+      await api.delete(`/api/rooms/${roomToDelete}`);
+      toast.success("Room deleted successfully");
+      await fetchRooms();
+    } catch (err: any) {
+      console.error("Error deleting room:", err);
+      toast.error(err.response?.data?.error || "Failed to delete room");
+      setLoading(false);
+    } finally {
+      setRoomToDelete(null);
     }
   };
 
@@ -366,6 +399,14 @@ function RoomsDesktop() {
                                   <Edit2 className="h-4 w-4 mr-2" />
                                   Edit Room
                                 </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  className="text-destructive focus:bg-red-50 focus:text-red-600"
+                                  onClick={() => setRoomToDelete(room.id)}
+                                  data-testid={`button-delete-room-menu-${room.id}`}
+                                >
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Delete Room
+                                </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
                           </div>
@@ -418,52 +459,62 @@ function RoomsDesktop() {
                           {/* Bed Positions Section */}
                           {beds && beds.length > 0 && (
                             <div className="mb-4">
-                              <div className="flex items-center gap-2 mb-3">
-                                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-100 to-cyan-100 flex items-center justify-center">
-                                  <Bed className="h-4 w-4 text-blue-600" />
+                              <div 
+                                className="flex items-center justify-between mb-3 cursor-pointer hover:bg-slate-50 p-1 -ml-1 rounded transition-colors"
+                                onClick={() => toggleBedsExpanded(room.id)}
+                              >
+                                <div className="flex items-center gap-2">
+                                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-100 to-cyan-100 flex items-center justify-center">
+                                    <Bed className="h-4 w-4 text-blue-600" />
+                                  </div>
+                                  <p className="text-sm font-semibold text-foreground">
+                                    Bed Layout ({beds.filter(b => b.status.toLowerCase() === "occupied").length}/{beds.length} occupied)
+                                  </p>
                                 </div>
-                                <p className="text-sm font-semibold text-foreground">
-                                  Bed Layout ({beds.filter(b => b.status.toLowerCase() === "occupied").length}/{beds.length} occupied)
-                                </p>
+                                <div className="h-6 w-6 flex items-center justify-center text-slate-500">
+                                  {expandedBeds[room.id] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                                </div>
                               </div>
-                              <div className="grid grid-cols-2 gap-2">
-                                {beds.map((bed) => (
-                                  <div 
-                                    key={bed.id} 
-                                    className={cn(
-                                      "p-2 rounded-lg border-2 transition-all",
-                                      bed.status.toLowerCase() === "occupied" 
-                                        ? "bg-red-50 border-red-200" 
-                                        : "bg-green-50 border-green-200"
-                                    )}
-                                    data-testid={`bed-${room.id}-${bed.id}`}
-                                  >
-                                    <div className="flex items-center gap-2">
-                                      <div className={cn(
-                                        "w-6 h-6 rounded flex items-center justify-center",
-                                        bed.status.toLowerCase() === "occupied" ? "bg-red-200" : "bg-green-200"
-                                      )}>
-                                        {bed.status.toLowerCase() === "occupied" ? (
-                                          <User className="w-3 h-3 text-red-600" />
-                                        ) : (
-                                          <Bed className="w-3 h-3 text-green-600" />
-                                        )}
-                                      </div>
-                                      <div className="flex-1 min-w-0">
-                                        <p className="text-xs font-medium truncate">{bed.position}</p>
-                                        <p className={cn(
-                                          "text-[10px]",
-                                          bed.status.toLowerCase() === "occupied" ? "text-red-600" : "text-green-600"
+                              {expandedBeds[room.id] && (
+                                <div className="grid grid-cols-2 gap-2">
+                                  {beds.map((bed) => (
+                                    <div 
+                                      key={bed.id} 
+                                      className={cn(
+                                        "p-2 rounded-lg border-2 transition-all",
+                                        bed.status.toLowerCase() === "occupied" 
+                                          ? "bg-red-50 border-red-200" 
+                                          : "bg-green-50 border-green-200"
+                                      )}
+                                      data-testid={`bed-${room.id}-${bed.id}`}
+                                    >
+                                      <div className="flex items-center gap-2">
+                                        <div className={cn(
+                                          "w-6 h-6 rounded flex items-center justify-center",
+                                          bed.status.toLowerCase() === "occupied" ? "bg-red-200" : "bg-green-200"
                                         )}>
-                                          {bed.status.toLowerCase() === "occupied" 
-                                            ? (bed.tenant?.name || "Occupied") 
-                                            : "Available"}
-                                        </p>
+                                          {bed.status.toLowerCase() === "occupied" ? (
+                                            <User className="w-3 h-3 text-red-600" />
+                                          ) : (
+                                            <Bed className="w-3 h-3 text-green-600" />
+                                          )}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                          <p className="text-xs font-medium truncate">{bed.position}</p>
+                                          <p className={cn(
+                                            "text-[10px]",
+                                            bed.status.toLowerCase() === "occupied" ? "text-red-600" : "text-green-600"
+                                          )}>
+                                            {bed.status.toLowerCase() === "occupied" 
+                                              ? (bed.tenant?.name || "Occupied") 
+                                              : "Available"}
+                                          </p>
+                                        </div>
                                       </div>
                                     </div>
-                                  </div>
-                                ))}
-                              </div>
+                                  ))}
+                                </div>
+                              )}
                             </div>
                           )}
 
@@ -546,6 +597,26 @@ function RoomsDesktop() {
         onOpenChange={setBulkUploadOpen}
         onSuccess={fetchRooms}
       />
+
+      <AlertDialog open={!!roomToDelete} onOpenChange={(open) => !open && setRoomToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the room and remove any associations with tenants and beds.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleConfirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </DesktopLayout>
   );
 }
@@ -559,6 +630,8 @@ function RoomsMobile() {
   const [filter, setFilter] = useState<"all" | "fully_occupied" | "partially_occupied" | "vacant">("all");
   const [bulkUploadOpen, setBulkUploadOpen] = useState(false);
   const [expandedRooms, setExpandedRooms] = useState<Record<number, boolean>>({});
+  const [expandedBeds, setExpandedBeds] = useState<Record<number, boolean>>({});
+  const [roomToDelete, setRoomToDelete] = useState<number | null>(null);
 
   const getRoomOccupancyStatus = (room: any) => {
     const tenantCount = room.tenantIds?.length || 0;
@@ -590,6 +663,10 @@ function RoomsMobile() {
     setExpandedRooms(prev => ({ ...prev, [roomId]: !prev[roomId] }));
   };
 
+  const toggleBedsExpanded = (roomId: number) => {
+    setExpandedBeds(prev => ({ ...prev, [roomId]: !prev[roomId] }));
+  };
+
   const handleSeedRooms = async () => {
     try {
       setLoading(true);
@@ -599,6 +676,22 @@ function RoomsMobile() {
       console.error("Error seeding rooms:", err);
       setError(err.response?.data?.error || "Failed to seed rooms");
       setLoading(false);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!roomToDelete) return;
+    try {
+      setLoading(true);
+      await api.delete(`/api/rooms/${roomToDelete}`);
+      toast.success("Room deleted successfully");
+      await fetchRooms();
+    } catch (err: any) {
+      console.error("Error deleting room:", err);
+      toast.error(err.response?.data?.error || "Failed to delete room");
+      setLoading(false);
+    } finally {
+      setRoomToDelete(null);
     }
   };
 
@@ -815,14 +908,25 @@ function RoomsMobile() {
                               <p className="text-xs text-muted-foreground">Floor {room.floor}</p>
                             </div>
                           </div>
-                          <Button 
-                            variant="ghost" 
-                            size="icon"
-                            onClick={() => setLocation(`/rooms/edit/${room.id}`)}
-                            data-testid={`button-edit-room-mobile-${room.id}`}
-                          >
-                            <Edit2 className="h-4 w-4" />
-                          </Button>
+                          <div className="flex gap-1">
+                            <Button 
+                              variant="ghost" 
+                              size="icon"
+                              onClick={() => setLocation(`/rooms/edit/${room.id}`)}
+                              data-testid={`button-edit-room-mobile-${room.id}`}
+                            >
+                              <Edit2 className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="icon"
+                              className="text-destructive hover:bg-red-50"
+                              onClick={() => setRoomToDelete(room.id)}
+                              data-testid={`button-delete-room-mobile-${room.id}`}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
 
                         {/* Status */}
@@ -869,50 +973,60 @@ function RoomsMobile() {
                         {/* Bed Layout */}
                         {beds && beds.length > 0 && (
                           <div className="mb-3">
-                            <div className="flex items-center gap-2 mb-2">
-                              <Bed className="h-4 w-4 text-blue-600" />
-                              <p className="text-sm font-semibold">
-                                Beds ({beds.filter(b => b.status.toLowerCase() === "occupied").length}/{beds.length} occupied)
-                              </p>
+                            <div 
+                              className="flex items-center justify-between mb-2 cursor-pointer p-1 -ml-1 hover:bg-slate-50 rounded transition-colors"
+                              onClick={() => toggleBedsExpanded(room.id)}
+                            >
+                              <div className="flex items-center gap-2">
+                                <Bed className="h-4 w-4 text-blue-600" />
+                                <p className="text-sm font-semibold">
+                                  Beds ({beds.filter(b => b.status.toLowerCase() === "occupied").length}/{beds.length} occupied)
+                                </p>
+                              </div>
+                              <div className="h-6 w-6 flex items-center justify-center text-slate-500">
+                                {expandedBeds[room.id] ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                              </div>
                             </div>
-                            <div className="grid grid-cols-2 gap-2">
-                              {beds.map((bed) => (
-                                <div 
-                                  key={bed.id} 
-                                  className={cn(
-                                    "p-2 rounded-lg border-2",
-                                    bed.status.toLowerCase() === "occupied" 
-                                      ? "bg-red-50 border-red-200" 
-                                      : "bg-green-50 border-green-200"
-                                  )}
-                                  data-testid={`bed-mobile-${room.id}-${bed.id}`}
-                                >
-                                  <div className="flex items-center gap-2">
-                                    <div className={cn(
-                                      "w-5 h-5 rounded flex items-center justify-center",
-                                      bed.status.toLowerCase() === "occupied" ? "bg-red-200" : "bg-green-200"
-                                    )}>
-                                      {bed.status.toLowerCase() === "occupied" ? (
-                                        <User className="w-3 h-3 text-red-600" />
-                                      ) : (
-                                        <Bed className="w-3 h-3 text-green-600" />
-                                      )}
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                      <p className="text-xs font-medium truncate">{bed.position}</p>
-                                      <p className={cn(
-                                        "text-[10px]",
-                                        bed.status.toLowerCase() === "occupied" ? "text-red-600" : "text-green-600"
+                            {expandedBeds[room.id] && (
+                              <div className="grid grid-cols-2 gap-2">
+                                {beds.map((bed) => (
+                                  <div 
+                                    key={bed.id} 
+                                    className={cn(
+                                      "p-2 rounded-lg border-2",
+                                      bed.status.toLowerCase() === "occupied" 
+                                        ? "bg-red-50 border-red-200" 
+                                        : "bg-green-50 border-green-200"
+                                    )}
+                                    data-testid={`bed-mobile-${room.id}-${bed.id}`}
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      <div className={cn(
+                                        "w-5 h-5 rounded flex items-center justify-center",
+                                        bed.status.toLowerCase() === "occupied" ? "bg-red-200" : "bg-green-200"
                                       )}>
-                                        {bed.status.toLowerCase() === "occupied" 
-                                          ? (bed.tenant?.name || "Occupied") 
-                                          : "Available"}
-                                      </p>
+                                        {bed.status.toLowerCase() === "occupied" ? (
+                                          <User className="w-3 h-3 text-red-600" />
+                                        ) : (
+                                          <Bed className="w-3 h-3 text-green-600" />
+                                        )}
+                                      </div>
+                                      <div className="flex-1 min-w-0">
+                                        <p className="text-xs font-medium truncate">{bed.position}</p>
+                                        <p className={cn(
+                                          "text-[10px]",
+                                          bed.status.toLowerCase() === "occupied" ? "text-red-600" : "text-green-600"
+                                        )}>
+                                          {bed.status.toLowerCase() === "occupied" 
+                                            ? (bed.tenant?.name || "Occupied") 
+                                            : "Available"}
+                                        </p>
+                                      </div>
                                     </div>
                                   </div>
-                                </div>
-                              ))}
-                            </div>
+                                ))}
+                              </div>
+                            )}
                           </div>
                         )}
 
@@ -978,6 +1092,26 @@ function RoomsMobile() {
         onOpenChange={setBulkUploadOpen}
         onSuccess={fetchRooms}
       />
+
+      <AlertDialog open={!!roomToDelete} onOpenChange={(open) => !open && setRoomToDelete(null)}>
+        <AlertDialogContent className="w-[95vw] rounded-xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the room and remove any associations with tenants and beds.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-row gap-2 sm:space-x-0">
+            <AlertDialogCancel className="flex-1 mt-0">Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleConfirmDelete}
+              className="flex-1 bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </MobileLayout>
   );
 }

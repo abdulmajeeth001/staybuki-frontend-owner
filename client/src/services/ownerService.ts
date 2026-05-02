@@ -14,6 +14,7 @@ import {
   AssignBedPayload,
   EmergencyContactRequest,
   EmergencyContactResponse,
+  DeleteTenantPayload,
 } from "@/types/owner";
 
 export const ownerService = {
@@ -172,6 +173,24 @@ export const ownerService = {
     return (response.data as any).data || response.data;
   },
 
+  /**
+   * Updates an existing bed position.
+   */
+  async updateBed(bedId: number, payload: Partial<BedResponse>): Promise<BedResponse> {
+    const response = await api.put<ApiResponse<BedResponse> | BedResponse>(`/api/v1/beds/${bedId}`, payload);
+    return (response.data as any).data || response.data;
+  },
+
+  /**
+   * Deletes a bed position.
+   */
+  async deleteBed(bedId: number): Promise<void> {
+    const response = await api.delete<ApiResponse<void>>(`/api/v1/beds/${bedId}`);
+    if (response.data && (response.data as any).success === false) {
+      throw new Error((response.data as any).message || "Failed to delete bed");
+    }
+  },
+
   async assignBed(bedId: number, payload: AssignBedPayload): Promise<BedResponse> {
     const response = await api.post<ApiResponse<BedResponse> | BedResponse>(`/api/v1/beds/${bedId}/assign`, payload);
     return (response.data as any).data || response.data;
@@ -212,6 +231,16 @@ export const ownerService = {
     const response = await api.delete<ApiResponse<void>>(`/api/emergency-contacts/${contactId}`);
     if (response.data && (response.data as any).success === false) {
       throw new Error((response.data as any).message || "Failed to delete emergency contact");
+    }
+  },
+
+  /**
+   * Deletes a tenant.
+   */
+  async deleteTenant(id: number, payload?: DeleteTenantPayload): Promise<void> {
+    const response = await api.delete<ApiResponse<void>>(`/api/tenants/${id}`, { data: payload || {} });
+    if (response.data && (response.data as any).success === false) {
+      throw new Error((response.data as any).message || "Failed to delete tenant");
     }
   }
 };

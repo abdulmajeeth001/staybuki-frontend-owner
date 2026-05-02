@@ -1804,6 +1804,8 @@ export interface components {
             createdAt?: string;
             /** Format: date-time */
             updatedAt?: string;
+            /** Format: date-time */
+            joinDate?: string;
         };
         TenantUpdateRequestDto: {
             name: string;
@@ -2615,18 +2617,18 @@ export interface components {
             beds?: components["schemas"]["BedWithTenantDto"][];
             bedStats?: components["schemas"]["BedStatsDto"];
         };
-        ApiResponseListEmergencyContactDto: {
-            success?: boolean;
-            message?: string;
-            data?: components["schemas"]["EmergencyContactDto"][];
-            /** Format: date-time */
-            timestamp?: string;
-            errorCode?: string;
-        };
         ApiResponseListTenantResponseDto: {
             success?: boolean;
             message?: string;
             data?: components["schemas"]["TenantResponseDto"][];
+            /** Format: date-time */
+            timestamp?: string;
+            errorCode?: string;
+        };
+        ApiResponseListEmergencyContactDto: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["EmergencyContactDto"][];
             /** Format: date-time */
             timestamp?: string;
             errorCode?: string;
@@ -3059,7 +3061,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": Record<string, never>;
+                    "*/*": components["schemas"]["ApiResponseVoid"];
                 };
             };
         };
@@ -3757,7 +3759,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["TenantResponseDto"][];
+                    "*/*": components["schemas"]["ApiResponseListTenantResponseDto"];
                 };
             };
         };
