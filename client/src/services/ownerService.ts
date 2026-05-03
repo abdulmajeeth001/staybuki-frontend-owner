@@ -15,6 +15,12 @@ import {
   EmergencyContactRequest,
   EmergencyContactResponse,
   DeleteTenantPayload,
+  FoodMenuResponse,
+  FoodMenuRequest,
+  FoodAlertRequest,
+  FoodAlertResponse,
+  AnnouncementResponse,
+  AnnouncementRequest,
 } from "@/types/owner";
 
 export const ownerService = {
@@ -241,6 +247,77 @@ export const ownerService = {
     const response = await api.delete<ApiResponse<void>>(`/api/tenants/${id}`, { data: payload || {} });
     if (response.data && (response.data as any).success === false) {
       throw new Error((response.data as any).message || "Failed to delete tenant");
+    }
+  },
+
+  /**
+   * Fetches the tenant profile.
+   */
+  async getTenantProfile(): Promise<TenantResponse> {
+    const response = await api.get<ApiResponse<TenantResponse> | TenantResponse>("/api/tenant/profile");
+    return (response.data as any).data || response.data;
+  },
+
+  /**
+   * Fetches the food menu for a PG.
+   */
+  async getFoodMenu(pgId: number): Promise<FoodMenuResponse[]> {
+    const response = await api.get<ApiResponse<FoodMenuResponse[]> | FoodMenuResponse[]>(`/api/food-menu/${pgId}`);
+    const data = (response.data as any).data || response.data;
+    return Array.isArray(data) ? data : [];
+  },
+
+  async createOrUpdateFoodMenu(payload: FoodMenuRequest | any): Promise<FoodMenuResponse> {
+    const response = await api.post<ApiResponse<FoodMenuResponse> | FoodMenuResponse>("/api/food-menu", payload);
+    return (response.data as any).data || response.data;
+  },
+
+  async deleteFoodMenu(id: number): Promise<void> {
+    const response = await api.delete<ApiResponse<void>>(`/api/food-menu/${id}`);
+    if (response.data && (response.data as any).success === false) {
+      throw new Error((response.data as any).message || "Failed to delete food menu");
+    }
+  },
+
+  async sendFoodAlert(payload: FoodAlertRequest | any): Promise<FoodAlertResponse> {
+    const response = await api.post<ApiResponse<FoodAlertResponse> | FoodAlertResponse>("/api/food-menu/alert", null, {
+      params: payload
+    });
+    return (response.data as any).data || response.data;
+  },
+
+  /**
+   * Fetches a list of announcements.
+   */
+  async getAnnouncements(): Promise<AnnouncementResponse[]> {
+    const response = await api.get<ApiResponse<AnnouncementResponse[]> | AnnouncementResponse[]>("/api/announcements");
+    const data = (response.data as any).data !== undefined ? (response.data as any).data : response.data;
+    return Array.isArray(data) ? data : [];
+  },
+
+  /**
+   * Creates a new announcement.
+   */
+  async createAnnouncement(payload: AnnouncementRequest | any): Promise<AnnouncementResponse> {
+    const response = await api.post<ApiResponse<AnnouncementResponse> | AnnouncementResponse>("/api/announcements", payload);
+    return (response.data as any).data !== undefined ? (response.data as any).data : response.data;
+  },
+
+  /**
+   * Updates an existing announcement.
+   */
+  async updateAnnouncement(id: number, payload: AnnouncementRequest | any): Promise<AnnouncementResponse> {
+    const response = await api.put<ApiResponse<AnnouncementResponse> | AnnouncementResponse>(`/api/announcements/${id}`, payload);
+    return (response.data as any).data !== undefined ? (response.data as any).data : response.data;
+  },
+
+  /**
+   * Deletes an announcement.
+   */
+  async deleteAnnouncement(id: number): Promise<void> {
+    const response = await api.delete<ApiResponse<void>>(`/api/announcements/${id}`);
+    if (response.data && (response.data as any).success === false) {
+      throw new Error((response.data as any).message || "Failed to delete announcement");
     }
   }
 };

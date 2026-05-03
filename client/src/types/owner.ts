@@ -11,6 +11,12 @@ export type TenantRequest = components["schemas"]["TenantRequestDto"];
 export type EmergencyContactRequest = components["schemas"]["EmergencyContactRequestDto"];
 export type EmergencyContactResponse = components["schemas"]["EmergencyContactResponseDto"];
 export type BulkBedRequest = components["schemas"]["BulkBedRequestDto"];
+export type FoodMenuResponse = components["schemas"]["FoodMenuResponseDto"];
+export type FoodMenuRequest = components["schemas"]["FoodMenuRequestDto"];
+export type FoodAlertRequest = components["schemas"]["FoodAlertRequestDto"];
+export type FoodAlertResponse = components["schemas"]["FoodAlertResponseDto"];
+export type AnnouncementResponse = components["schemas"]["AnnouncementResponseDto"];
+export type AnnouncementRequest = components["schemas"]["AnnouncementRequestDto"];
 
 // Payloads for mutations
 export type ApproveOnboardingRequestPayload = {

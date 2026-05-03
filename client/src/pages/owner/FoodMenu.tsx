@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,13 +20,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Leaf, X, Plus, Bell, ChevronLeft, ChevronRight } from "lucide-react";
+import { Leaf, X, Plus, Bell, ChevronLeft, ChevronRight, Coffee, Sun, Moon, Edit2, Trash2, UtensilsCrossed, Info, Utensils } from "lucide-react";
 import { useUser } from "@/hooks/use-user";
 import DesktopLayout from "@/components/layout/DesktopLayout";
 import MobileLayout from "@/components/layout/MobileLayout";
-import { api } from "@/apiClient";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { cn } from "@/lib/utils";
+import { usePG } from "@/hooks/use-pg";
+import { ownerService } from "@/services/ownerService";
+import type { FoodMenuResponse, FoodMenuRequest, FoodAlertRequest, FoodAlertResponse } from "@/types/owner";
 
 type DayOfWeek = "monday" | "tuesday" | "wednesday" | "thursday" | "friday" | "saturday" | "sunday";
 type MealType = "breakfast" | "lunch" | "dinner";
@@ -57,65 +60,46 @@ const MEALS: MealType[] = ["breakfast", "lunch", "dinner"];
 const capitalizeFirst = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 
 export default function FoodMenu() {
+  const isMobile = useIsMobile();
+  const Layout = isMobile ? MobileLayout : DesktopLayout;
+
   return (
-    <>
-      <div className="hidden lg:block">
-        <FoodMenuDesktop />
-      </div>
-      <div className="lg:hidden">
-        <FoodMenuMobile />
-      </div>
-    </>
+    <Layout title="Food Menu" showNav>
+      <FoodMenuContent isMobile={isMobile} />
+    </Layout>
   );
 }
 
-function FoodMenuContent() {
+function FoodMenuContent({ isMobile }: { isMobile: boolean }) {
   const { user } = useUser();
   const { toast } = useToast();
+  const { pg, allPgs } = usePG();
   const queryClient = useQueryClient();
-  const [selectedPgId, setSelectedPgId] = useState<number | null>(null);
   const [editingMenuItem, setEditingMenuItem] = useState<FoodMenuFormData | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isAlertDialogOpen, setIsAlertDialogOpen] = useState(false);
   const [selectedMealForAlert, setSelectedMealForAlert] = useState<MealType>("breakfast");
   const [alertNotes, setAlertNotes] = useState("");
   const [currentDayIndex, setCurrentDayIndex] = useState(0);
-  const [isMobile, setIsMobile] = useState(false);
 
   const isOwner = user?.userType === "owner";
 
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-    
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
-
-  const { data: pgs } = useQuery<Array<{ id: number; pgName: string }>>({
-    queryKey: ["/api/pgs"],
-    enabled: isOwner,
-  });
-
   const { data: tenant } = useQuery<{ pgId: number }>({
     queryKey: ["/api/tenant/profile"],
+    queryFn: () => ownerService.getTenantProfile(),
     enabled: !isOwner,
   });
 
-  const activePgId = isOwner ? (selectedPgId || pgs?.[0]?.id) : tenant?.pgId;
+  const activePgId = isOwner ? pg?.id : tenant?.pgId;
 
-  const { data: menuData = [] } = useQuery<FoodMenuItem[]>({
+  const { data: menuData = [] } = useQuery<FoodMenuResponse[]>({
     queryKey: [`/api/food-menu/${activePgId}`],
+    queryFn: () => ownerService.getFoodMenu(activePgId!),
     enabled: !!activePgId,
   });
 
   const createOrUpdateMutation = useMutation({
-    mutationFn: async (data: FoodMenuFormData) => {
-      const res = await api.post("/api/food-menu", data);
-      return res.data;
-    },
+    mutationFn: (data: FoodMenuRequest | any) => ownerService.createOrUpdateFoodMenu(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/food-menu/${activePgId}`] });
       toast({ title: "Menu saved successfully" });
@@ -123,30 +107,32 @@ function FoodMenuContent() {
       setEditingMenuItem(null);
     },
     onError: (error: any) => {
-      toast({ title: "Failed to save menu", description: error.response?.data?.error || error.message, variant: "destructive" });
+      toast({ 
+        title: "Failed to save menu", 
+        description: error.response?.data?.error || error.message, 
+        variant: "destructive" 
+      });
     },
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (id: number) => {
-      const res = await api.delete(`/api/food-menu/${id}`);
-      return res.data;
-    },
+    mutationFn: (id: number) => ownerService.deleteFoodMenu(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/food-menu/${activePgId}`] });
       toast({ title: "Menu item deleted" });
     },
     onError: (error: any) => {
-      toast({ title: "Failed to delete menu", description: error.response?.data?.error || error.message, variant: "destructive" });
+      toast({ 
+        title: "Failed to delete menu", 
+        description: error.response?.data?.error || error.message, 
+        variant: "destructive" 
+      });
     },
   });
 
   const sendAlertMutation = useMutation({
-    mutationFn: async (data: { pgId: number; mealType: MealType; notes: string }) => {
-      const res = await api.post("/api/food-alert", data);
-      return res.data;
-    },
-    onSuccess: (data) => {
+    mutationFn: (data: FoodAlertRequest | any) => ownerService.sendFoodAlert(data),
+    onSuccess: (data: any) => {
       toast({
         title: "Alert sent!",
         description: `Notified ${data.notificationsSent} tenants`,
@@ -155,16 +141,26 @@ function FoodMenuContent() {
       setAlertNotes("");
     },
     onError: (error: any) => {
-      toast({ title: "Failed to send alert", description: error.response?.data?.error || error.message, variant: "destructive" });
+      toast({ 
+        title: "Failed to send alert", 
+        description: error.response?.data?.error || error.message, 
+        variant: "destructive" 
+      });
     },
   });
 
-  const getMenuItem = (day: DayOfWeek, meal: MealType): FoodMenuItem | undefined => {
-    return menuData.find((item) => item.dayOfWeek === day && item.mealType === meal);
+  const getMenuItem = (day: DayOfWeek, meal: MealType): FoodMenuResponse | undefined => {
+    return menuData.find((item: any) => 
+      item.dayOfWeek?.toLowerCase() === day.toLowerCase() && 
+      item.mealType?.toLowerCase() === meal.toLowerCase()
+    );
   };
 
   const handleEdit = (day: DayOfWeek, meal: MealType) => {
-    if (!activePgId) return;
+    if (!activePgId) {
+      toast({ title: "No PG selected", variant: "destructive" });
+      return;
+    }
     const existing = getMenuItem(day, meal);
     setEditingMenuItem({
       pgId: activePgId,
@@ -242,54 +238,80 @@ function FoodMenuContent() {
     const menuItem = getMenuItem(day, meal);
     const isEmpty = !menuItem || menuItem.items.length === 0;
 
+    const MealIcon = meal === "breakfast" ? Coffee : meal === "lunch" ? Sun : Moon;
+    const mealColor = meal === "breakfast" ? "text-amber-500 bg-amber-50" : meal === "lunch" ? "text-orange-500 bg-orange-50" : "text-indigo-500 bg-indigo-50";
+    const mealBorder = meal === "breakfast" ? "hover:border-amber-300" : meal === "lunch" ? "hover:border-orange-300" : "hover:border-indigo-300";
+
     return (
-      <Card key={`${day}-${meal}`} className="h-full" data-testid={`card-menu-${day}-${meal}`}>
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-sm font-medium">{capitalizeFirst(meal)}</CardTitle>
-            {isOwner && (
-              <div className="flex gap-1">
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => handleEdit(day, meal)}
-                  data-testid={`button-edit-${day}-${meal}`}
-                >
-                  {isEmpty ? <Plus className="h-4 w-4" /> : "Edit"}
-                </Button>
-                {!isEmpty && menuItem && (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => handleDelete(menuItem.id)}
-                    data-testid={`button-delete-${day}-${meal}`}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                )}
-              </div>
-            )}
+      <Card 
+        key={`${day}-${meal}`} 
+        className={cn("h-full border-2 transition-all duration-300 shadow-sm hover:shadow-md group overflow-hidden", mealBorder)} 
+        data-testid={`card-menu-${day}-${meal}`}
+      >
+        <CardHeader className="pb-3 px-2.5 pt-3 border-b border-gray-50 bg-gray-50/50 relative">
+          <div className="flex items-center gap-1.5 min-w-0 pr-14 lg:pr-0">
+            <div className={cn("p-1.5 rounded-lg shrink-0", mealColor)}>
+              <MealIcon className="w-3.5 h-3.5" />
+            </div>
+            <CardTitle className="text-sm font-bold text-gray-800 truncate">{capitalizeFirst(meal)}</CardTitle>
           </div>
-        </CardHeader>
-        <CardContent className="space-y-1">
-          {isEmpty ? (
-            <p className="text-sm text-muted-foreground" data-testid={`text-empty-${day}-${meal}`}>
-              No items
-            </p>
-          ) : (
-            <>
-              {menuItem?.items.map((item, idx) => (
-                <div key={idx} className="flex items-center gap-2" data-testid={`item-${day}-${meal}-${idx}`}>
-                  <Leaf className={`h-3 w-3 ${menuItem.isVeg[idx] ? "text-green-600" : "text-red-600"}`} />
-                  <span className="text-sm">{item}</span>
-                </div>
-              ))}
-              {menuItem?.notes && (
-                <p className="text-xs text-muted-foreground mt-2" data-testid={`text-notes-${day}-${meal}`}>
-                  {menuItem.notes}
-                </p>
+          {isOwner && (
+            <div className="absolute right-1.5 top-1.5 flex gap-0.5 opacity-100 lg:opacity-0 group-hover:opacity-100 transition-opacity bg-gray-50/95 backdrop-blur-sm rounded-md p-0.5">
+              <Button
+                size="icon"
+                variant="ghost"
+                onClick={() => handleEdit(day, meal)}
+                className="h-7 w-7 rounded-md hover:bg-orange-50 hover:text-orange-600 shrink-0"
+                data-testid={`button-edit-${day}-${meal}`}
+              >
+                {isEmpty ? <Plus className="h-4 w-4" /> : <Edit2 className="h-3.5 w-3.5" />}
+              </Button>
+              {!isEmpty && menuItem && (
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={() => handleDelete(menuItem.id)}
+                  className="h-7 w-7 rounded-md hover:bg-red-50 hover:text-red-600 text-red-500 shrink-0"
+                  data-testid={`button-delete-${day}-${meal}`}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
               )}
-            </>
+            </div>
+          )}
+        </CardHeader>
+        <CardContent className="p-2.5 space-y-2 relative">
+          {isEmpty ? (
+            <div className="flex flex-col items-center justify-center py-6 text-center">
+              <UtensilsCrossed className="w-8 h-8 text-gray-200 mb-2" />
+              <p className="text-xs font-medium text-gray-400" data-testid={`text-empty-${day}-${meal}`}>
+                No items added
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="space-y-2">
+                {menuItem?.items.map((item, idx) => (
+                  <div key={idx} className="flex items-start gap-2" data-testid={`item-${day}-${meal}-${idx}`}>
+                    <div className={cn(
+                      "mt-0.5 p-0.5 rounded-full flex-shrink-0",
+                      menuItem.isVeg[idx] ? "bg-green-100 text-green-600" : "bg-red-100 text-red-600"
+                    )}>
+                      <Leaf className="h-3 w-3" />
+                    </div>
+                    <span className="text-sm font-medium text-gray-700 leading-tight break-words min-w-0 flex-1">{item}</span>
+                  </div>
+                ))}
+              </div>
+              {menuItem?.notes && (
+                <div className="pt-2 border-t border-dashed border-gray-200">
+                  <p className="text-[11px] font-medium text-gray-500 italic flex items-start gap-1" data-testid={`text-notes-${day}-${meal}`}>
+                    <Info className="w-3 h-3 mt-0.5 shrink-0" />
+                    {menuItem.notes}
+                  </p>
+                </div>
+              )}
+            </div>
           )}
         </CardContent>
       </Card>
@@ -301,78 +323,71 @@ function FoodMenuContent() {
   if (!user) return null;
 
   return (
-    <div className="container mx-auto p-4 max-w-7xl">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-3xl font-bold" data-testid="text-page-title">
-            Food Menu
-          </h1>
-          <p className="text-muted-foreground" data-testid="text-page-description">
-            {isOwner ? "Manage weekly food menu for your PG" : "View this week's food menu"}
-          </p>
+    <div className={cn(!isMobile ? "max-w-7xl mx-auto" : "")}>
+      {/* Hero Section */}
+      <div className={cn("relative overflow-hidden mb-8", !isMobile ? "-mx-6 -mt-6 rounded-b-3xl" : "-mx-4 -mt-6")}>
+        <div className="absolute inset-0 bg-gradient-to-br from-purple-600 via-blue-600 to-purple-700" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_120%,rgba(120,119,198,0.3),rgba(255,255,255,0))]" />
+        
+        <div className={cn("relative text-white", !isMobile ? "px-8 py-10" : "px-6 py-8")}>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h2 className={cn("font-bold tracking-tight mb-2", !isMobile ? "text-4xl" : "text-2xl")} data-testid="text-page-title">
+                Food Menu
+              </h2>
+              <p className="text-white/90 text-sm font-medium" data-testid="text-page-description">
+                {isOwner ? "Manage weekly food menu for your PG" : "View this week's food menu"}
+              </p>
+            </div>
+            {isOwner && activePgId && (
+              <Button 
+                onClick={() => setIsAlertDialogOpen(true)}
+                className="bg-white/20 backdrop-blur-sm border-white/30 hover:bg-white/30 text-white shadow-lg w-full sm:w-auto transition-all"
+                data-testid="button-send-alert"
+              >
+                <Bell className="w-4 h-4 mr-2" />
+                Send Food Alert
+              </Button>
+            )}
+          </div>
         </div>
-        {isOwner && activePgId && (
-          <Button onClick={() => setIsAlertDialogOpen(true)} data-testid="button-send-alert">
-            <Bell className="h-4 w-4 mr-2" />
-            Send Food Alert
-          </Button>
-        )}
       </div>
 
-      {isOwner && pgs && pgs.length > 1 && (
-        <div className="mb-6">
-          <Label>Select PG</Label>
-          <Select
-            value={selectedPgId?.toString() || pgs[0]?.id.toString()}
-            onValueChange={(val) => setSelectedPgId(parseInt(val))}
-          >
-            <SelectTrigger data-testid="select-pg">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {pgs.map((pg: any) => (
-                <SelectItem key={pg.id} value={pg.id.toString()} data-testid={`option-pg-${pg.id}`}>
-                  {pg.pgName}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      )}
-
       {isMobile && (
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-6 bg-white p-2 rounded-2xl shadow-sm border border-gray-100 mx-4">
           <Button
             variant="outline"
             size="sm"
             onClick={() => setCurrentDayIndex((prev) => (prev === 0 ? DAYS.length - 1 : prev - 1))}
+            className="h-10 w-10 rounded-xl hover:bg-purple-50 hover:text-purple-600"
             data-testid="button-prev-day"
           >
-            <ChevronLeft className="h-4 w-4" />
+            <ChevronLeft className="h-5 w-5" />
           </Button>
-          <h2 className="text-xl font-semibold" data-testid="text-current-day">
+          <h2 className="text-lg font-bold text-gray-800" data-testid="text-current-day">
             {capitalizeFirst(DAYS[currentDayIndex])}
           </h2>
           <Button
             variant="outline"
             size="sm"
             onClick={() => setCurrentDayIndex((prev) => (prev === DAYS.length - 1 ? 0 : prev + 1))}
+            className="h-10 w-10 rounded-xl hover:bg-purple-50 hover:text-purple-600"
             data-testid="button-next-day"
           >
-            <ChevronRight className="h-4 w-4" />
+            <ChevronRight className="h-5 w-5" />
           </Button>
         </div>
       )}
 
-      <div className={`${isMobile ? "" : "grid grid-cols-7 gap-4"}`}>
+      <div className={cn(isMobile ? "space-y-6 px-4 pb-20" : "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-6 pb-12")}>
         {visibleDays.map((day) => (
           <div key={day} className={isMobile ? "mb-6" : ""}>
             {!isMobile && (
-              <h2 className="text-lg font-semibold mb-3 text-center" data-testid={`text-day-${day}`}>
+              <h2 className="text-lg font-bold mb-4 text-center text-gray-800 border-b-2 border-purple-100 pb-2" data-testid={`text-day-${day}`}>
                 {capitalizeFirst(day)}
               </h2>
             )}
-            <div className="space-y-3">
+            <div className="space-y-4">
               {MEALS.map((meal) => renderMealCard(day, meal))}
             </div>
           </div>
@@ -381,70 +396,98 @@ function FoodMenuContent() {
 
       {/* Edit Menu Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto" data-testid="dialog-edit-menu">
-          <DialogHeader>
-            <DialogTitle>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto sm:rounded-2xl" data-testid="dialog-edit-menu">
+          <DialogHeader className="bg-gradient-to-r from-purple-50 to-blue-50 p-6 -mx-6 -mt-6 border-b border-purple-100 mb-6">
+            <DialogTitle className="text-xl font-bold text-gray-800 flex items-center gap-2">
+              <Utensils className="w-5 h-5 text-purple-600" />
               Edit {editingMenuItem && capitalizeFirst(editingMenuItem.mealType)} -{" "}
               {editingMenuItem && capitalizeFirst(editingMenuItem.dayOfWeek)}
             </DialogTitle>
-            <DialogDescription>Add menu items and mark them as veg or non-veg</DialogDescription>
+            <DialogDescription className="text-gray-600 font-medium">
+              Add menu items and specify if they are veg or non-veg.
+            </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4">
-            {editingMenuItem?.items.map((item, idx) => (
-              <div key={idx} className="flex gap-2 items-start">
-                <div className="flex-1">
-                  <Input
-                    value={item}
-                    onChange={(e) => handleItemChange(idx, e.target.value)}
-                    placeholder="Menu item"
-                    data-testid={`input-item-${idx}`}
-                  />
-                </div>
-                <Button
-                  type="button"
-                  variant={editingMenuItem.isVeg[idx] ? "default" : "destructive"}
-                  size="sm"
-                  onClick={() => handleVegToggle(idx)}
-                  data-testid={`button-veg-${idx}`}
-                >
-                  <Leaf className="h-4 w-4" />
-                  {editingMenuItem.isVeg[idx] ? "Veg" : "Non-Veg"}
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleRemoveItem(idx)}
-                  data-testid={`button-remove-${idx}`}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
+          <div className="space-y-6">
+            <div className="space-y-3">
+              <Label className="text-sm font-bold text-gray-700 uppercase tracking-wider">Menu Items</Label>
+              <div className="space-y-3">
+                {editingMenuItem?.items.map((item, idx) => (
+                  <div key={idx} className="flex gap-2 items-start group bg-gray-50/50 p-2 rounded-xl border border-gray-100 hover:border-purple-200 transition-colors">
+                    <div className="flex-1">
+                      <Input
+                        value={item}
+                        onChange={(e) => handleItemChange(idx, e.target.value)}
+                        placeholder="e.g., Dal Makhani, Roti, Rice"
+                        className="h-11 bg-white border-gray-200 focus-visible:ring-purple-500"
+                        data-testid={`input-item-${idx}`}
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className={cn(
+                        "h-11 px-3 transition-colors border-2",
+                        editingMenuItem.isVeg[idx] 
+                          ? "bg-green-50 border-green-200 text-green-700 hover:bg-green-100 hover:text-green-800" 
+                          : "bg-red-50 border-red-200 text-red-700 hover:bg-red-100 hover:text-red-800"
+                      )}
+                      onClick={() => handleVegToggle(idx)}
+                      data-testid={`button-veg-${idx}`}
+                      title={editingMenuItem.isVeg[idx] ? "Mark as Non-Veg" : "Mark as Veg"}
+                    >
+                      <Leaf className="h-4 w-4 mr-1.5" />
+                      <span className="font-bold">{editingMenuItem.isVeg[idx] ? "Veg" : "Non-Veg"}</span>
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleRemoveItem(idx)}
+                      className="h-11 w-11 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg shrink-0"
+                      data-testid={`button-remove-${idx}`}
+                    >
+                      <X className="h-5 w-5" />
+                    </Button>
+                  </div>
+                ))}
               </div>
-            ))}
 
-            <Button type="button" variant="outline" onClick={handleAddItem} className="w-full" data-testid="button-add-item">
-              <Plus className="h-4 w-4 mr-2" />
-              Add Item
-            </Button>
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={handleAddItem} 
+                className="w-full h-11 border-2 border-dashed border-gray-300 text-gray-600 hover:border-purple-400 hover:text-purple-600 hover:bg-purple-50 font-semibold rounded-xl" 
+                data-testid="button-add-item"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Another Item
+              </Button>
+            </div>
 
-            <div>
-              <Label>Notes (optional)</Label>
+            <div className="space-y-2">
+              <Label className="text-sm font-bold text-gray-700 uppercase tracking-wider">Additional Notes (Optional)</Label>
               <Textarea
                 value={editingMenuItem?.notes || ""}
                 onChange={(e) => setEditingMenuItem(editingMenuItem ? { ...editingMenuItem, notes: e.target.value } : null)}
-                placeholder="Any special notes..."
+                placeholder="e.g., Special Jain food available on request..."
+                className="resize-none min-h-[100px] border-2 focus-visible:ring-purple-500 rounded-xl"
                 data-testid="input-notes"
               />
             </div>
           </div>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)} data-testid="button-cancel">
+          <DialogFooter className="mt-6 pt-4 border-t">
+            <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="rounded-xl h-11 font-semibold" data-testid="button-cancel">
               Cancel
             </Button>
-            <Button onClick={handleSave} disabled={createOrUpdateMutation.isPending} data-testid="button-save">
-              {createOrUpdateMutation.isPending ? "Saving..." : "Save"}
+            <Button 
+              onClick={handleSave} 
+              disabled={createOrUpdateMutation.isPending} 
+              className="rounded-xl h-11 font-semibold bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 shadow-md text-white"
+              data-testid="button-save"
+            >
+              {createOrUpdateMutation.isPending ? "Saving..." : "Save Menu"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -498,21 +541,5 @@ function FoodMenuContent() {
         </DialogContent>
       </Dialog>
     </div>
-  );
-}
-
-function FoodMenuDesktop() {
-  return (
-    <DesktopLayout title="Food Menu">
-      <FoodMenuContent />
-    </DesktopLayout>
-  );
-}
-
-function FoodMenuMobile() {
-  return (
-    <MobileLayout title="Food Menu">
-      <FoodMenuContent />
-    </MobileLayout>
   );
 }

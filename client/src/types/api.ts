@@ -1998,6 +1998,14 @@ export interface components {
             /** Format: date-time */
             createdAt?: string;
         };
+        ApiResponseAnnouncementResponseDto: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["AnnouncementResponseDto"];
+            /** Format: date-time */
+            timestamp?: string;
+            errorCode?: string;
+        };
         SubscriptionPlanRequestDto: {
             name?: string;
             description?: string;
@@ -2424,6 +2432,14 @@ export interface components {
             isVeg: boolean[];
             notes?: string;
         };
+        ApiResponseFoodMenuResponseDto: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["FoodMenuResponseDto"];
+            /** Format: date-time */
+            timestamp?: string;
+            errorCode?: string;
+        };
         FoodMenuResponseDto: {
             /** Format: int32 */
             id?: number;
@@ -2436,6 +2452,16 @@ export interface components {
             items?: string[];
             isVeg?: boolean[];
             notes?: string;
+        };
+        ApiResponseMapStringObject: {
+            success?: boolean;
+            message?: string;
+            data?: {
+                [key: string]: Record<string, never>;
+            };
+            /** Format: date-time */
+            timestamp?: string;
+            errorCode?: string;
         };
         ElectricityBillingCycleRequestDto: {
             /** Format: int32 */
@@ -2864,6 +2890,14 @@ export interface components {
             /** Format: date-time */
             createdAt?: string;
         };
+        ApiResponseListFoodMenuResponseDto: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["FoodMenuResponseDto"][];
+            /** Format: date-time */
+            timestamp?: string;
+            errorCode?: string;
+        };
         ApiResponsePgWithRoomsResponseDto: {
             success?: boolean;
             message?: string;
@@ -2891,6 +2925,14 @@ export interface components {
             hasLaundry?: boolean;
             hasGym?: boolean;
             availableRooms?: components["schemas"]["RoomResponseDto"][];
+        };
+        ApiResponseListAnnouncementResponseDto: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["AnnouncementResponseDto"][];
+            /** Format: date-time */
+            timestamp?: string;
+            errorCode?: string;
         };
         AdminDashboardStatsDto: {
             /** Format: int64 */
@@ -3361,7 +3403,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["AnnouncementResponseDto"];
+                    "*/*": components["schemas"]["ApiResponseAnnouncementResponseDto"];
                 };
             };
         };
@@ -3382,7 +3424,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "*/*": components["schemas"]["ApiResponseVoid"];
+                };
             };
         };
     };
@@ -4441,7 +4485,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["FoodMenuResponseDto"];
+                    "*/*": components["schemas"]["ApiResponseFoodMenuResponseDto"];
                 };
             };
         };
@@ -4465,7 +4509,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": Record<string, never>;
+                    "*/*": components["schemas"]["ApiResponseMapStringObject"];
                 };
             };
         };
@@ -4843,7 +4887,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["AnnouncementResponseDto"][];
+                    "*/*": components["schemas"]["ApiResponseListAnnouncementResponseDto"];
                 };
             };
         };
@@ -4867,7 +4911,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["AnnouncementResponseDto"];
+                    "*/*": components["schemas"]["ApiResponseAnnouncementResponseDto"];
                 };
             };
         };
@@ -5719,7 +5763,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["FoodMenuResponseDto"][];
+                    "*/*": components["schemas"]["ApiResponseListFoodMenuResponseDto"];
                 };
             };
         };
@@ -5825,7 +5869,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["AnnouncementResponseDto"][];
+                    "*/*": components["schemas"]["ApiResponseListAnnouncementResponseDto"];
                 };
             };
         };
@@ -5992,7 +6036,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "*/*": components["schemas"]["ApiResponseVoid"];
+                };
             };
         };
     };

@@ -28,43 +28,8 @@ import DesktopLayout from "@/components/layout/DesktopLayout";
 import { usePG } from "@/hooks/use-pg";
 import { format } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
-import { api } from "@/apiClient";
-
-type Priority = "low" | "medium" | "high";
-
-interface Announcement {
-  id: number;
-  pgId: number;
-  ownerId: number;
-  heading: string;
-  details: string;
-  priority: Priority;
-  targetRooms: number[] | null;
-  targetFloors: number[] | null;
-  targetTenants: number[] | null;
-  createdAt: string;
-}
-
-interface Room {
-  id: number;
-  roomNumber: string;
-  floor: number | null;
-}
-
-interface Tenant {
-  id: number;
-  name: string;
-  roomId: number | null;
-}
-
-interface AnnouncementFormData {
-  heading: string;
-  details: string;
-  priority: Priority;
-  targetRooms: number[];
-  targetFloors: number[];
-  targetTenants: number[];
-}
+import { ownerService } from "@/services/ownerService";
+import type { AnnouncementResponse, AnnouncementRequest, RoomResponse, TenantResponse } from "@/types/owner";
 
 export default function Announcements() {
   return (
@@ -80,9 +45,9 @@ function AnnouncementsContent() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingAnnouncement, setEditingAnnouncement] = useState<Announcement | null>(null);
+  const [editingAnnouncement, setEditingAnnouncement] = useState<AnnouncementResponse | null>(null);
   const [sendToAll, setSendToAll] = useState(true);
-  const [formData, setFormData] = useState<AnnouncementFormData>({
+  const [formData, setFormData] = useState<AnnouncementRequest>({
     heading: "",
     details: "",
     priority: "medium",
@@ -91,12 +56,11 @@ function AnnouncementsContent() {
     targetTenants: [],
   });
 
-  const { data: announcements = [], isLoading } = useQuery<Announcement[]>({
+  const { data: announcements = [], isLoading } = useQuery<AnnouncementResponse[]>({
     queryKey: ["/api/announcements"],
     queryFn: async () => {
       try {
-        const res = await api.get("/api/announcements");
-        return res.data;
+        return await ownerService.getAnnouncements();
       } catch (error) {
         return [];
       }
@@ -104,12 +68,11 @@ function AnnouncementsContent() {
     enabled: !!selectedPg,
   });
 
-  const { data: roomsData = [] } = useQuery<Room[]>({
+  const { data: roomsData = [] } = useQuery<RoomResponse[]>({
     queryKey: ["/api/rooms"],
     queryFn: async () => {
       try {
-        const res = await api.get("/api/rooms");
-        return res.data.map((item: { room: Room; tenants: unknown[] }) => item.room);
+        return await ownerService.getRooms();
       } catch (error) {
         return [];
       }
@@ -117,12 +80,11 @@ function AnnouncementsContent() {
     enabled: !!selectedPg,
   });
 
-  const { data: tenantsData = [] } = useQuery<Tenant[]>({
+  const { data: tenantsData = [] } = useQuery<TenantResponse[]>({
     queryKey: ["/api/tenants"],
     queryFn: async () => {
       try {
-        const res = await api.get("/api/tenants");
-        return res.data;
+        return await ownerService.getAllTenants();
       } catch (error) {
         return [];
       }
@@ -130,13 +92,12 @@ function AnnouncementsContent() {
     enabled: !!selectedPg,
   });
 
-  const rooms = roomsData.filter(r => r && r.id != null);
-  const tenants = tenantsData.filter(t => t && t.id != null);
+  const rooms = (Array.isArray(roomsData) ? roomsData : []).filter(r => r && r.id != null);
+  const tenants = (Array.isArray(tenantsData) ? tenantsData : []).filter(t => t && t.id != null);
 
   const createMutation = useMutation({
-    mutationFn: async (data: AnnouncementFormData) => {
-      const res = await api.post("/api/announcements", data);
-      return res.data;
+    mutationFn: async (data: AnnouncementRequest) => {
+      return await ownerService.createAnnouncement(data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/announcements"] });
@@ -149,9 +110,8 @@ function AnnouncementsContent() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: number; data: AnnouncementFormData }) => {
-      const res = await api.put(`/api/announcements/${id}`, data);
-      return res.data;
+    mutationFn: async ({ id, data }: { id: number; data: AnnouncementRequest }) => {
+      return await ownerService.updateAnnouncement(id, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/announcements"] });
@@ -165,8 +125,8 @@ function AnnouncementsContent() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      const res = await api.delete(`/api/announcements/${id}`);
-      return res.data;
+      await ownerService.deleteAnnouncement(id);
+      return true;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/announcements"] });
@@ -191,7 +151,7 @@ function AnnouncementsContent() {
     setIsDialogOpen(true);
   };
 
-  const handleEdit = (announcement: Announcement) => {
+  const handleEdit = (announcement: AnnouncementResponse) => {
     setEditingAnnouncement(announcement);
     const hasTargets = (announcement.targetRooms?.length || 0) > 0 || 
                        (announcement.targetFloors?.length || 0) > 0 || 
@@ -200,7 +160,7 @@ function AnnouncementsContent() {
     setFormData({
       heading: announcement.heading,
       details: announcement.details,
-      priority: announcement.priority,
+      priority: announcement.priority || "medium",
       targetRooms: announcement.targetRooms || [],
       targetFloors: announcement.targetFloors || [],
       targetTenants: announcement.targetTenants || [],
@@ -214,11 +174,11 @@ function AnnouncementsContent() {
   };
 
   const handleSubmit = () => {
-    if (!formData.heading.trim()) {
+    if (!formData.heading?.trim()) {
       toast({ title: "Heading is required", variant: "destructive" });
       return;
     }
-    if (!formData.details.trim()) {
+    if (!formData.details?.trim()) {
       toast({ title: "Details are required", variant: "destructive" });
       return;
     }
@@ -236,7 +196,7 @@ function AnnouncementsContent() {
     }
   };
 
-  const getPriorityStyles = (priority: Priority) => {
+  const getPriorityStyles = (priority?: string | null) => {
     switch (priority) {
       case "high":
         return {
@@ -277,7 +237,7 @@ function AnnouncementsContent() {
     }
   };
 
-  const getTargetingInfo = (announcement: Announcement) => {
+  const getTargetingInfo = (announcement: AnnouncementResponse) => {
     if (!announcement.targetRooms?.length && !announcement.targetFloors?.length && !announcement.targetTenants?.length) {
       return { icon: Users, label: "All Tenants", count: tenants.length };
     }
@@ -297,6 +257,10 @@ function AnnouncementsContent() {
   };
 
   const uniqueFloors = Array.from(new Set(rooms.map(r => r.floor).filter((f): f is number => f != null))).sort((a, b) => a - b);
+
+  const targetFloors = formData.targetFloors || [];
+  const targetRooms = formData.targetRooms || [];
+  const targetTenants = formData.targetTenants || [];
 
   if (isUserLoading || isPgLoading) {
     return (
@@ -454,12 +418,12 @@ function AnnouncementsContent() {
                                   className={`${priorityStyles.bg} ${priorityStyles.text} text-xs font-semibold px-2.5 py-0.5 shadow-sm`}
                                   data-testid={`badge-priority-${announcement.id}`}
                                 >
-                                  {announcement.priority.charAt(0).toUpperCase() + announcement.priority.slice(1)} Priority
+                                  {(announcement.priority || "Medium").charAt(0).toUpperCase() + (announcement.priority || "medium").slice(1)} Priority
                                 </Badge>
                                 <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                                   <Clock className="h-3 w-3" />
                                   <span data-testid={`text-date-${announcement.id}`}>
-                                    {format(new Date(announcement.createdAt), "MMM dd, yyyy")}
+                                    {announcement.createdAt ? format(new Date(announcement.createdAt), "MMM dd, yyyy") : ""}
                                   </span>
                                 </div>
                               </div>
@@ -540,7 +504,7 @@ function AnnouncementsContent() {
               </Label>
               <Input
                 id="heading"
-                value={formData.heading}
+                value={formData.heading || ""}
                 onChange={(e) => setFormData({ ...formData, heading: e.target.value })}
                 placeholder="e.g., Water Supply Timing Change"
                 className="h-12 text-base"
@@ -554,7 +518,7 @@ function AnnouncementsContent() {
               </Label>
               <Textarea
                 id="details"
-                value={formData.details}
+                value={formData.details || ""}
                 onChange={(e) => setFormData({ ...formData, details: e.target.value })}
                 placeholder="Provide detailed information about the announcement..."
                 rows={4}
@@ -566,8 +530,8 @@ function AnnouncementsContent() {
             <div className="space-y-2">
               <Label htmlFor="priority" className="text-sm font-semibold">Priority Level</Label>
               <Select
-                value={formData.priority}
-                onValueChange={(val) => setFormData({ ...formData, priority: val as Priority })}
+                value={formData.priority || "medium"}
+                onValueChange={(val) => setFormData({ ...formData, priority: val })}
               >
                 <SelectTrigger id="priority" className="h-12" data-testid="select-priority">
                   <SelectValue />
@@ -674,16 +638,16 @@ function AnnouncementsContent() {
                       </div>
                       <div className="flex flex-wrap gap-2">
                         {uniqueFloors.length > 0 ? uniqueFloors.map((floor) => {
-                          const isSelected = formData.targetFloors.includes(floor);
+                          const isSelected = targetFloors.includes(floor);
                           return (
                             <button
                               key={floor}
                               type="button"
                               onClick={() => {
                                 if (isSelected) {
-                                  setFormData({ ...formData, targetFloors: formData.targetFloors.filter(f => f !== floor) });
+                                  setFormData({ ...formData, targetFloors: targetFloors.filter(f => f !== floor) });
                                 } else {
-                                  setFormData({ ...formData, targetFloors: [...formData.targetFloors, floor] });
+                                  setFormData({ ...formData, targetFloors: [...targetFloors, floor] });
                                 }
                               }}
                               className={`px-3 py-2 rounded-lg text-sm font-medium transition-all border ${
@@ -709,16 +673,16 @@ function AnnouncementsContent() {
                       </div>
                       <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
                         {rooms.length > 0 ? rooms.map((room) => {
-                          const isSelected = formData.targetRooms.includes(room.id);
+                          const isSelected = targetRooms.includes(room.id);
                           return (
                             <button
                               key={room.id}
                               type="button"
                               onClick={() => {
                                 if (isSelected) {
-                                  setFormData({ ...formData, targetRooms: formData.targetRooms.filter(id => id !== room.id) });
+                                  setFormData({ ...formData, targetRooms: targetRooms.filter(id => id !== room.id) });
                                 } else {
-                                  setFormData({ ...formData, targetRooms: [...formData.targetRooms, room.id] });
+                                  setFormData({ ...formData, targetRooms: [...targetRooms, room.id] });
                                 }
                               }}
                               className={`px-3 py-2 rounded-lg text-sm font-medium transition-all border ${
@@ -745,16 +709,16 @@ function AnnouncementsContent() {
                       </div>
                       <div className="flex flex-wrap gap-2 max-h-40 overflow-y-auto">
                         {tenants.length > 0 ? tenants.map((tenant) => {
-                          const isSelected = formData.targetTenants.includes(tenant.id);
+                          const isSelected = targetTenants.includes(tenant.id);
                           return (
                             <button
                               key={tenant.id}
                               type="button"
                               onClick={() => {
                                 if (isSelected) {
-                                  setFormData({ ...formData, targetTenants: formData.targetTenants.filter(id => id !== tenant.id) });
+                                  setFormData({ ...formData, targetTenants: targetTenants.filter(id => id !== tenant.id) });
                                 } else {
-                                  setFormData({ ...formData, targetTenants: [...formData.targetTenants, tenant.id] });
+                                  setFormData({ ...formData, targetTenants: [...targetTenants, tenant.id] });
                                 }
                               }}
                               className={`px-3 py-2 rounded-lg text-sm font-medium transition-all border ${
@@ -773,15 +737,15 @@ function AnnouncementsContent() {
                       </div>
                     </div>
                     
-                    {(formData.targetFloors.length > 0 || formData.targetRooms.length > 0 || formData.targetTenants.length > 0) && (
+                    {(targetFloors.length > 0 || targetRooms.length > 0 || targetTenants.length > 0) && (
                       <div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-950/30 rounded-lg border border-green-200 dark:border-green-900">
                         <div className="flex items-center gap-2 text-sm text-green-700 dark:text-green-400">
                           <Bell className="h-4 w-4" />
                           <span>
                             {[
-                              formData.targetFloors.length > 0 && `${formData.targetFloors.length} floor${formData.targetFloors.length > 1 ? 's' : ''}`,
-                              formData.targetRooms.length > 0 && `${formData.targetRooms.length} room${formData.targetRooms.length > 1 ? 's' : ''}`,
-                              formData.targetTenants.length > 0 && `${formData.targetTenants.length} tenant${formData.targetTenants.length > 1 ? 's' : ''}`
+                              targetFloors.length > 0 && `${targetFloors.length} floor${targetFloors.length > 1 ? 's' : ''}`,
+                              targetRooms.length > 0 && `${targetRooms.length} room${targetRooms.length > 1 ? 's' : ''}`,
+                              targetTenants.length > 0 && `${targetTenants.length} tenant${targetTenants.length > 1 ? 's' : ''}`
                             ].filter(Boolean).join(', ')} selected
                           </span>
                         </div>

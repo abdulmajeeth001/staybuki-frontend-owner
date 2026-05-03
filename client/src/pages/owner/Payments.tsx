@@ -91,12 +91,13 @@ function PaymentsDesktop() {
         api.get("/api/tenants"),
       ]);
       
-      const paymentsData = paymentsRes.data;
-      // Filter out soft-deleted payments
+      const paymentsRaw = paymentsRes.data?.data || paymentsRes.data;
+      const paymentsData = Array.isArray(paymentsRaw) ? paymentsRaw : [];
       const activePayments = paymentsData.filter((p: Payment) => p.status !== "deleted");
       setPayments(activePayments);
       
-      setTenants(tenantsRes.data);
+      const tenantsRaw = tenantsRes.data?.data || tenantsRes.data;
+      setTenants(Array.isArray(tenantsRaw) ? tenantsRaw : []);
     } catch (error: any) {
       console.error("Failed to fetch data:", error);
       toast.error(error.response?.data?.error || "Failed to load data");
@@ -770,12 +771,13 @@ function PaymentsMobile() {
         api.get("/api/tenants"),
       ]);
       
-      const paymentsData = paymentsRes.data;
-      // Filter out soft-deleted payments
+      const paymentsRaw = paymentsRes.data?.data || paymentsRes.data;
+      const paymentsData = Array.isArray(paymentsRaw) ? paymentsRaw : [];
       const activePayments = paymentsData.filter((p: Payment) => p.status !== "deleted");
       setPayments(activePayments);
       
-      setTenants(tenantsRes.data);
+      const tenantsRaw = tenantsRes.data?.data || tenantsRes.data;
+      setTenants(Array.isArray(tenantsRaw) ? tenantsRaw : []);
     } catch (error: any) {
       console.error("Failed to fetch data:", error);
       toast.error(error.response?.data?.error || "Failed to load data");
