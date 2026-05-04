@@ -2107,6 +2107,14 @@ export interface components {
             newDate: string;
             newTime: string;
         };
+        ApiResponseVisitRequestResponseDto: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["VisitRequestResponseDto"];
+            /** Format: date-time */
+            timestamp?: string;
+            errorCode?: string;
+        };
         VisitRequestResponseDto: {
             /** Format: int32 */
             id?: number;
@@ -2274,14 +2282,6 @@ export interface components {
             requestedDate: string;
             requestedTime: string;
             notes?: string;
-        };
-        ApiResponseVisitRequestResponseDto: {
-            success?: boolean;
-            message?: string;
-            data?: components["schemas"]["VisitRequestResponseDto"];
-            /** Format: date-time */
-            timestamp?: string;
-            errorCode?: string;
         };
         CreateOnboardingRequestDto: {
             /** Format: int32 */
@@ -2605,6 +2605,14 @@ export interface components {
             isActive?: boolean;
             owner?: components["schemas"]["OwnerDto"];
         };
+        ApiResponseListVisitRequestResponseDto: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["VisitRequestResponseDto"][];
+            /** Format: date-time */
+            timestamp?: string;
+            errorCode?: string;
+        };
         ApiResponseListRoomWithBedsResponseDto: {
             success?: boolean;
             message?: string;
@@ -2655,14 +2663,6 @@ export interface components {
             success?: boolean;
             message?: string;
             data?: components["schemas"]["EmergencyContactDto"][];
-            /** Format: date-time */
-            timestamp?: string;
-            errorCode?: string;
-        };
-        ApiResponseListVisitRequestResponseDto: {
-            success?: boolean;
-            message?: string;
-            data?: components["schemas"]["VisitRequestResponseDto"][];
             /** Format: date-time */
             timestamp?: string;
             errorCode?: string;
@@ -3571,7 +3571,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["VisitRequestResponseDto"];
+                    "*/*": components["schemas"]["ApiResponseVisitRequestResponseDto"];
                 };
             };
         };
@@ -3593,7 +3593,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["VisitRequestResponseDto"];
+                    "*/*": components["schemas"]["ApiResponseVisitRequestResponseDto"];
                 };
             };
         };
@@ -5205,7 +5205,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["VisitRequestResponseDto"][];
+                    "*/*": components["schemas"]["ApiResponseListVisitRequestResponseDto"];
                 };
             };
         };

@@ -17,6 +17,8 @@ export type FoodAlertRequest = components["schemas"]["FoodAlertRequestDto"];
 export type FoodAlertResponse = components["schemas"]["FoodAlertResponseDto"];
 export type AnnouncementResponse = components["schemas"]["AnnouncementResponseDto"];
 export type AnnouncementRequest = components["schemas"]["AnnouncementRequestDto"];
+export type OwnerVisitRequestResponse = components["schemas"]["VisitRequestResponseDto"];
+export type RescheduleVisitRequest = components["schemas"]["RescheduleVisitRequestDto"];
 
 // Payloads for mutations
 export type ApproveOnboardingRequestPayload = {

@@ -10,7 +10,6 @@ import { useLocation, useParams } from "wouter";
 import { ChevronLeft, Upload, FileText, Trash2, Plus, Briefcase, Camera, User, Building, ShieldAlert, X } from "lucide-react";
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
-import pako from "pako";
 import { ownerService } from "@/services/ownerService";
 import type { TenantResponse, RoomResponse, BedResponse, EmergencyContactResponse } from "@/types/owner";
 import { cn } from "@/lib/utils";
@@ -54,20 +53,20 @@ export default function EditTenant() {
     phone: "",
     roomNumber: "",
     monthlyRent: "",
-    tenantImage: "",
-    aadharCard: "",
     emergencyContactName: "",
     emergencyContactPhone: "",
     relationship: "",
     joinDate: "",
     bedId: null as number | null,
     profession: "",
-    professionIdDoc: "",
   });
 
   const [photoPreview, setPhotoPreview] = useState<string>("");
   const [aadharPreview, setAadharPreview] = useState<string>("");
   const [professionIdPreview, setProfessionIdPreview] = useState<string>("");
+  const [tenantImageFile, setTenantImageFile] = useState<File | null>(null);
+  const [aadharFile, setAadharFile] = useState<File | null>(null);
+  const [professionIdFile, setProfessionIdFile] = useState<File | null>(null);
   const [emergencyContacts, setEmergencyContacts] = useState<EmergencyContactResponse[]>([]);
   const [newContact, setNewContact] = useState({ name: "", phone: "", relationship: "" });
   const [showAddContact, setShowAddContact] = useState(false);
@@ -211,8 +210,6 @@ export default function EditTenant() {
       phone: tenant.phone || "",
       roomNumber: tenant.roomNumber ? String(tenant.roomNumber).trim() : "",
       monthlyRent: String(tenant.monthlyRent || ""),
-      tenantImage: tenant.tenantImage || "",
-      aadharCard: tenant.aadharCard || "",
       emergencyContactName: tenant.emergencyContactName || "",
       emergencyContactPhone: tenant.emergencyContactPhone || "",
       relationship: tenant.relationship || "",
@@ -221,8 +218,6 @@ export default function EditTenant() {
         : "",
       bedId: (tenant as any).bedId || null,
       profession: tenant.profession || "",
-      professionIdDoc:
-        (tenant as any).professionIdDocUrl || (tenant as any).professionIdDoc || "",
     });
 
     if (tenant.tenantImage) setPhotoPreview(tenant.tenantImage);
@@ -262,50 +257,19 @@ export default function EditTenant() {
 
   // ── Helpers ───────────────────────────────────────────────────────────────────
 
-  const compressImage = (base64: string, quality = 0.8): Promise<string> => {
-    return new Promise((resolve) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement("canvas");
-        const ctx = canvas.getContext("2d");
-        if (ctx) {
-          canvas.width = img.width;
-          canvas.height = img.height;
-          ctx.drawImage(img, 0, 0);
-          resolve(canvas.toDataURL("image/jpeg", quality));
-        }
-      };
-      img.src = base64;
-    });
-  };
-
-  const compressDocument = (base64: string): string => {
-    try {
-      const dataPart = base64.split(",")[1];
-      if (!dataPart) return base64;
-      const binaryString = atob(dataPart);
-      const bytes = new Uint8Array(binaryString.length);
-      for (let i = 0; i < binaryString.length; i++) bytes[i] = binaryString.charCodeAt(i);
-      const compressed = pako.deflate(bytes);
-      const compressedBase64 = btoa(String.fromCharCode(...Array.from(compressed)));
-      return `data:application/gzip;base64,${compressedBase64}`;
-    } catch (error) {
-      console.error("Compression failed:", error);
-      return base64;
-    }
-  };
-
   // ── Upload handlers ───────────────────────────────────────────────────────────
 
-  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      alert("Please upload an image smaller than 5MB");
+      return;
+    }
+    setTenantImageFile(file);
     const reader = new FileReader();
-    reader.onload = async (event) => {
-      const base64 = event.target?.result as string;
-      const compressed = await compressImage(base64, 0.7);
-      setFormData((prev) => ({ ...prev, tenantImage: compressed }));
-      setPhotoPreview(compressed);
+    reader.onload = (event) => {
+      setPhotoPreview(event.target?.result as string);
     };
     reader.readAsDataURL(file);
   };
@@ -313,33 +277,31 @@ export default function EditTenant() {
   const handleAadharUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const base64 = event.target?.result as string;
-      setFormData((prev) => ({ ...prev, aadharCard: compressDocument(base64) }));
-      setAadharPreview(file.name);
-    };
-    reader.readAsDataURL(file);
+    if (file.size > 5 * 1024 * 1024) {
+      alert("Please upload a document smaller than 5MB");
+      return;
+    }
+    setAadharFile(file);
+    setAadharPreview(file.name);
   };
 
   const handleProfessionIdUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const base64 = event.target?.result as string;
-      setFormData((prev) => ({ ...prev, professionIdDoc: compressDocument(base64) }));
-      setProfessionIdPreview(file.name);
-    };
-    reader.readAsDataURL(file);
+    if (file.size > 5 * 1024 * 1024) {
+      alert("Please upload a document smaller than 5MB");
+      return;
+    }
+    setProfessionIdFile(file);
+    setProfessionIdPreview(file.name);
   };
 
   // ── Mutations ─────────────────────────────────────────────────────────────────
 
   const updateTenantMutation = useMutation({
-    mutationFn: async (data: typeof formData) => {
+    mutationFn: async (data: FormData) => {
       if (!tenantId) throw new Error("No tenant ID");
-      return ownerService.updateTenant(tenantId, data);
+      return ownerService.updateTenant(tenantId, data as any);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tenants"] });
@@ -399,7 +361,28 @@ export default function EditTenant() {
     e.preventDefault();
     if (!formData.roomNumber) { alert("Please select a room"); return; }
     if (!formData.bedId) { alert("Please select a bed position"); return; }
-    updateTenantMutation.mutate(formData);
+    
+    const submitData = new FormData();
+    const payload = {
+      name: formData.name,
+      email: formData.email,
+      phone: formData.phone,
+      roomNumber: formData.roomNumber,
+      monthlyRent: formData.monthlyRent,
+      emergencyContactName: formData.emergencyContactName,
+      emergencyContactPhone: formData.emergencyContactPhone,
+      relationship: formData.relationship,
+      joinDate: formData.joinDate,
+      bedId: formData.bedId,
+      profession: formData.profession,
+    };
+
+    submitData.append("req", new Blob([JSON.stringify(payload)], { type: "application/json" }));
+    if (tenantImageFile) submitData.append("tenantImage", tenantImageFile);
+    if (aadharFile) submitData.append("aadharCard", aadharFile);
+    if (professionIdFile) submitData.append("professionIdDoc", professionIdFile);
+
+    updateTenantMutation.mutate(submitData);
   };
 
   // ── Early returns ─────────────────────────────────────────────────────────────

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import DesktopLayout from "@/components/layout/DesktopLayout";
 import MobileLayout from "@/components/layout/MobileLayout";
@@ -40,29 +40,9 @@ import {
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { api } from "@/apiClient";
+import { ownerService } from "@/services/ownerService";
+import type { OwnerVisitRequestResponse } from "@/types/owner";
 
-interface VisitRequest {
-  id: number;
-  tenantUserId: number;
-  tenantName?: string;
-  tenantEmail?: string;
-  pgId: number;
-  pgName?: string;
-  roomId?: number;
-  roomNumber?: string;
-  requestedDate: string;
-  requestedTime: string;
-  confirmedDate?: string;
-  confirmedTime?: string;
-  rescheduledDate?: string;
-  rescheduledTime?: string;
-  rescheduledBy?: string;
-  status: "pending" | "approved" | "rescheduled" | "completed" | "cancelled";
-  notes?: string;
-  ownerNotes?: string;
-  createdAt: string;
-}
 
 const STATUS_CONFIG = {
   pending: {
@@ -100,27 +80,14 @@ const TIME_SLOTS = [
   "05:00 PM", "05:30 PM", "06:00 PM", "06:30 PM",
 ];
 
-export default function OwnerVisitRequestsPage() {
-  return (
-    <>
-      <div className="hidden lg:block">
-        <OwnerVisitRequestsDesktop />
-      </div>
-      <div className="lg:hidden">
-        <OwnerVisitRequestsMobile />
-      </div>
-    </>
-  );
-}
-
-function OwnerVisitRequestsDesktop() {
+function useVisitRequestsLogic() {
   const queryClient = useQueryClient();
-  
+
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<"recent" | "date">("recent");
   const [rescheduleModal, setRescheduleModal] = useState<{
     open: boolean;
-    request?: VisitRequest;
+    request?: OwnerVisitRequestResponse;
     newDate: string;
     newTime: string;
     ownerNotes: string;
@@ -132,24 +99,14 @@ function OwnerVisitRequestsDesktop() {
   });
 
   // Fetch visit requests
-  const { data: visitRequests = [], isLoading, error } = useQuery<VisitRequest[]>({
+  const { data: visitRequests = [], isLoading, error } = useQuery<OwnerVisitRequestResponse[]>({
     queryKey: ["/api/visit-requests"],
-    queryFn: async () => {
-      try {
-        const res = await api.get("/api/visit-requests");
-        return res.data;
-      } catch (err: any) {
-        throw new Error(err.response?.data?.error || err.message || "Failed to fetch visit requests");
-      }
-    },
+    queryFn: () => ownerService.getVisitRequests(),
   });
 
   // Approve mutation
   const approveMutation = useMutation({
-    mutationFn: async (id: number) => {
-      const res = await api.post(`/api/visit-requests/${id}/approve`);
-      return res.data;
-    },
+    mutationFn: (id: number) => ownerService.approveVisitRequest(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/visit-requests"] });
       toast.success("Visit request approved successfully");
@@ -161,10 +118,8 @@ function OwnerVisitRequestsDesktop() {
 
   // Reschedule mutation
   const rescheduleMutation = useMutation({
-    mutationFn: async ({ id, newDate, newTime }: { id: number; newDate: string; newTime: string }) => {
-      const res = await api.post(`/api/visit-requests/${id}/reschedule`, { newDate, newTime });
-      return res.data;
-    },
+    mutationFn: ({ id, newDate, newTime }: { id: number; newDate: string; newTime: string }) => 
+      ownerService.rescheduleVisitRequest(id, { newDate, newTime }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/visit-requests"] });
       setRescheduleModal({ open: false, newDate: "", newTime: "", ownerNotes: "" });
@@ -192,7 +147,7 @@ function OwnerVisitRequestsDesktop() {
     });
   };
 
-  const openRescheduleModal = (request: VisitRequest) => {
+  const openRescheduleModal = (request: OwnerVisitRequestResponse) => {
     setRescheduleModal({
       open: true,
       request,
@@ -203,31 +158,70 @@ function OwnerVisitRequestsDesktop() {
   };
 
   // Filter and sort requests
-  const filteredRequests = visitRequests
-    .filter((req) => {
-      if (statusFilter === "all") return true;
-      return req.status === statusFilter;
-    })
-    .sort((a, b) => {
-      if (sortBy === "recent") {
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-      } else {
-        const dateA = new Date(a.requestedDate).getTime();
-        const dateB = new Date(b.requestedDate).getTime();
-        return dateB - dateA;
-      }
-    });
+  const filteredRequests = useMemo(() => {
+    return visitRequests
+      .filter((req) => {
+        if (statusFilter === "all") return true;
+        return req.status === statusFilter;
+      })
+      .sort((a, b) => {
+        if (sortBy === "recent") {
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        } else {
+          const dateA = new Date(a.requestedDate).getTime();
+          const dateB = new Date(b.requestedDate).getTime();
+          return dateB - dateA;
+        }
+      });
+  }, [visitRequests, statusFilter, sortBy]);
 
-  const getStatusCounts = () => {
+  const counts = useMemo(() => {
     return {
       all: visitRequests.length,
       pending: visitRequests.filter((r) => r.status === "pending").length,
       approved: visitRequests.filter((r) => r.status === "approved").length,
       completed: visitRequests.filter((r) => r.status === "completed").length,
     };
-  };
+  }, [visitRequests]);
 
-  const counts = getStatusCounts();
+  return {
+    statusFilter,
+    setStatusFilter,
+    sortBy,
+    setSortBy,
+    rescheduleModal,
+    setRescheduleModal,
+    isLoading,
+    error,
+    approveMutation,
+    rescheduleMutation,
+    handleApprove,
+    handleReschedule,
+    openRescheduleModal,
+    filteredRequests,
+    counts,
+  };
+}
+
+export default function OwnerVisitRequestsPage() {
+  return (
+    <>
+      <div className="hidden lg:block">
+        <OwnerVisitRequestsDesktop />
+      </div>
+      <div className="lg:hidden">
+        <OwnerVisitRequestsMobile />
+      </div>
+    </>
+  );
+}
+
+function OwnerVisitRequestsDesktop() {
+  const {
+    statusFilter, setStatusFilter, sortBy, setSortBy, rescheduleModal, setRescheduleModal,
+    isLoading, error, approveMutation, rescheduleMutation, handleApprove, handleReschedule,
+    openRescheduleModal, filteredRequests, counts
+  } = useVisitRequestsLogic();
 
   if (error) {
     return (
@@ -426,7 +420,7 @@ function OwnerVisitRequestsDesktop() {
         ) : (
           <div className="space-y-4">
             {filteredRequests.map((request) => {
-              const statusConfig = STATUS_CONFIG[request.status];
+              const statusConfig = STATUS_CONFIG[request.status as keyof typeof STATUS_CONFIG] || STATUS_CONFIG.pending;
               const StatusIcon = statusConfig.icon;
               const visitDate = request.confirmedDate || request.requestedDate;
               const visitTime = request.confirmedTime || request.requestedTime;
@@ -678,116 +672,11 @@ function OwnerVisitRequestsDesktop() {
 }
 
 function OwnerVisitRequestsMobile() {
-  const queryClient = useQueryClient();
-  
-  const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [sortBy, setSortBy] = useState<"recent" | "date">("recent");
-  const [rescheduleModal, setRescheduleModal] = useState<{
-    open: boolean;
-    request?: VisitRequest;
-    newDate: string;
-    newTime: string;
-    ownerNotes: string;
-  }>({
-    open: false,
-    newDate: "",
-    newTime: "",
-    ownerNotes: "",
-  });
-
-  const { data: visitRequests = [], isLoading, error } = useQuery<VisitRequest[]>({
-    queryKey: ["/api/visit-requests"],
-    queryFn: async () => {
-      try {
-        const res = await api.get("/api/visit-requests");
-        return res.data;
-      } catch (err: any) {
-        throw new Error(err.response?.data?.error || err.message || "Failed to fetch visit requests");
-      }
-    },
-  });
-
-  const approveMutation = useMutation({
-    mutationFn: async (id: number) => {
-      const res = await api.post(`/api/visit-requests/${id}/approve`);
-      return res.data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/visit-requests"] });
-      toast.success("Visit request approved successfully");
-    },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.error || error.message || "Failed to approve visit request");
-    },
-  });
-
-  const rescheduleMutation = useMutation({
-    mutationFn: async ({ id, newDate, newTime }: { id: number; newDate: string; newTime: string }) => {
-      const res = await api.post(`/api/visit-requests/${id}/reschedule`, { newDate, newTime });
-      return res.data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/visit-requests"] });
-      setRescheduleModal({ open: false, newDate: "", newTime: "", ownerNotes: "" });
-      toast.success("Visit rescheduled successfully. Tenant will be notified.");
-    },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.error || error.message || "Failed to reschedule visit request");
-    },
-  });
-
-  const handleApprove = (id: number) => {
-    approveMutation.mutate(id);
-  };
-
-  const handleReschedule = () => {
-    if (!rescheduleModal.request || !rescheduleModal.newDate || !rescheduleModal.newTime) {
-      toast.error("Please select both date and time");
-      return;
-    }
-
-    rescheduleMutation.mutate({
-      id: rescheduleModal.request.id,
-      newDate: rescheduleModal.newDate,
-      newTime: rescheduleModal.newTime,
-    });
-  };
-
-  const openRescheduleModal = (request: VisitRequest) => {
-    setRescheduleModal({
-      open: true,
-      request,
-      newDate: "",
-      newTime: "",
-      ownerNotes: "",
-    });
-  };
-
-  const filteredRequests = visitRequests
-    .filter((req) => {
-      if (statusFilter === "all") return true;
-      return req.status === statusFilter;
-    })
-    .sort((a, b) => {
-      if (sortBy === "recent") {
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-      } else {
-        const dateA = new Date(a.requestedDate).getTime();
-        const dateB = new Date(b.requestedDate).getTime();
-        return dateB - dateA;
-      }
-    });
-
-  const getStatusCounts = () => {
-    return {
-      all: visitRequests.length,
-      pending: visitRequests.filter((r) => r.status === "pending").length,
-      approved: visitRequests.filter((r) => r.status === "approved").length,
-      completed: visitRequests.filter((r) => r.status === "completed").length,
-    };
-  };
-
-  const counts = getStatusCounts();
+  const {
+    statusFilter, setStatusFilter, rescheduleModal, setRescheduleModal,
+    isLoading, error, approveMutation, rescheduleMutation, handleApprove, handleReschedule,
+    openRescheduleModal, filteredRequests, counts
+  } = useVisitRequestsLogic();
 
   if (error) {
     return (
@@ -921,7 +810,7 @@ function OwnerVisitRequestsMobile() {
             </Card>
           ) : (
             filteredRequests.map((request) => {
-              const statusConfig = STATUS_CONFIG[request.status];
+              const statusConfig = STATUS_CONFIG[request.status as keyof typeof STATUS_CONFIG] || STATUS_CONFIG.pending;
               const StatusIcon = statusConfig.icon;
               const visitDate = request.confirmedDate || request.requestedDate;
               const visitTime = request.confirmedTime || request.requestedTime;

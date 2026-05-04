@@ -21,6 +21,8 @@ import {
   FoodAlertResponse,
   AnnouncementResponse,
   AnnouncementRequest,
+  OwnerVisitRequestResponse,
+  RescheduleVisitRequest,
 } from "@/types/owner";
 
 export const ownerService = {
@@ -218,7 +220,7 @@ export const ownerService = {
   /**
    * Updates an existing tenant.
    */
-  async updateTenant(id: number, payload: TenantRequest | any): Promise<TenantResponse> {
+  async updateTenant(id: number, payload: TenantRequest | FormData | any): Promise<TenantResponse> {
     const response = await api.put<ApiResponse<TenantResponse> | TenantResponse>(`/api/tenants/${id}`, payload);
     return (response.data as any).data || response.data;
   },
@@ -319,5 +321,30 @@ export const ownerService = {
     if (response.data && (response.data as any).success === false) {
       throw new Error((response.data as any).message || "Failed to delete announcement");
     }
+  },
+
+  async getVisitRequests(): Promise<OwnerVisitRequestResponse[]> {
+    const response = await api.get<ApiResponse<OwnerVisitRequestResponse[]>>("/api/visit-requests");
+    if (response.data && response.data.success === false) {
+      throw new Error(response.data.error || response.data.message || "Failed to fetch visit requests");
+    }
+    const data = response.data?.data !== undefined ? response.data.data : response.data;
+    return Array.isArray(data) ? data : [];
+  },
+
+  async approveVisitRequest(id: number): Promise<OwnerVisitRequestResponse> {
+    const response = await api.post<ApiResponse<OwnerVisitRequestResponse>>(`/api/visit-requests/${id}/approve`);
+    if (response.data && response.data.success === false) {
+      throw new Error(response.data.error || response.data.message || "Failed to approve visit request");
+    }
+    return response.data?.data !== undefined ? response.data.data : (response.data as any);
+  },
+
+  async rescheduleVisitRequest(id: number, payload: RescheduleVisitRequest | any): Promise<OwnerVisitRequestResponse> {
+    const response = await api.post<ApiResponse<OwnerVisitRequestResponse>>(`/api/visit-requests/${id}/reschedule`, payload);
+    if (response.data && response.data.success === false) {
+      throw new Error(response.data.error || response.data.message || "Failed to reschedule visit request");
+    }
+    return response.data?.data !== undefined ? response.data.data : (response.data as any);
   }
 };
