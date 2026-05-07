@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Check, X, Eye, Smartphone, Banknote } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
-import { api } from "@/apiClient";
+import { ownerService } from "@/services/ownerService";
 
 interface Payment {
   id: number;
@@ -39,7 +39,7 @@ export function OwnerPaymentApproval({ payment, onApprove, onReject }: OwnerPaym
   const handleApprove = async () => {
     setIsProcessing(true);
     try {
-      await api.put(`/api/payments/${payment.id}/approve`, { status: "paid" });
+      await ownerService.approvePayment(payment.id);
 
       toast({
         title: "Payment Approved",
@@ -60,8 +60,7 @@ export function OwnerPaymentApproval({ payment, onApprove, onReject }: OwnerPaym
   const handleReject = async () => {
     setIsProcessing(true);
     try {
-      await api.put(`/api/payments/${payment.id}/reject`, { 
-        status: "rejected",
+      await ownerService.rejectPayment(payment.id, { 
         rejectionReason: "Payment verification failed. Please contact owner."
       });
 

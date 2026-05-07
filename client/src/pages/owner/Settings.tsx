@@ -6,11 +6,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import LocationMapPicker from "@/components/LocationMapPicker";
 import ImageUploader from "@/components/ImageUploader";
-import { Bell, User, Building, Edit2, Wallet, Zap } from "lucide-react";
+import { Bell, User, Building, Edit2, Wallet, Zap, Check } from "lucide-react";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useState, useEffect } from "react";
 import { toast } from "@/hooks/use-toast";
 import { api } from "@/apiClient";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { ownerService } from "@/services/ownerService";
 
 export default function Settings() {
   const isMobile = useIsMobile();
@@ -33,6 +35,7 @@ export default function Settings() {
   const [originalPgForm, setOriginalPgForm] = useState({ pgName: "", pgAddress: "", pgLocation: "", latitude: "", longitude: "", imageUrl: "", totalRooms: 0, rentPaymentDate: null as number | null });
   const [originalPaymentForm, setOriginalPaymentForm] = useState({ upiId: "" });
   const [pgImageFile, setPgImageFile] = useState<File | string | null>(null);
+  const [autoGenResult, setAutoGenResult] = useState<{show: boolean, message: string}>({show: false, message: ""});
 
   useEffect(() => {
     const fetchData = async () => {
@@ -246,13 +249,9 @@ export default function Settings() {
 
     setAutoGenerateLoading(true);
     try {
-      const res = await api.post("/api/payments/auto-generate");
+      const data = await ownerService.autoGeneratePayments();
       
-        const data = res.data;
-        toast({
-          title: "Success!",
-          description: data.message
-        });
+        setAutoGenResult({ show: true, message: data.message || "Payments generated successfully" });
         
         // Refresh PG data to get updated lastPaymentGeneratedAt
         const pgRes = await api.get("/api/pg");
@@ -667,6 +666,27 @@ export default function Settings() {
         </Card>
 
       </div>
+
+      {/* Auto Generate Success Dialog */}
+      <Dialog open={autoGenResult.show} onOpenChange={(open) => !open && setAutoGenResult({ show: false, message: "" })}>
+        <DialogContent className="sm:max-w-md w-[90vw] rounded-2xl">
+          <div className="flex flex-col items-center justify-center py-6 space-y-4">
+            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-2">
+              <Check className="w-8 h-8 text-green-600" />
+            </div>
+            <h2 className="text-2xl font-bold text-center">Generation Successful!</h2>
+            <p className="text-muted-foreground text-center text-sm px-4">
+              {autoGenResult.message}
+            </p>
+            <Button 
+              className="w-full mt-4 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white" 
+              onClick={() => setAutoGenResult({ show: false, message: "" })}
+            >
+              Continue
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Layout>
   );
 }

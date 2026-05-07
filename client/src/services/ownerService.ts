@@ -23,6 +23,9 @@ import {
   AnnouncementRequest,
   OwnerVisitRequestResponse,
   RescheduleVisitRequest,
+  PaymentResponse,
+  PaymentRequest,
+  RejectPaymentPayload,
 } from "@/types/owner";
 
 export const ownerService = {
@@ -346,5 +349,46 @@ export const ownerService = {
       throw new Error(response.data.error || response.data.message || "Failed to reschedule visit request");
     }
     return response.data?.data !== undefined ? response.data.data : (response.data as any);
+  },
+
+  async getPayments(): Promise<PaymentResponse[]> {
+    const response = await api.get<ApiResponse<PaymentResponse[]> | PaymentResponse[]>("/api/payments");
+    const data = (response.data as any).data !== undefined ? (response.data as any).data : response.data;
+    return Array.isArray(data) ? data : [];
+  },
+
+  async getPaymentsByMonthAndYear(year: number, month: number): Promise<PaymentResponse[]> {
+    const response = await api.get<ApiResponse<PaymentResponse[]> | PaymentResponse[]>("/api/payments/monthly", {
+      params: { year, month }
+    });
+    const data = (response.data as any).data !== undefined ? (response.data as any).data : response.data;
+    return Array.isArray(data) ? data : [];
+  },
+
+  async createPayment(payload: PaymentRequest | any): Promise<PaymentResponse> {
+    const response = await api.post<ApiResponse<PaymentResponse> | PaymentResponse>("/api/payments", payload);
+    return (response.data as any).data !== undefined ? (response.data as any).data : response.data;
+  },
+
+  async autoGeneratePayments(): Promise<any> {
+    const response = await api.post<ApiResponse<any> | any>("/api/payments/auto-generate");
+    return (response.data as any).data !== undefined ? (response.data as any).data : response.data;
+  },
+
+  async approvePayment(id: number): Promise<PaymentResponse> {
+    const response = await api.put<ApiResponse<PaymentResponse> | PaymentResponse>(`/api/payments/${id}/approve`);
+    return (response.data as any).data !== undefined ? (response.data as any).data : response.data;
+  },
+
+  async rejectPayment(id: number, payload: RejectPaymentPayload | any): Promise<PaymentResponse> {
+    const response = await api.put<ApiResponse<PaymentResponse> | PaymentResponse>(`/api/payments/${id}/reject`, payload);
+    return (response.data as any).data !== undefined ? (response.data as any).data : response.data;
+  },
+
+  async deletePayment(id: number): Promise<void> {
+    const response = await api.delete<ApiResponse<void>>(`/api/payments/${id}`);
+    if (response.data && (response.data as any).success === false) {
+      throw new Error((response.data as any).message || "Failed to delete payment");
+    }
   }
 };

@@ -1388,6 +1388,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/payments/monthly": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getPaymentsByMonthAndYear"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/payments/generate-payments": {
         parameters: {
             query?: never;
@@ -1798,6 +1814,7 @@ export interface components {
             monthlyRent?: number;
             tenantImage?: string;
             aadharCard?: string;
+            idProofUrl?: string;
             status?: string;
             emergencyContacts?: components["schemas"]["EmergencyContactDto"][];
             /** Format: date-time */
@@ -1926,6 +1943,14 @@ export interface components {
             transactionId?: string;
             paymentScreenshot?: string;
             status?: string;
+        };
+        ApiResponsePaymentResponseDto: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["PaymentResponseDto"];
+            /** Format: date-time */
+            timestamp?: string;
+            errorCode?: string;
         };
         PaymentResponseDto: {
             /** Format: int32 */
@@ -2403,6 +2428,24 @@ export interface components {
             /** Format: date-time */
             dueDate?: string;
         };
+        ApiResponseVoid: {
+            success?: boolean;
+            message?: string;
+            data?: Record<string, never>;
+            /** Format: date-time */
+            timestamp?: string;
+            errorCode?: string;
+        };
+        ApiResponseMapStringObject: {
+            success?: boolean;
+            message?: string;
+            data?: {
+                [key: string]: Record<string, never>;
+            };
+            /** Format: date-time */
+            timestamp?: string;
+            errorCode?: string;
+        };
         RejectOnboardingRequestDto: {
             reason: string;
         };
@@ -2452,16 +2495,6 @@ export interface components {
             items?: string[];
             isVeg?: boolean[];
             notes?: string;
-        };
-        ApiResponseMapStringObject: {
-            success?: boolean;
-            message?: string;
-            data?: {
-                [key: string]: Record<string, never>;
-            };
-            /** Format: date-time */
-            timestamp?: string;
-            errorCode?: string;
         };
         ElectricityBillingCycleRequestDto: {
             /** Format: int32 */
@@ -2818,6 +2851,22 @@ export interface components {
             isActive?: boolean;
             rejectionReason?: string;
         };
+        ApiResponseListPaymentResponseDto: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["PaymentResponseDto"][];
+            /** Format: date-time */
+            timestamp?: string;
+            errorCode?: string;
+        };
+        ApiResponseCronPaymentSummaryDto: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["CronPaymentSummaryDto"];
+            /** Format: date-time */
+            timestamp?: string;
+            errorCode?: string;
+        };
         CronPaymentSummaryDto: {
             success?: boolean;
             message?: string;
@@ -2962,14 +3011,6 @@ export interface components {
             behaviorTags?: string[];
             /** Format: int32 */
             recordedByOwnerId: number;
-        };
-        ApiResponseVoid: {
-            success?: boolean;
-            message?: string;
-            data?: Record<string, never>;
-            /** Format: date-time */
-            timestamp?: string;
-            errorCode?: string;
         };
     };
     responses: never;
@@ -3279,7 +3320,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["PaymentResponseDto"];
+                    "*/*": components["schemas"]["ApiResponsePaymentResponseDto"];
                 };
             };
         };
@@ -3301,7 +3342,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": Record<string, never>;
+                    "*/*": components["schemas"]["ApiResponseVoid"];
                 };
             };
         };
@@ -3327,7 +3368,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["PaymentResponseDto"];
+                    "*/*": components["schemas"]["ApiResponsePaymentResponseDto"];
                 };
             };
         };
@@ -3349,7 +3390,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["PaymentResponseDto"];
+                    "*/*": components["schemas"]["ApiResponsePaymentResponseDto"];
                 };
             };
         };
@@ -4257,7 +4298,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["PaymentResponseDto"][];
+                    "*/*": components["schemas"]["ApiResponseListPaymentResponseDto"];
                 };
             };
         };
@@ -4281,7 +4322,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["PaymentResponseDto"];
+                    "*/*": components["schemas"]["ApiResponsePaymentResponseDto"];
                 };
             };
         };
@@ -4307,7 +4348,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": Record<string, never>;
+                    "*/*": components["schemas"]["ApiResponseVoid"];
                 };
             };
         };
@@ -4329,7 +4370,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": Record<string, never>;
+                    "*/*": components["schemas"]["ApiResponseVoid"];
                 };
             };
         };
@@ -4349,9 +4390,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": {
-                        [key: string]: Record<string, never>;
-                    };
+                    "*/*": components["schemas"]["ApiResponseMapStringObject"];
                 };
             };
         };
@@ -5582,6 +5621,29 @@ export interface operations {
             };
         };
     };
+    getPaymentsByMonthAndYear: {
+        parameters: {
+            query: {
+                year: number;
+                month: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListPaymentResponseDto"];
+                };
+            };
+        };
+    };
     triggerPaymentGeneration: {
         parameters: {
             query?: never;
@@ -5597,7 +5659,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["CronPaymentSummaryDto"];
+                    "*/*": components["schemas"]["ApiResponseCronPaymentSummaryDto"];
                 };
             };
         };

@@ -17,34 +17,8 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { ElectricityBillingDialog } from "@/components/ElectricityBillingDialog";
 import { OwnerPaymentApproval } from "@/components/OwnerPaymentApproval";
-import { api } from "@/apiClient";
-
-interface Payment {
-  id: number;
-  tenantId: number;
-  amount: string;
-  type: string;
-  dueDate: string;
-  paidAt?: string;
-  status: string;
-  transactionId?: string;
-  paymentMethod?: string;
-  paymentScreenshot?: string;
-  paymentMonth?: string;
-  createdAt: string;
-  tenant?: {
-    id: number;
-    name: string;
-    roomNumber: string;
-    phone: string;
-  };
-}
-
-interface Tenant {
-  id: number;
-  name: string;
-  email: string;
-}
+import { ownerService } from "@/services/ownerService";
+import type { PaymentResponse, TenantResponse } from "@/types/owner";
 
 export default function Payments() {
   return (
@@ -62,8 +36,8 @@ export default function Payments() {
 function PaymentsDesktop() {
   const { pg } = usePG();
   const [, navigate] = useLocation();
-  const [payments, setPayments] = useState<Payment[]>([]);
-  const [tenants, setTenants] = useState<Tenant[]>([]);
+  const [payments, setPayments] = useState<PaymentResponse[]>([]);
+  const [tenants, setTenants] = useState<TenantResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "income" | "expense" | "pending_approval">("all");
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -78,26 +52,26 @@ function PaymentsDesktop() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deletingPaymentId, setDeletingPaymentId] = useState<number | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [autoGenResult, setAutoGenResult] = useState<{show: boolean, message: string}>({show: false, message: ""});
+  const [selectedMonth, setSelectedMonth] = useState(format(new Date(), "yyyy-MM"));
 
   useEffect(() => {
     fetchData();
-  }, [pg]);
+  }, [pg, selectedMonth]);
 
   const fetchData = async () => {
     try {
       setLoading(true);
+      const [year, month] = selectedMonth.split('-').map(Number);
       const [paymentsRes, tenantsRes] = await Promise.all([
-        api.get("/api/payments"),
-        api.get("/api/tenants"),
+        ownerService.getPaymentsByMonthAndYear(year, month),
+        ownerService.getAllTenants(),
       ]);
       
-      const paymentsRaw = paymentsRes.data?.data || paymentsRes.data;
-      const paymentsData = Array.isArray(paymentsRaw) ? paymentsRaw : [];
-      const activePayments = paymentsData.filter((p: Payment) => p.status !== "deleted");
-      setPayments(activePayments);
+      const activePayments = paymentsRes.filter((p: any) => p.status !== "deleted");
+      setPayments(activePayments as any);
       
-      const tenantsRaw = tenantsRes.data?.data || tenantsRes.data;
-      setTenants(Array.isArray(tenantsRaw) ? tenantsRaw : []);
+      setTenants(tenantsRes as any);
     } catch (error: any) {
       console.error("Failed to fetch data:", error);
       toast.error(error.response?.data?.error || "Failed to load data");
@@ -114,10 +88,10 @@ function PaymentsDesktop() {
 
     setCreating(true);
     try {
-      await api.post("/api/payments", {
+      await ownerService.createPayment({
         tenantId: parseInt(formData.tenantId),
         amount: formData.amount,
-        dueDate: new Date(formData.dueDate),
+        dueDate: new Date(formData.dueDate).toISOString(),
         type: formData.type,
       });
 
@@ -141,8 +115,8 @@ function PaymentsDesktop() {
 
     setCreating(true);
     try {
-      const res = await api.post("/api/payments/auto-generate");
-      toast.success(res.data.message);
+      const res = await ownerService.autoGeneratePayments();
+      setAutoGenResult({ show: true, message: res.message || "Payments generated successfully" });
       fetchData();
     } catch (error: any) {
       toast.error(error.response?.data?.error || "Failed to generate payments");
@@ -154,7 +128,7 @@ function PaymentsDesktop() {
   const handleApprovePayment = async (paymentId: number) => {
     setApprovingId(paymentId);
     try {
-      await api.put(`/api/payments/${paymentId}/approve`);
+      await ownerService.approvePayment(paymentId);
       toast.success("Payment approved successfully");
       fetchData();
     } catch (error: any) {
@@ -180,7 +154,7 @@ function PaymentsDesktop() {
 
     setRejectingId(rejectingPaymentId);
     try {
-      await api.put(`/api/payments/${rejectingPaymentId}/reject`, { rejectionReason });
+      await ownerService.rejectPayment(rejectingPaymentId, { rejectionReason });
 
       toast.success("Payment rejected successfully");
       setRejectDialogOpen(false);
@@ -205,7 +179,7 @@ function PaymentsDesktop() {
 
     setDeletingId(deletingPaymentId);
     try {
-      await api.delete(`/api/payments/${deletingPaymentId}`);
+      await ownerService.deletePayment(deletingPaymentId);
 
       toast.success("Payment deleted successfully");
       setDeleteDialogOpen(false);
@@ -219,26 +193,29 @@ function PaymentsDesktop() {
     }
   };
 
-  // Calculate totals
-  const totalBalance = payments.filter(p => p.status === "paid").reduce((sum, p) => sum + parseFloat(p.amount), 0);
-  const income = payments.filter(p => p.status === "paid").reduce((sum, p) => sum + parseFloat(p.amount), 0);
-  const expense = payments.filter(p => p.status === "pending").reduce((sum, p) => sum + parseFloat(p.amount), 0);
+  // Calculate totals for selected month
+  const totalRevenue = payments.reduce((sum, p: any) => sum + parseFloat(p.amount), 0);
+  const income = payments.filter((p: any) => p.status === "paid").reduce((sum, p: any) => sum + parseFloat(p.amount), 0);
+  const expense = payments.filter((p: any) => p.status === "pending" || p.status === "pending_approval").reduce((sum, p: any) => sum + parseFloat(p.amount), 0);
 
   // Filter transactions
   const getFilteredTransactions = () => {
-    return payments.filter(payment => {
+    return payments.filter((payment: any) => {
       if (filter === "all") return true;
       if (filter === "income") return payment.status === "paid";
       if (filter === "expense") return payment.status === "pending";
       if (filter === "pending_approval") return payment.status === "pending_approval";
       return true;
-    }).map(payment => ({
-      ...payment,
-      name: payment.tenant?.name 
-        ? `${payment.tenant.name}${payment.tenant.roomNumber ? ` - Room ${payment.tenant.roomNumber}` : ''}`
-        : `Tenant #${payment.tenantId}`,
-      paymentType: payment.type || 'rent',
-    }));
+    }).map((payment: any) => {
+      const tenantObj = payment.tenant || tenants.find((t: any) => t.id === payment.tenantId);
+      return {
+        ...payment,
+        name: tenantObj?.name 
+          ? `${tenantObj.name}${tenantObj.roomNumber ? ` - Room ${tenantObj.roomNumber}` : ''}`
+          : `Tenant #${payment.tenantId}`,
+        paymentType: payment.type || 'rent',
+      };
+    });
   };
 
   const transactions = getFilteredTransactions();
@@ -246,10 +223,10 @@ function PaymentsDesktop() {
   const cashflowStats = [
     { 
       label: "Total Revenue", 
-      value: `₹${totalBalance.toLocaleString()}`, 
+      value: `₹${totalRevenue.toLocaleString()}`, 
       icon: DollarSign, 
       gradient: "from-purple-500 to-pink-600",
-      description: "All time"
+      description: format(new Date(selectedMonth + "-01"), "MMMM yyyy")
     },
     { 
       label: "Received", 
@@ -270,9 +247,11 @@ function PaymentsDesktop() {
       value: payments.length.toString(), 
       icon: TrendingUp, 
       gradient: "from-blue-500 to-cyan-600",
-      description: "Total"
+      description: "Selected month"
     },
   ];
+
+  const monthlyPendingApproval = payments.filter((p: any) => p.status === "pending_approval");
 
   return (
     <DesktopLayout title="Payments" showNav={false}>
@@ -426,17 +405,16 @@ function PaymentsDesktop() {
       </div>
 
       {/* Pending Approval Payments Section */}
-      {payments.filter(p => p.status === "pending_approval").length > 0 && (
+      {monthlyPendingApproval.length > 0 && (
         <div className="mb-8">
           <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-yellow-600 flex items-center justify-center">
               <Zap className="w-4 h-4 text-white" />
             </div>
-            Pending Approval ({payments.filter(p => p.status === "pending_approval").length})
+            Pending Approval ({monthlyPendingApproval.length})
           </h3>
           <div className="grid gap-4">
-            {payments
-              .filter(p => p.status === "pending_approval")
+            {monthlyPendingApproval
               .map(payment => (
                 <OwnerPaymentApproval
                   key={payment.id}
@@ -450,43 +428,55 @@ function PaymentsDesktop() {
       )}
 
       {/* Filters */}
-      <div className="flex gap-2 mb-6 items-center">
-        <Button 
-          variant={filter === "all" ? "default" : "outline"} 
-          size="sm" 
-          className="rounded-full px-4"
-          onClick={() => setFilter("all")}
-          data-testid="button-filter-all"
-        >
-          All
-        </Button>
-        <Button 
-          variant={filter === "income" ? "default" : "outline"} 
-          size="sm" 
-          className="rounded-full px-4"
-          onClick={() => setFilter("income")}
-          data-testid="button-filter-income"
-        >
-          Received
-        </Button>
-        <Button 
-          variant={filter === "expense" ? "default" : "outline"} 
-          size="sm" 
-          className="rounded-full px-4"
-          onClick={() => setFilter("expense")}
-          data-testid="button-filter-pending"
-        >
-          Pending
-        </Button>
-        <Button 
-          variant={filter === "pending_approval" ? "default" : "outline"} 
-          size="sm" 
-          className="rounded-full px-4"
-          onClick={() => setFilter("pending_approval")}
-          data-testid="button-filter-pending-approval"
-        >
-          Pending Approval
-        </Button>
+      <div className="flex flex-col sm:flex-row justify-between gap-4 mb-6 items-start sm:items-center">
+        <div className="flex gap-2 items-center flex-wrap">
+          <Button 
+            variant={filter === "all" ? "default" : "outline"} 
+            size="sm" 
+            className="rounded-full px-4"
+            onClick={() => setFilter("all")}
+            data-testid="button-filter-all"
+          >
+            All
+          </Button>
+          <Button 
+            variant={filter === "income" ? "default" : "outline"} 
+            size="sm" 
+            className="rounded-full px-4"
+            onClick={() => setFilter("income")}
+            data-testid="button-filter-income"
+          >
+            Received
+          </Button>
+          <Button 
+            variant={filter === "expense" ? "default" : "outline"} 
+            size="sm" 
+            className="rounded-full px-4"
+            onClick={() => setFilter("expense")}
+            data-testid="button-filter-pending"
+          >
+            Pending
+          </Button>
+          <Button 
+            variant={filter === "pending_approval" ? "default" : "outline"} 
+            size="sm" 
+            className="rounded-full px-4"
+            onClick={() => setFilter("pending_approval")}
+            data-testid="button-filter-pending-approval"
+          >
+            Pending Approval
+          </Button>
+        </div>
+        <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border shadow-sm">
+          <Calendar className="w-4 h-4 text-muted-foreground" />
+          <Label className="whitespace-nowrap text-sm font-medium text-slate-700">Month:</Label>
+          <Input 
+            type="month" 
+            value={selectedMonth}
+            onChange={(e) => setSelectedMonth(e.target.value)}
+            className="w-auto border-0 bg-transparent shadow-none focus-visible:ring-0 px-1"
+          />
+        </div>
       </div>
 
       {/* Transactions */}
@@ -733,6 +723,27 @@ function PaymentsDesktop() {
         onOpenChange={setEbDialogOpen}
         onSuccess={fetchData}
       />
+
+      {/* Auto Generate Success Dialog */}
+      <Dialog open={autoGenResult.show} onOpenChange={(open) => !open && setAutoGenResult({ show: false, message: "" })}>
+        <DialogContent className="sm:max-w-md w-[90vw] rounded-2xl">
+          <div className="flex flex-col items-center justify-center py-6 space-y-4">
+            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-2">
+              <Check className="w-8 h-8 text-green-600" />
+            </div>
+            <h2 className="text-2xl font-bold text-center">Generation Successful!</h2>
+            <p className="text-muted-foreground text-center text-sm px-4">
+              {autoGenResult.message}
+            </p>
+            <Button 
+              className="w-full mt-4 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white" 
+              onClick={() => setAutoGenResult({ show: false, message: "" })}
+            >
+              Continue
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </DesktopLayout>
   );
 }
@@ -740,8 +751,8 @@ function PaymentsDesktop() {
 function PaymentsMobile() {
   const { pg } = usePG();
   const [, navigate] = useLocation();
-  const [payments, setPayments] = useState<Payment[]>([]);
-  const [tenants, setTenants] = useState<Tenant[]>([]);
+  const [payments, setPayments] = useState<PaymentResponse[]>([]);
+  const [tenants, setTenants] = useState<TenantResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "income" | "expense" | "pending_approval">("all");
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -758,26 +769,26 @@ function PaymentsMobile() {
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [showScreenshot, setShowScreenshot] = useState(false);
   const [selectedScreenshot, setSelectedScreenshot] = useState<string | null>(null);
+  const [autoGenResult, setAutoGenResult] = useState<{show: boolean, message: string}>({show: false, message: ""});
+  const [selectedMonth, setSelectedMonth] = useState(format(new Date(), "yyyy-MM"));
 
   useEffect(() => {
     fetchData();
-  }, [pg]);
+  }, [pg, selectedMonth]);
 
   const fetchData = async () => {
     try {
       setLoading(true);
+      const [year, month] = selectedMonth.split('-').map(Number);
       const [paymentsRes, tenantsRes] = await Promise.all([
-        api.get("/api/payments"),
-        api.get("/api/tenants"),
+        ownerService.getPaymentsByMonthAndYear(year, month),
+        ownerService.getAllTenants(),
       ]);
       
-      const paymentsRaw = paymentsRes.data?.data || paymentsRes.data;
-      const paymentsData = Array.isArray(paymentsRaw) ? paymentsRaw : [];
-      const activePayments = paymentsData.filter((p: Payment) => p.status !== "deleted");
-      setPayments(activePayments);
+      const activePayments = paymentsRes.filter((p: any) => p.status !== "deleted");
+      setPayments(activePayments as any);
       
-      const tenantsRaw = tenantsRes.data?.data || tenantsRes.data;
-      setTenants(Array.isArray(tenantsRaw) ? tenantsRaw : []);
+      setTenants(tenantsRes as any);
     } catch (error: any) {
       console.error("Failed to fetch data:", error);
       toast.error(error.response?.data?.error || "Failed to load data");
@@ -794,10 +805,10 @@ function PaymentsMobile() {
 
     setCreating(true);
     try {
-      await api.post("/api/payments", {
+      await ownerService.createPayment({
         tenantId: parseInt(formData.tenantId),
         amount: formData.amount,
-        dueDate: new Date(formData.dueDate),
+        dueDate: new Date(formData.dueDate).toISOString(),
         type: formData.type,
       });
 
@@ -821,8 +832,8 @@ function PaymentsMobile() {
 
     setCreating(true);
     try {
-      const res = await api.post("/api/payments/auto-generate");
-      toast.success(res.data.message);
+      const res = await ownerService.autoGeneratePayments();
+      setAutoGenResult({ show: true, message: res.message || "Payments generated successfully" });
       fetchData();
     } catch (error: any) {
       toast.error(error.response?.data?.error || "Failed to generate payments");
@@ -834,7 +845,7 @@ function PaymentsMobile() {
   const handleApprovePayment = async (paymentId: number) => {
     setApprovingId(paymentId);
     try {
-      await api.put(`/api/payments/${paymentId}/approve`);
+      await ownerService.approvePayment(paymentId);
       toast.success("Payment approved successfully");
       fetchData();
     } catch (error: any) {
@@ -860,7 +871,7 @@ function PaymentsMobile() {
 
     setRejectingId(rejectingPaymentId);
     try {
-      await api.put(`/api/payments/${rejectingPaymentId}/reject`, { rejectionReason });
+      await ownerService.rejectPayment(rejectingPaymentId, { rejectionReason });
 
       toast.success("Payment rejected successfully");
       setRejectDialogOpen(false);
@@ -885,7 +896,7 @@ function PaymentsMobile() {
 
     setDeletingId(deletingPaymentId);
     try {
-      await api.delete(`/api/payments/${deletingPaymentId}`);
+      await ownerService.deletePayment(deletingPaymentId);
 
       toast.success("Payment deleted successfully");
       setDeleteDialogOpen(false);
@@ -899,24 +910,27 @@ function PaymentsMobile() {
     }
   };
 
-  const totalBalance = payments.filter(p => p.status === "paid").reduce((sum, p) => sum + parseFloat(p.amount), 0);
-  const income = payments.filter(p => p.status === "paid").reduce((sum, p) => sum + parseFloat(p.amount), 0);
-  const expense = payments.filter(p => p.status === "pending").reduce((sum, p) => sum + parseFloat(p.amount), 0);
+  const totalRevenue = payments.reduce((sum, p: any) => sum + parseFloat(p.amount), 0);
+  const income = payments.filter((p: any) => p.status === "paid").reduce((sum, p: any) => sum + parseFloat(p.amount), 0);
+  const expense = payments.filter((p: any) => p.status === "pending" || p.status === "pending_approval").reduce((sum, p: any) => sum + parseFloat(p.amount), 0);
 
   const getFilteredTransactions = () => {
-    return payments.filter(payment => {
+    return payments.filter((payment: any) => {
       if (filter === "all") return true;
       if (filter === "income") return payment.status === "paid";
       if (filter === "expense") return payment.status === "pending";
       if (filter === "pending_approval") return payment.status === "pending_approval";
       return true;
-    }).map(payment => ({
-      ...payment,
-      name: payment.tenant?.name 
-        ? `${payment.tenant.name}${payment.tenant.roomNumber ? ` - Room ${payment.tenant.roomNumber}` : ''}`
-        : `Tenant #${payment.tenantId}`,
-      paymentType: payment.type || 'rent',
-    }));
+    }).map((payment: any) => {
+      const tenantObj = payment.tenant || tenants.find((t: any) => t.id === payment.tenantId);
+      return {
+        ...payment,
+        name: tenantObj?.name 
+          ? `${tenantObj.name}${tenantObj.roomNumber ? ` - Room ${tenantObj.roomNumber}` : ''}`
+          : `Tenant #${payment.tenantId}`,
+        paymentType: payment.type || 'rent',
+      };
+    });
   };
 
   const transactions = getFilteredTransactions();
@@ -961,7 +975,7 @@ function PaymentsMobile() {
                 </div>
               </div>
               <p className="text-xs text-muted-foreground font-semibold">Revenue</p>
-              <h3 className="text-2xl font-bold bg-gradient-to-r from-purple-500 to-pink-600 bg-clip-text text-transparent">₹{totalBalance.toLocaleString()}</h3>
+              <h3 className="text-2xl font-bold bg-gradient-to-r from-purple-500 to-pink-600 bg-clip-text text-transparent">₹{totalRevenue.toLocaleString()}</h3>
             </CardContent>
           </Card>
 
@@ -1031,6 +1045,20 @@ function PaymentsMobile() {
             <Zap className="w-4 h-4 mr-1" />
             <span className="text-xs">EB Bill</span>
           </Button>
+        </div>
+
+        {/* Month Selector */}
+        <div className="flex items-center justify-between gap-2 bg-white px-4 py-2 rounded-xl border shadow-sm mb-2">
+          <div className="flex items-center gap-2">
+            <Calendar className="w-4 h-4 text-muted-foreground" />
+            <Label className="text-sm font-medium text-slate-700">Month</Label>
+          </div>
+          <Input 
+            type="month" 
+            value={selectedMonth}
+            onChange={(e) => setSelectedMonth(e.target.value)}
+            className="w-auto border-0 bg-transparent shadow-none focus-visible:ring-0 text-right p-0 h-auto"
+          />
         </div>
 
         {/* Filters - Scrollable on mobile */}
@@ -1403,6 +1431,27 @@ function PaymentsMobile() {
               />
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Auto Generate Success Dialog */}
+      <Dialog open={autoGenResult.show} onOpenChange={(open) => !open && setAutoGenResult({ show: false, message: "" })}>
+        <DialogContent className="sm:max-w-md w-[90vw] rounded-2xl">
+          <div className="flex flex-col items-center justify-center py-6 space-y-4">
+            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-2">
+              <Check className="w-8 h-8 text-green-600" />
+            </div>
+            <h2 className="text-2xl font-bold text-center">Generation Successful!</h2>
+            <p className="text-muted-foreground text-center text-sm px-4">
+              {autoGenResult.message}
+            </p>
+            <Button 
+              className="w-full mt-4 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white" 
+              onClick={() => setAutoGenResult({ show: false, message: "" })}
+            >
+              Continue
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </MobileLayout>

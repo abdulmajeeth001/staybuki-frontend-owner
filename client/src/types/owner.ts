@@ -19,6 +19,8 @@ export type AnnouncementResponse = components["schemas"]["AnnouncementResponseDt
 export type AnnouncementRequest = components["schemas"]["AnnouncementRequestDto"];
 export type OwnerVisitRequestResponse = components["schemas"]["VisitRequestResponseDto"];
 export type RescheduleVisitRequest = components["schemas"]["RescheduleVisitRequestDto"];
+export type PaymentResponse = components["schemas"]["PaymentResponseDto"];
+export type PaymentRequest = components["schemas"]["PaymentRequestDto"];
 
 // Payloads for mutations
 export type ApproveOnboardingRequestPayload = {
@@ -37,6 +39,10 @@ export type DeleteTenantPayload = {
   ownerFeedback?: string;
   rating?: number;
   behaviorTags?: string[];
+};
+
+export type RejectPaymentPayload = {
+  rejectionReason: string;
 };
 
 // The TenantHistory interface is part of the OnboardingRequestResponseDto,
