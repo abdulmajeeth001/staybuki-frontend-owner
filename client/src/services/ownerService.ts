@@ -26,6 +26,10 @@ import {
   PaymentResponse,
   PaymentRequest,
   RejectPaymentPayload,
+  UserProfileResponse,
+  UserProfileRequest,
+  PgProfileResponse,
+  PgProfileRequest,
 } from "@/types/owner";
 
 export const ownerService = {
@@ -390,5 +394,58 @@ export const ownerService = {
     if (response.data && (response.data as any).success === false) {
       throw new Error((response.data as any).message || "Failed to delete payment");
     }
+  },
+
+  async getProfile(): Promise<UserProfileResponse> {
+    const response = await api.get<ApiResponse<UserProfileResponse> | UserProfileResponse>("/api/users/profile");
+    return (response.data as any).data !== undefined ? (response.data as any).data : response.data;
+  },
+
+  async updateProfile(payload: UserProfileRequest | any): Promise<UserProfileResponse> {
+    const response = await api.post<ApiResponse<UserProfileResponse> | UserProfileResponse>("/api/users/profile", payload);
+    return (response.data as any).data !== undefined ? (response.data as any).data : response.data;
+  },
+
+  async getPgProfile(): Promise<PgProfileResponse> {
+    const response = await api.get<ApiResponse<PgProfileResponse> | PgProfileResponse>("/api/pg");
+    return (response.data as any).data !== undefined ? (response.data as any).data : response.data;
+  },
+
+  async createPgProfile(payload: FormData | PgProfileRequest | any): Promise<PgProfileResponse> {
+    const response = await api.post<ApiResponse<PgProfileResponse> | PgProfileResponse>("/api/pg", payload);
+    return (response.data as any).data !== undefined ? (response.data as any).data : response.data;
+  },
+
+  async updatePgProfile(id: number, payload: FormData | PgProfileRequest | any): Promise<PgProfileResponse> {
+    const response = await api.put<ApiResponse<PgProfileResponse> | PgProfileResponse>(`/api/pg/${id}`, payload);
+    return (response.data as any).data !== undefined ? (response.data as any).data : response.data;
+  },
+
+  async getAllPgs(): Promise<PgProfileResponse[]> {
+    const response = await api.get<ApiResponse<PgProfileResponse[]> | PgProfileResponse[]>("/api/pg/all");
+    return (response.data as any).data !== undefined ? (response.data as any).data : response.data;
+  },
+
+  async selectPg(pgId: number): Promise<{ pg: PgProfileResponse }> {
+    const response = await api.post<ApiResponse<{ pg: PgProfileResponse }> | { pg: PgProfileResponse }>(`/api/pg/select/${pgId}`);
+    return (response.data as any).data !== undefined ? (response.data as any).data : response.data;
+  },
+
+  async deletePg(pgId: number): Promise<{ newActivePg?: PgProfileResponse }> {
+    const response = await api.delete<ApiResponse<{ newActivePg?: PgProfileResponse }> | { newActivePg?: PgProfileResponse }>(`/api/pg/${pgId}`);
+    if (response.data && (response.data as any).success === false) {
+      throw new Error((response.data as any).message || "Failed to delete PG");
+    }
+    return (response.data as any).data !== undefined ? (response.data as any).data : response.data;
+  },
+
+  async setPrimaryPg(pgId: number): Promise<{ pg: PgProfileResponse }> {
+    const response = await api.post<ApiResponse<{ pg: PgProfileResponse }> | { pg: PgProfileResponse }>(`/api/pg/${pgId}/set-primary`);
+    return (response.data as any).data !== undefined ? (response.data as any).data : response.data;
+  },
+
+  async getPgStatus(): Promise<any> {
+    const response = await api.get<ApiResponse<any> | any>("/api/pg/status");
+    return (response.data as any).data !== undefined ? (response.data as any).data : response.data;
   }
 };

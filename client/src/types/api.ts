@@ -1903,6 +1903,14 @@ export interface components {
             isActive?: boolean;
             amenityIds?: number[];
         };
+        ApiResponsePgResponseDto: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["PgResponseDto"];
+            /** Format: date-time */
+            timestamp?: string;
+            errorCode?: string;
+        };
         PgResponseDto: {
             /** Format: int32 */
             id?: number;
@@ -2221,6 +2229,14 @@ export interface components {
             gender?: string;
             pgDetails?: components["schemas"]["PgCreateRequestDto"];
         };
+        ApiResponseUserResponseDto: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["UserResponseDto"];
+            /** Format: date-time */
+            timestamp?: string;
+            errorCode?: string;
+        };
         TenantProfileDto: {
             name?: string;
             email?: string;
@@ -2413,12 +2429,33 @@ export interface components {
             errors?: components["schemas"]["RowError"][];
             warnings?: components["schemas"]["RowWarning"][];
         };
+        ApiResponsePgFileUploadResponseDto: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["PgFileUploadResponseDto"];
+            /** Format: date-time */
+            timestamp?: string;
+            errorCode?: string;
+        };
         PgFileUploadResponseDto: {
             url?: string;
             filename?: string;
             mimetype?: string;
             /** Format: int64 */
             size?: number;
+        };
+        ApiResponseSelectedPgResponseDto: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["SelectedPgResponseDto"];
+            /** Format: date-time */
+            timestamp?: string;
+            errorCode?: string;
+        };
+        SelectedPgResponseDto: {
+            /** Format: int32 */
+            id?: number;
+            pgName?: string;
         };
         PaymentCreateRequestDto: {
             /** Format: int32 */
@@ -2708,14 +2745,6 @@ export interface components {
             timestamp?: string;
             errorCode?: string;
         };
-        ApiResponsePgResponseDto: {
-            success?: boolean;
-            message?: string;
-            data?: components["schemas"]["PgResponseDto"];
-            /** Format: date-time */
-            timestamp?: string;
-            errorCode?: string;
-        };
         TenantPaymentResponseDto: {
             /** Format: int32 */
             id?: number;
@@ -2843,6 +2872,14 @@ export interface components {
             status?: string;
             onboardingStatus?: string;
         };
+        ApiResponsePgStatusResponseDto: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["PgStatusResponseDto"];
+            /** Format: date-time */
+            timestamp?: string;
+            errorCode?: string;
+        };
         PgStatusResponseDto: {
             /** Format: int32 */
             id?: number;
@@ -2850,6 +2887,14 @@ export interface components {
             status?: string;
             isActive?: boolean;
             rejectionReason?: string;
+        };
+        ApiResponseListPgResponseDto: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["PgResponseDto"][];
+            /** Format: date-time */
+            timestamp?: string;
+            errorCode?: string;
         };
         ApiResponseListPaymentResponseDto: {
             success?: boolean;
@@ -3236,7 +3281,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["PgResponseDto"];
+                    "*/*": components["schemas"]["ApiResponsePgResponseDto"];
                 };
             };
         };
@@ -3270,7 +3315,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["PgResponseDto"];
+                    "*/*": components["schemas"]["ApiResponsePgResponseDto"];
                 };
             };
         };
@@ -3292,9 +3337,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": {
-                        [key: string]: Record<string, never>;
-                    };
+                    "*/*": components["schemas"]["ApiResponseVoid"];
                 };
             };
         };
@@ -3800,7 +3843,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["UserResponseDto"];
+                    "*/*": components["schemas"]["ApiResponseUserResponseDto"];
                 };
             };
         };
@@ -3824,7 +3867,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["UserResponseDto"];
+                    "*/*": components["schemas"]["ApiResponseUserResponseDto"];
                 };
             };
         };
@@ -4146,7 +4189,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["PgResponseDto"];
+                    "*/*": components["schemas"]["ApiResponsePgResponseDto"];
                 };
             };
         };
@@ -4178,7 +4221,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["PgResponseDto"];
+                    "*/*": components["schemas"]["ApiResponsePgResponseDto"];
                 };
             };
         };
@@ -4200,7 +4243,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["PgResponseDto"];
+                    "*/*": components["schemas"]["ApiResponsePgResponseDto"];
                 };
             };
         };
@@ -4227,7 +4270,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["PgFileUploadResponseDto"];
+                    "*/*": components["schemas"]["ApiResponsePgFileUploadResponseDto"];
                 };
             };
         };
@@ -4254,7 +4297,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["PgFileUploadResponseDto"];
+                    "*/*": components["schemas"]["ApiResponsePgFileUploadResponseDto"];
                 };
             };
         };
@@ -4276,9 +4319,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": {
-                        [key: string]: Record<string, never>;
-                    };
+                    "*/*": components["schemas"]["ApiResponseSelectedPgResponseDto"];
                 };
             };
         };
@@ -5596,7 +5637,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["PgStatusResponseDto"];
+                    "*/*": components["schemas"]["ApiResponsePgStatusResponseDto"];
                 };
             };
         };
@@ -5616,7 +5657,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["PgResponseDto"][];
+                    "*/*": components["schemas"]["ApiResponseListPgResponseDto"];
                 };
             };
         };

@@ -10,7 +10,6 @@ import { Bell, User, Building, Edit2, Wallet, Zap, Check } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useState, useEffect } from "react";
 import { toast } from "@/hooks/use-toast";
-import { api } from "@/apiClient";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { ownerService } from "@/services/ownerService";
 
@@ -40,27 +39,25 @@ export default function Settings() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const userRes = await api.get("/api/users/profile");
-        const userData = userRes.data;
+        const userData = await ownerService.getProfile();
         
-          if (userData && userData.id) {
-            setUser(userData);
-            const profileData = { 
-              name: userData.name || "", 
-              email: userData.email || "", 
-              mobile: userData.mobile || "" 
-            };
-            setProfileForm(profileData);
-            setOriginalProfileForm(profileData);
-            
-            const paymentData = { upiId: userData.upiId || "" };
-            setPaymentForm(paymentData);
-            setOriginalPaymentForm(paymentData);
-          }
+        if (userData && userData.id) {
+          setUser(userData);
+          const profileData = { 
+            name: userData.name || "", 
+            email: userData.email || "", 
+            mobile: userData.mobile || "" 
+          };
+          setProfileForm(profileData);
+          setOriginalProfileForm(profileData);
+          
+          const paymentData = { upiId: userData.upiId || "" };
+          setPaymentForm(paymentData);
+          setOriginalPaymentForm(paymentData);
+        }
         
         try {
-          const pgRes = await api.get("/api/pg");
-          const pgData = pgRes.data;
+          const pgData = await ownerService.getPgProfile();
           if (pgData && pgData.id) {
             setPg(pgData);
             const pgData2 = { 
@@ -107,16 +104,15 @@ export default function Settings() {
   const handleSaveProfile = async () => {
     setSaveLoading(true);
     try {
-      const res = await api.post("/api/users/profile", profileForm);
+      const data = await ownerService.updateProfile(profileForm);
       
-        const data = res.data;
-        setUser(data);
-        setOriginalProfileForm(profileForm);
-        setEditingProfile(false);
-        toast({
-          title: "Success",
-          description: "Profile updated successfully",
-        });
+      setUser(data);
+      setOriginalProfileForm(profileForm);
+      setEditingProfile(false);
+      toast({
+        title: "Success",
+        description: "Profile updated successfully",
+      });
     } catch (error: any) {
       toast({
         title: "Error",
@@ -142,7 +138,7 @@ export default function Settings() {
     try {
       const isUpdate = pg?.id;
       const cleanUrl = (url: string) => url ? url.split('?')[0] : url;
-      let res;
+      let data;
       
       const formDataPayload = new FormData();
       const cleanedMetadata = {
@@ -156,20 +152,19 @@ export default function Settings() {
       }
 
       if (isUpdate) {
-        res = await api.put(`/api/pg/${pg.id}`, formDataPayload);
+        data = await ownerService.updatePgProfile(pg.id, formDataPayload);
       } else {
-        res = await api.post("/api/pg", formDataPayload);
+        data = await ownerService.createPgProfile(formDataPayload);
       }
       
-        const data = res.data;
-        setPg(data);
-        setOriginalPgForm(pgForm);
-        setEditingPg(false);
-        setPgImageFile(data.imageUrl || null);
-        toast({
-          title: "Success",
-          description: isUpdate ? "PG details updated successfully" : "PG created successfully",
-        });
+      setPg(data);
+      setOriginalPgForm(pgForm);
+      setEditingPg(false);
+      setPgImageFile(data.imageUrl || null);
+      toast({
+        title: "Success",
+        description: isUpdate ? "PG details updated successfully" : "PG created successfully",
+      });
     } catch (error: any) {
       toast({
         title: "Error",
@@ -216,16 +211,15 @@ export default function Settings() {
   const handleSavePayment = async () => {
     setPaymentSaveLoading(true);
     try {
-      const res = await api.post("/api/users/profile", paymentForm);
+      const data = await ownerService.updateProfile(paymentForm);
       
-        const data = res.data;
-        setUser(data);
-        setOriginalPaymentForm(paymentForm);
-        setEditingPayment(false);
-        toast({
-          title: "Success",
-          description: "Payment details updated successfully",
-        });
+      setUser(data);
+      setOriginalPaymentForm(paymentForm);
+      setEditingPayment(false);
+      toast({
+        title: "Success",
+        description: "Payment details updated successfully",
+      });
     } catch (error: any) {
       toast({
         title: "Error",
@@ -251,11 +245,11 @@ export default function Settings() {
     try {
       const data = await ownerService.autoGeneratePayments();
       
-        setAutoGenResult({ show: true, message: data.message || "Payments generated successfully" });
-        
-        // Refresh PG data to get updated lastPaymentGeneratedAt
-        const pgRes = await api.get("/api/pg");
-        setPg(pgRes.data);
+      setAutoGenResult({ show: true, message: data.message || "Payments generated successfully" });
+      
+      // Refresh PG data to get updated lastPaymentGeneratedAt
+      const pgData = await ownerService.getPgProfile();
+      setPg(pgData);
     } catch (error: any) {
       const errorData = error.response?.data;
       toast({

@@ -3,6 +3,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertTriangle, Clock, XCircle, Ban } from "lucide-react";
 import { usePG } from "@/hooks/use-pg";
+import { ownerService } from "@/services/ownerService";
 
 interface PGStatus {
   id: number;
@@ -17,6 +18,10 @@ export function PendingApprovalBanner() {
 
   const { data: pgStatus } = useQuery<PGStatus>({
     queryKey: ["/api/pg/status"],
+    queryFn: async () => {
+      const data: any = await ownerService.getPgStatus();
+      return data?.data !== undefined ? data.data : data;
+    },
     enabled: !!pg,
   });
 
@@ -109,7 +114,7 @@ export function PendingApprovalBanner() {
     );
   }
 
-  if (!pgStatus.isActive) {
+  if (pgStatus.isActive === false) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/95 backdrop-blur-sm">
         <Card className="max-w-2xl mx-4 border-destructive" data-testid="card-deactivated">

@@ -23,7 +23,7 @@ import {
   AlertDialogDescription,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { api } from "@/apiClient";
+import { ownerService } from "@/services/ownerService";
 
 export function UserProfileMenu() {
   const { user } = useUser();
@@ -41,8 +41,7 @@ export function UserProfileMenu() {
     queryKey: ["/api/users/profile"],
     queryFn: async () => {
       try {
-        const res = await api.get("/api/users/profile");
-        return res.data;
+        return await ownerService.getProfile() as any;
       } catch (error) {
         return null;
       }

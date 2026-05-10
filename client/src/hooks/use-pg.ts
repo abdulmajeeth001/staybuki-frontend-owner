@@ -1,25 +1,10 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/apiClient";
 import { useCallback } from "react";
 import { useUser } from "./use-user";
+import { ownerService } from "@/services/ownerService";
+import { PgProfileResponse } from "@/types/owner";
 
-export interface PG {
-  id: number;
-  pgName: string;
-  pgAddress?: string;
-  pgLocation?: string;
-  latitude?: string;
-  longitude?: string;
-  imageUrl?: string;
-  totalRooms?: number;
-  rentPaymentDate?: number;
-  registrationNumber?: string;
-  registrationDocumentUrl?: string;
-  fssaiCertificateUrl?: string;
-  isPrimary?: boolean;
-  ownerId: number;
-  createdAt?: string;
-}
+export type PG = PgProfileResponse;
 
 export function usePG(enabled: boolean = true) {
   const queryClient = useQueryClient();
@@ -37,8 +22,8 @@ export function usePG(enabled: boolean = true) {
     queryKey: ["current-pg"],
     queryFn: async () => {
       try {
-        const res = await api.get("/api/pg");
-        return res.data;
+        const data = await ownerService.getPgProfile();
+        return data as PG;
       } catch (err: any) {
         if (err.response?.status === 404 || err.response?.status === 401) {
           return null;
@@ -60,8 +45,8 @@ export function usePG(enabled: boolean = true) {
     queryKey: ["all-pgs"],
     queryFn: async () => {
       try {
-        const res = await api.get("/api/pg/all");
-        return res.data || [];
+        const data = await ownerService.getAllPgs();
+        return (data as PG[]) || [];
       } catch (err: any) {
         if (err.response?.status === 404 || err.response?.status === 401) {
           return [];
@@ -76,8 +61,7 @@ export function usePG(enabled: boolean = true) {
 
   const selectPG = useCallback(async (pgId: number) => {
     try {
-      const res = await api.post(`/api/pg/select/${pgId}`);
-      const data = res.data;
+      const data = await ownerService.selectPg(pgId);
       
       // Update cache immediately
       queryClient.setQueryData(["current-pg"], data.pg);
@@ -148,9 +132,7 @@ export function usePG(enabled: boolean = true) {
       }
 
       // 4. Send the request
-      // Axios automatically sets 'multipart/form-data' when it sees FormData
-      const res = await api.post("/api/pg", formData);
-      const data = res.data;
+      const data = await ownerService.createPgProfile(formData);
       
       queryClient.setQueryData(["current-pg"], data);
       queryClient.invalidateQueries({ queryKey: ["all-pgs"] });
@@ -196,8 +178,7 @@ export function usePG(enabled: boolean = true) {
         formData.append("fssaiCert", fssaiCertificateFile);
       }
 
-      const res = await api.put(`/api/pg/${pgId}`, formData);
-      const data = res.data;
+      const data = await ownerService.updatePgProfile(pgId, formData);
       
       // If we updated the currently selected PG, update its cache
       const currentPg = queryClient.getQueryData<PG>(["current-pg"]);
@@ -215,8 +196,7 @@ export function usePG(enabled: boolean = true) {
 
   const deletePG = useCallback(async (pgId: number) => {
     try {
-      const res = await api.delete(`/api/pg/${pgId}`);
-      const data = res.data;
+      const data = await ownerService.deletePg(pgId);
       
       if (data.newActivePg) {
         queryClient.setQueryData(["current-pg"], data.newActivePg);
@@ -238,8 +218,7 @@ export function usePG(enabled: boolean = true) {
 
   const setPrimaryPG = useCallback(async (pgId: number) => {
     try {
-      const res = await api.post(`/api/pg/${pgId}/set-primary`);
-      const data = res.data;
+      const data = await ownerService.setPrimaryPg(pgId);
       
       queryClient.setQueryData(["current-pg"], data.pg);
       queryClient.invalidateQueries({ queryKey: ["all-pgs"] });

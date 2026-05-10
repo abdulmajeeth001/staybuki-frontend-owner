@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { NotificationBell } from "@/components/NotificationBell";
 import { UserProfileMenu } from "@/components/UserProfileMenu";
-import { api } from "@/apiClient";
+import { ownerService } from "@/services/ownerService";
 
 interface MobileLayoutProps {
   children: React.ReactNode;
@@ -50,8 +50,7 @@ export default function MobileLayout({
     queryKey: ["/api/users/profile"],
     queryFn: async () => {
       try {
-        const res = await api.get("/api/users/profile");
-        return res.data;
+        return await ownerService.getProfile() as any;
       } catch (error) {
         return null;
       }

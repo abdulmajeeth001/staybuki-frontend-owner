@@ -21,6 +21,10 @@ export type OwnerVisitRequestResponse = components["schemas"]["VisitRequestRespo
 export type RescheduleVisitRequest = components["schemas"]["RescheduleVisitRequestDto"];
 export type PaymentResponse = components["schemas"]["PaymentResponseDto"];
 export type PaymentRequest = components["schemas"]["PaymentRequestDto"];
+export type UserProfileResponse = components["schemas"]["UserProfileResponseDto"];
+export type UserProfileRequest = components["schemas"]["UserProfileRequestDto"];
+export type PgProfileResponse = components["schemas"]["PgProfileResponseDto"];
+export type PgProfileRequest = components["schemas"]["PgProfileRequestDto"];
 
 // Payloads for mutations
 export type ApproveOnboardingRequestPayload = {

@@ -17,7 +17,7 @@ import {
   AlertDialogDescription,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { api } from "@/apiClient";
+import { ownerService } from "@/services/ownerService";
 
 const ownerNavItems = [
   { icon: Home, label: "Dashboard", path: "/dashboard" },
@@ -89,8 +89,7 @@ export default function Sidebar({ className, onClose }: SidebarProps = {}) {
     queryKey: ["/api/users/profile"],
     queryFn: async () => {
       try {
-        const res = await api.get("/api/users/profile");
-        return res.data;
+        return await ownerService.getProfile() as any;
       } catch (error) {
         return null;
       }
