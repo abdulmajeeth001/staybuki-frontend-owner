@@ -25,6 +25,8 @@ export type UserProfileResponse = components["schemas"]["UserProfileResponseDto"
 export type UserProfileRequest = components["schemas"]["UserProfileRequestDto"];
 export type PgProfileResponse = components["schemas"]["PgProfileResponseDto"];
 export type PgProfileRequest = components["schemas"]["PgProfileRequestDto"];
+export type ComplaintResponse = components["schemas"]["ComplaintResponseDto"];
+export type ComplaintRequest = components["schemas"]["ComplaintRequestDto"];
 
 // Payloads for mutations
 export type ApproveOnboardingRequestPayload = {

@@ -1990,6 +1990,14 @@ export interface components {
         PaymentRejectRequestDto: {
             rejectionReason?: string;
         };
+        ApiResponseComplaintResponseDto: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["ComplaintResponseDto"];
+            /** Format: date-time */
+            timestamp?: string;
+            errorCode?: string;
+        };
         ComplaintResponseDto: {
             /** Format: int32 */
             id?: number;
@@ -2834,6 +2842,14 @@ export interface components {
             roomDetails?: components["schemas"]["RoomInfoDto"];
             paymentSummary?: components["schemas"]["PaymentSummaryDto"];
         };
+        ApiResponseListComplaintResponseDto: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["ComplaintResponseDto"][];
+            /** Format: date-time */
+            timestamp?: string;
+            errorCode?: string;
+        };
         ApiResponseListRoomLegacyResponseDto: {
             success?: boolean;
             message?: string;
@@ -3461,7 +3477,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ComplaintResponseDto"];
+                    "*/*": components["schemas"]["ApiResponseComplaintResponseDto"];
                 };
             };
         };
@@ -4731,7 +4747,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ComplaintResponseDto"];
+                    "*/*": components["schemas"]["ApiResponseComplaintResponseDto"];
                 };
             };
         };
@@ -5575,7 +5591,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ComplaintResponseDto"][];
+                    "*/*": components["schemas"]["ApiResponseListComplaintResponseDto"];
                 };
             };
         };
@@ -5780,7 +5796,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ComplaintResponseDto"][];
+                    "*/*": components["schemas"]["ApiResponseListComplaintResponseDto"];
                 };
             };
         };

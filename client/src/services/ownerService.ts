@@ -30,6 +30,8 @@ import {
   UserProfileRequest,
   PgProfileResponse,
   PgProfileRequest,
+  ComplaintResponse,
+  ComplaintRequest,
 } from "@/types/owner";
 
 export const ownerService = {
@@ -447,5 +449,21 @@ export const ownerService = {
   async getPgStatus(): Promise<any> {
     const response = await api.get<ApiResponse<any> | any>("/api/pg/status");
     return (response.data as any).data !== undefined ? (response.data as any).data : response.data;
-  }
+  },
+
+  async getComplaints(): Promise<ComplaintResponse[]> {
+    const response = await api.get<ApiResponse<ComplaintResponse[]> | ComplaintResponse[]>("/api/complaints");
+    const data = (response.data as any).data !== undefined ? (response.data as any).data : response.data;
+    return Array.isArray(data) ? data : [];
+  },
+
+  async createComplaint(payload: ComplaintRequest | any): Promise<ComplaintResponse> {
+    const response = await api.post<ApiResponse<ComplaintResponse> | ComplaintResponse>("/api/complaints", payload);
+    return (response.data as any).data !== undefined ? (response.data as any).data : response.data;
+  },
+
+  async updateComplaint(id: number, payload: Partial<ComplaintRequest> | any): Promise<ComplaintResponse> {
+    const response = await api.put<ApiResponse<ComplaintResponse> | ComplaintResponse>(`/api/complaints/${id}`, payload);
+    return (response.data as any).data !== undefined ? (response.data as any).data : response.data;
+  },
 };

@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import DesktopLayout from "@/components/layout/DesktopLayout";
 import MobileLayout from "@/components/layout/MobileLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { AlertCircle, CheckCircle, Clock, Plus, Filter, AlertTriangle } from "lucide-react";
+import { AlertCircle, CheckCircle2, Clock, Plus, Filter, AlertTriangle, Loader2 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
@@ -22,32 +22,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { api } from "@/apiClient";
-
-type Complaint = {
-  id: number;
-  pgId: number;
-  ownerId: number;
-  tenantId: number | null;
-  roomId: number | null;
-  title: string;
-  description: string;
-  priority: string;
-  status: string;
-  resolutionNotes: string | null;
-  createdAt: string;
-  resolvedAt: string | null;
-};
-
-type Room = {
-  id: number;
-  roomNumber: string;
-};
-
-type Tenant = {
-  id: number;
-  name: string;
-};
+import { ownerService } from "@/services/ownerService";
+import type { ComplaintResponse, RoomResponse, TenantResponse } from "@/types/owner";
 
 export default function Complaints() {
   return (
@@ -62,50 +38,38 @@ export default function Complaints() {
   );
 }
 
-function ComplaintsDesktop() {
+function useComplaintsLogic() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [priorityFilter, setPriorityFilter] = useState<string>("all");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [selectedComplaint, setSelectedComplaint] = useState<Complaint | null>(null);
+  const [selectedComplaint, setSelectedComplaint] = useState<ComplaintResponse | null>(null);
   const [isUpdateDialogOpen, setIsUpdateDialogOpen] = useState(false);
 
   // Fetch complaints
-  const { data: complaints = [], isLoading } = useQuery<Complaint[]>({
+  const { data: complaints = [], isLoading } = useQuery<ComplaintResponse[]>({
     queryKey: ["complaints"],
-    queryFn: async () => {
-      const response = await api.get("/api/complaints");
-      return response.data;
-    },
+    queryFn: () => ownerService.getComplaints(),
     staleTime: 0,
     refetchOnMount: true,
   });
 
   // Fetch rooms for dropdown
-  const { data: rooms = [] } = useQuery<Room[]>({
+  const { data: rooms = [] } = useQuery<RoomResponse[]>({
     queryKey: ["rooms"],
-    queryFn: async () => {
-      const response = await api.get("/api/rooms");
-      return response.data;
-    },
+    queryFn: () => ownerService.getRooms(),
   });
 
   // Fetch tenants for dropdown
-  const { data: tenants = [] } = useQuery<Tenant[]>({
+  const { data: tenants = [] } = useQuery<TenantResponse[]>({
     queryKey: ["tenants"],
-    queryFn: async () => {
-      const response = await api.get("/api/tenants");
-      return response.data;
-    },
+    queryFn: () => ownerService.getAllTenants(),
   });
 
   // Create complaint mutation
   const createComplaintMutation = useMutation({
-    mutationFn: async (data: any) => {
-      const response = await api.post("/api/complaints", data);
-      return response.data;
-    },
+    mutationFn: (data: any) => ownerService.createComplaint(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["complaints"] });
       setIsCreateDialogOpen(false);
@@ -118,10 +82,7 @@ function ComplaintsDesktop() {
 
   // Update complaint mutation
   const updateComplaintMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: number; data: any }) => {
-      const response = await api.put(`/api/complaints/${id}`, data);
-      return response.data;
-    },
+    mutationFn: ({ id, data }: { id: number; data: any }) => ownerService.updateComplaint(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["complaints"] });
       setIsUpdateDialogOpen(false);
@@ -134,11 +95,13 @@ function ComplaintsDesktop() {
   });
 
   // Filter complaints
-  const filteredComplaints = complaints.filter((complaint) => {
-    if (statusFilter !== "all" && complaint.status !== statusFilter) return false;
-    if (priorityFilter !== "all" && complaint.priority !== priorityFilter) return false;
-    return true;
-  });
+  const filteredComplaints = useMemo(() => {
+    return complaints.filter((complaint) => {
+      if (statusFilter !== "all" && complaint.status !== statusFilter) return false;
+      if (priorityFilter !== "all" && complaint.priority !== priorityFilter) return false;
+      return true;
+    }).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }, [complaints, statusFilter, priorityFilter]);
 
   const handleCreateComplaint = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -168,21 +131,9 @@ function ComplaintsDesktop() {
   };
 
   const getStatusIcon = (status: string) => {
-    if (status === "resolved") return <CheckCircle className="w-5 h-5" />;
+    if (status === "resolved") return <CheckCircle2 className="w-5 h-5" />;
     if (status === "in-progress") return <Clock className="w-5 h-5" />;
     return <AlertCircle className="w-5 h-5" />;
-  };
-
-  const getStatusColor = (status: string) => {
-    if (status === "resolved") return "bg-green-100 text-green-600";
-    if (status === "in-progress") return "bg-blue-100 text-blue-600";
-    return "bg-red-100 text-red-600";
-  };
-
-  const getPriorityColor = (priority: string) => {
-    if (priority === "high") return "bg-red-100 text-red-700";
-    if (priority === "medium") return "bg-yellow-100 text-yellow-700";
-    return "bg-blue-100 text-blue-700";
   };
 
   const getPriorityIcon = (priority: string) => {
@@ -204,51 +155,80 @@ function ComplaintsDesktop() {
   };
 
   // Calculate stats
-  const openCount = complaints.filter(c => c.status === "open").length;
-  const inProgressCount = complaints.filter(c => c.status === "in-progress").length;
-  const resolvedCount = complaints.filter(c => c.status === "resolved").length;
-  const highPriorityCount = complaints.filter(c => c.priority === "high" && c.status !== "resolved").length;
+  const stats = useMemo(() => {
+    const openCount = complaints.filter(c => c.status === "open").length;
+    const inProgressCount = complaints.filter(c => c.status === "in-progress").length;
+    const resolvedCount = complaints.filter(c => c.status === "resolved").length;
+    const highPriorityCount = complaints.filter(c => c.priority === "high" && c.status !== "resolved").length;
 
-  const statusStats = [
-    { 
-      label: "Open Issues", 
-      value: openCount, 
-      icon: AlertCircle, 
-      gradient: "from-red-500 to-orange-600",
-      bgColor: "bg-red-100",
-      textColor: "text-red-600"
-    },
-    { 
-      label: "In Progress", 
-      value: inProgressCount, 
-      icon: Clock, 
-      gradient: "from-blue-500 to-cyan-600",
-      bgColor: "bg-blue-100",
-      textColor: "text-blue-600"
-    },
-    { 
-      label: "Resolved", 
-      value: resolvedCount, 
-      icon: CheckCircle, 
-      gradient: "from-emerald-500 to-green-600",
-      bgColor: "bg-green-100",
-      textColor: "text-green-600"
-    },
-    { 
-      label: "High Priority", 
-      value: highPriorityCount, 
-      icon: AlertTriangle, 
-      gradient: "from-orange-500 to-red-600",
-      bgColor: "bg-orange-100",
-      textColor: "text-orange-600"
-    },
-  ];
+    return [
+      { 
+        id: "open",
+        label: "Open Issues", 
+        value: openCount, 
+        icon: AlertCircle, 
+        gradient: "from-red-500 to-orange-600",
+      },
+      { 
+        id: "in-progress",
+        label: "In Progress", 
+        value: inProgressCount, 
+        icon: Clock, 
+        gradient: "from-blue-500 to-cyan-600",
+      },
+      { 
+        id: "resolved",
+        label: "Resolved", 
+        value: resolvedCount, 
+        icon: CheckCircle2, 
+        gradient: "from-emerald-500 to-green-600",
+      },
+      { 
+        id: "high-priority",
+        label: "High Priority", 
+        value: highPriorityCount, 
+        icon: AlertTriangle, 
+        gradient: "from-orange-500 to-red-600",
+      },
+    ];
+  }, [complaints]);
+
+  return {
+    statusFilter, setStatusFilter,
+    priorityFilter, setPriorityFilter,
+    isCreateDialogOpen, setIsCreateDialogOpen,
+    selectedComplaint, setSelectedComplaint,
+    isUpdateDialogOpen, setIsUpdateDialogOpen,
+    complaints, isLoading, rooms, tenants,
+    filteredComplaints, stats,
+    handleCreateComplaint, handleUpdateComplaint,
+    createComplaintMutation, updateComplaintMutation,
+    getStatusIcon, getPriorityIcon, getRoomNumber, getTenantName
+  };
+}
+
+function ComplaintsDesktop() {
+  const {
+    statusFilter, setStatusFilter,
+    priorityFilter, setPriorityFilter,
+    isCreateDialogOpen, setIsCreateDialogOpen,
+    selectedComplaint, setSelectedComplaint,
+    isUpdateDialogOpen, setIsUpdateDialogOpen,
+    isLoading, rooms, tenants,
+    filteredComplaints, stats,
+    handleCreateComplaint, handleUpdateComplaint,
+    createComplaintMutation, updateComplaintMutation,
+    getStatusIcon, getPriorityIcon, getRoomNumber, getTenantName
+  } = useComplaintsLogic();
 
   if (isLoading) {
     return (
       <DesktopLayout title="Complaints & Issues" showNav={false}>
-        <div className="flex items-center justify-center h-64">
-          <p className="text-muted-foreground">Loading complaints...</p>
+        <div className="flex items-center justify-center h-[60vh]">
+          <div className="flex flex-col items-center gap-4 text-muted-foreground">
+            <Loader2 className="w-10 h-10 animate-spin text-purple-600" />
+            <p>Loading complaints...</p>
+          </div>
         </div>
       </DesktopLayout>
     );
@@ -277,23 +257,23 @@ function ComplaintsDesktop() {
                   New Complaint
                 </Button>
               </DialogTrigger>
-              <DialogContent>
+              <DialogContent className="sm:max-w-md">
                 <DialogHeader>
                   <DialogTitle>Create New Complaint</DialogTitle>
                   <DialogDescription>Add a new complaint or issue to track</DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleCreateComplaint}>
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="title">Issue Title</Label>
-                      <Input id="title" name="title" required data-testid="input-complaint-title" />
+                  <div className="space-y-4 pt-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="title">Issue Title <span className="text-red-500">*</span></Label>
+                      <Input id="title" name="title" required data-testid="input-complaint-title" placeholder="e.g. Broken AC in Room 101" />
                     </div>
-                    <div>
-                      <Label htmlFor="description">Description</Label>
-                      <Textarea id="description" name="description" required data-testid="input-complaint-description" />
+                    <div className="space-y-2">
+                      <Label htmlFor="description">Description <span className="text-red-500">*</span></Label>
+                      <Textarea id="description" name="description" required data-testid="input-complaint-description" placeholder="Provide details about the issue..." rows={3} className="resize-none" />
                     </div>
-                    <div>
-                      <Label htmlFor="priority">Priority</Label>
+                    <div className="space-y-2">
+                      <Label htmlFor="priority">Priority <span className="text-red-500">*</span></Label>
                       <Select name="priority" defaultValue="medium" required>
                         <SelectTrigger data-testid="select-complaint-priority">
                           <SelectValue />
@@ -305,7 +285,7 @@ function ComplaintsDesktop() {
                         </SelectContent>
                       </Select>
                     </div>
-                    <div>
+                    <div className="space-y-2">
                       <Label htmlFor="roomId">Room (Optional)</Label>
                       <Select name="roomId">
                         <SelectTrigger data-testid="select-complaint-room">
@@ -320,7 +300,7 @@ function ComplaintsDesktop() {
                         </SelectContent>
                       </Select>
                     </div>
-                    <div>
+                    <div className="space-y-2">
                       <Label htmlFor="tenantId">Tenant (Optional)</Label>
                       <Select name="tenantId">
                         <SelectTrigger data-testid="select-complaint-tenant">
@@ -336,8 +316,11 @@ function ComplaintsDesktop() {
                       </Select>
                     </div>
                   </div>
-                  <DialogFooter className="mt-4">
-                    <Button type="submit" disabled={createComplaintMutation.isPending} data-testid="button-submit-complaint">
+                  <DialogFooter className="mt-6 pt-4 border-t">
+                    <Button variant="outline" type="button" onClick={() => setIsCreateDialogOpen(false)}>
+                      Cancel
+                    </Button>
+                    <Button type="submit" disabled={createComplaintMutation.isPending} className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700" data-testid="button-submit-complaint">
                       {createComplaintMutation.isPending ? "Creating..." : "Create Complaint"}
                     </Button>
                   </DialogFooter>
@@ -350,8 +333,8 @@ function ComplaintsDesktop() {
 
       {/* Status Overview Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {statusStats.map((stat, i) => (
-          <Card key={i} className="group relative overflow-hidden border-2 hover:border-purple-200 hover:shadow-2xl transition-all duration-300" data-testid={`card-stat-${stat.label.toLowerCase().replace(/\s+/g, "-")}`}>
+        {stats.map((stat) => (
+          <Card key={stat.id} className="group relative overflow-hidden border-2 hover:border-purple-200 hover:shadow-2xl transition-all duration-300" data-testid={`card-stat-${stat.id}`}>
             <div className="absolute inset-0 bg-gradient-to-br from-purple-50 to-blue-50 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
             <CardContent className="relative p-6">
               <div className="flex items-center justify-between mb-4">
@@ -474,7 +457,7 @@ function ComplaintsDesktop() {
                         </div>
                         {complaint.status === "resolved" && complaint.resolvedAt && (
                           <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-green-100 to-emerald-100 rounded-full">
-                            <CheckCircle className="w-3.5 h-3.5 text-green-600" />
+                            <CheckCircle2 className="w-3.5 h-3.5 text-green-600" />
                             <p className="text-xs font-semibold text-green-700">
                               Resolved on {format(new Date(complaint.resolvedAt), "MMM d, yyyy")}
                             </p>
@@ -520,13 +503,13 @@ function ComplaintsDesktop() {
             </DialogHeader>
             {selectedComplaint && (
               <form onSubmit={handleUpdateComplaint}>
-                <div className="space-y-4">
-                  <div>
-                    <Label>Issue</Label>
-                    <p className="text-sm text-muted-foreground">{selectedComplaint.title}</p>
+                <div className="space-y-4 pt-4">
+                  <div className="space-y-2">
+                    <Label className="text-sm font-semibold text-gray-700">Issue</Label>
+                    <p className="text-sm text-muted-foreground bg-slate-50 p-3 rounded-lg border border-slate-100">{selectedComplaint.title}</p>
                   </div>
-                  <div>
-                    <Label htmlFor="status">Status</Label>
+                  <div className="space-y-2">
+                    <Label htmlFor="status" className="text-sm font-semibold text-gray-700">Status</Label>
                     <Select name="status" defaultValue={selectedComplaint.status} required>
                       <SelectTrigger data-testid="select-update-status">
                         <SelectValue />
@@ -538,8 +521,8 @@ function ComplaintsDesktop() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div>
-                    <Label htmlFor="resolutionNotes">Resolution Notes</Label>
+                  <div className="space-y-2">
+                    <Label htmlFor="resolutionNotes" className="text-sm font-semibold text-gray-700">Resolution Notes</Label>
                     <Textarea
                       id="resolutionNotes"
                       name="resolutionNotes"
@@ -549,8 +532,11 @@ function ComplaintsDesktop() {
                     />
                   </div>
                 </div>
-                <DialogFooter className="mt-4">
-                  <Button type="submit" disabled={updateComplaintMutation.isPending} data-testid="button-submit-update">
+                <DialogFooter className="mt-6 pt-4 border-t">
+                  <Button variant="outline" type="button" onClick={() => setIsUpdateDialogOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={updateComplaintMutation.isPending} className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700" data-testid="button-submit-update">
                     {updateComplaintMutation.isPending ? "Updating..." : "Update Complaint"}
                   </Button>
                 </DialogFooter>
@@ -564,182 +550,69 @@ function ComplaintsDesktop() {
 }
 
 function ComplaintsMobile() {
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
-  const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [priorityFilter, setPriorityFilter] = useState<string>("all");
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [selectedComplaint, setSelectedComplaint] = useState<Complaint | null>(null);
-  const [isUpdateDialogOpen, setIsUpdateDialogOpen] = useState(false);
-
-  // Fetch complaints
-  const { data: complaints = [], isLoading } = useQuery<Complaint[]>({
-    queryKey: ["complaints"],
-    queryFn: async () => {
-      const response = await api.get("/api/complaints");
-      return response.data;
-    },
-    staleTime: 0,
-    refetchOnMount: true,
-  });
-
-  // Fetch rooms for dropdown
-  const { data: rooms = [] } = useQuery<Room[]>({
-    queryKey: ["rooms"],
-    queryFn: async () => {
-      const response = await api.get("/api/rooms");
-      return response.data;
-    },
-  });
-
-  // Fetch tenants for dropdown
-  const { data: tenants = [] } = useQuery<Tenant[]>({
-    queryKey: ["tenants"],
-    queryFn: async () => {
-      const response = await api.get("/api/tenants");
-      return response.data;
-    },
-  });
-
-  // Create complaint mutation
-  const createComplaintMutation = useMutation({
-    mutationFn: async (data: any) => {
-      const response = await api.post("/api/complaints", data);
-      return response.data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["complaints"] });
-      setIsCreateDialogOpen(false);
-      toast({ title: "Complaint created successfully" });
-    },
-    onError: (error: any) => {
-      toast({ title: "Error", description: error.response?.data?.error || error.message || "Failed to create complaint", variant: "destructive" });
-    },
-  });
-
-  // Update complaint mutation
-  const updateComplaintMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: number; data: any }) => {
-      const response = await api.put(`/api/complaints/${id}`, data);
-      return response.data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["complaints"] });
-      setIsUpdateDialogOpen(false);
-      setSelectedComplaint(null);
-      toast({ title: "Complaint updated successfully" });
-    },
-    onError: (error: any) => {
-      toast({ title: "Error", description: error.response?.data?.error || error.message || "Failed to update complaint", variant: "destructive" });
-    },
-  });
-
-  // Filter complaints
-  const filteredComplaints = complaints.filter((complaint) => {
-    if (statusFilter !== "all" && complaint.status !== statusFilter) return false;
-    if (priorityFilter !== "all" && complaint.priority !== priorityFilter) return false;
-    return true;
-  });
-
-  const handleCreateComplaint = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    createComplaintMutation.mutate({
-      title: formData.get("title"),
-      description: formData.get("description"),
-      priority: formData.get("priority"),
-      status: "open",
-      tenantId: formData.get("tenantId") ? parseInt(formData.get("tenantId") as string) : null,
-      roomId: formData.get("roomId") ? parseInt(formData.get("roomId") as string) : null,
-    });
-  };
-
-  const handleUpdateComplaint = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (!selectedComplaint) return;
-    
-    const formData = new FormData(e.currentTarget);
-    updateComplaintMutation.mutate({
-      id: selectedComplaint.id,
-      data: {
-        status: formData.get("status"),
-        resolutionNotes: formData.get("resolutionNotes") || null,
-      },
-    });
-  };
-
-  const getStatusIcon = (status: string) => {
-    if (status === "resolved") return <CheckCircle className="w-5 h-5" />;
-    if (status === "in-progress") return <Clock className="w-5 h-5" />;
-    return <AlertCircle className="w-5 h-5" />;
-  };
-
-  const getPriorityIcon = (priority: string) => {
-    if (priority === "high") return "🔴";
-    if (priority === "medium") return "🟡";
-    return "🔵";
-  };
-
-  const getRoomNumber = (roomId: number | null) => {
-    if (!roomId) return "N/A";
-    const room = rooms.find((r) => r.id === roomId);
-    return room ? room.roomNumber : "Unknown";
-  };
-
-  const getTenantName = (tenantId: number | null) => {
-    if (!tenantId) return "N/A";
-    const tenant = tenants.find((t) => t.id === tenantId);
-    return tenant ? tenant.name : "Unknown";
-  };
-
-  // Calculate stats
-  const openCount = complaints.filter(c => c.status === "open").length;
-  const inProgressCount = complaints.filter(c => c.status === "in-progress").length;
-  const resolvedCount = complaints.filter(c => c.status === "resolved").length;
-  const highPriorityCount = complaints.filter(c => c.priority === "high" && c.status !== "resolved").length;
+  const {
+    statusFilter, setStatusFilter,
+    priorityFilter, setPriorityFilter,
+    isCreateDialogOpen, setIsCreateDialogOpen,
+    selectedComplaint, setSelectedComplaint,
+    isUpdateDialogOpen, setIsUpdateDialogOpen,
+    isLoading, rooms, tenants,
+    filteredComplaints, stats,
+    handleCreateComplaint, handleUpdateComplaint,
+    createComplaintMutation, updateComplaintMutation,
+    getStatusIcon, getPriorityIcon, getRoomNumber, getTenantName
+  } = useComplaintsLogic();
 
   if (isLoading) {
     return (
-      <MobileLayout 
-        title="Complaints" 
-        action={
-          <Button size="sm" className="bg-gradient-to-r from-purple-600 to-blue-600" data-testid="button-create-complaint-mobile">
-            <Plus className="w-4 h-4" />
-          </Button>
-        }
-      >
-        <div className="flex items-center justify-center min-h-[50vh]">
-          <p className="text-muted-foreground">Loading...</p>
+      <MobileLayout title="Complaints">
+        <div className="flex items-center justify-center h-[50vh]">
+          <div className="flex flex-col items-center gap-4 text-muted-foreground">
+            <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
+            <p>Loading complaints...</p>
+          </div>
         </div>
       </MobileLayout>
     );
   }
 
   return (
-    <MobileLayout 
-      title="Complaints"
-      action={
+    <MobileLayout title="Complaints">
+      {/* Hero Section with Gradient */}
+      <div className="relative -mx-4 -mt-6 mb-6 overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-purple-600 via-blue-600 to-purple-700" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_120%,rgba(120,119,198,0.3),rgba(255,255,255,0))]" />
+        
+        <div className="relative px-6 py-8 text-white">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-3xl font-bold tracking-tight mb-2">Complaints</h2>
+              <p className="text-white/80 text-sm">Manage tenant issues</p>
+            </div>
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogTrigger asChild>
-            <Button size="sm" className="bg-gradient-to-r from-purple-600 to-blue-600" data-testid="button-create-complaint-mobile">
-              <Plus className="w-4 h-4" />
+                <Button 
+                  className="bg-white/20 backdrop-blur-sm border-white/30 hover:bg-white/30 text-white shadow-lg h-11" 
+                  data-testid="button-create-complaint-mobile"
+                >
+                  <Plus className="mr-2 w-4 h-4" /> New
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-[95vw]">
+              <DialogContent className="max-w-[95vw] rounded-2xl">
             <DialogHeader>
               <DialogTitle>New Complaint</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleCreateComplaint}>
-              <div className="space-y-4">
-                <div>
+                  <div className="space-y-4 pt-2">
+                    <div className="space-y-1">
                   <Label htmlFor="title-mobile" className="text-sm">Title</Label>
                   <Input id="title-mobile" name="title" required data-testid="input-complaint-title-mobile" />
                 </div>
-                <div>
+                    <div className="space-y-1">
                   <Label htmlFor="description-mobile" className="text-sm">Description</Label>
-                  <Textarea id="description-mobile" name="description" required rows={3} data-testid="input-complaint-description-mobile" />
+                      <Textarea id="description-mobile" name="description" required rows={3} className="resize-none" data-testid="input-complaint-description-mobile" />
                 </div>
-                <div>
+                    <div className="space-y-1">
                   <Label htmlFor="priority-mobile" className="text-sm">Priority</Label>
                   <Select name="priority" defaultValue="medium" required>
                     <SelectTrigger data-testid="select-complaint-priority-mobile">
@@ -753,66 +626,37 @@ function ComplaintsMobile() {
                   </Select>
                 </div>
               </div>
-              <DialogFooter className="mt-4 flex-col gap-2">
-                <Button type="submit" disabled={createComplaintMutation.isPending} className="w-full" data-testid="button-submit-complaint-mobile">
+                  <DialogFooter className="mt-6 flex flex-row gap-2 pt-4 border-t">
+                    <Button variant="outline" type="button" onClick={() => setIsCreateDialogOpen(false)} className="flex-1">
+                      Cancel
+                    </Button>
+                    <Button type="submit" disabled={createComplaintMutation.isPending} className="flex-1 bg-gradient-to-r from-purple-600 to-blue-600" data-testid="button-submit-complaint-mobile">
                   {createComplaintMutation.isPending ? "Creating..." : "Create"}
                 </Button>
               </DialogFooter>
             </form>
           </DialogContent>
         </Dialog>
-      }
-    >
+          </div>
+        </div>
+      </div>
+
       <div className="space-y-4 pb-20">
         {/* Stats Grid */}
         <div className="grid grid-cols-2 gap-3">
-          <Card className="overflow-hidden border-2" data-testid="card-stat-open-mobile">
+          {stats.map((stat) => (
+            <Card key={stat.id} className="overflow-hidden border-2 hover:border-purple-200 transition-all duration-300" data-testid={`card-stat-${stat.id}-mobile`}>
             <CardContent className="p-4">
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-red-500 to-orange-600 flex items-center justify-center mb-3 shadow-md">
-                <AlertCircle className="w-5 h-5 text-white" />
-              </div>
-              <p className="text-xs text-muted-foreground mb-1">Open</p>
-              <p className="text-2xl font-bold bg-gradient-to-r from-red-600 to-orange-600 bg-clip-text text-transparent">
-                {openCount}
+                <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center mb-3 shadow-md bg-gradient-to-br", stat.gradient)}>
+                  <stat.icon className="w-5 h-5 text-white" />
+                </div>
+                <p className="text-xs text-muted-foreground mb-1">{stat.label.split(' ')[0]}</p>
+                <p className={cn("text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r", stat.gradient)}>
+                  {stat.value}
               </p>
             </CardContent>
           </Card>
-
-          <Card className="overflow-hidden border-2" data-testid="card-stat-in-progress-mobile">
-            <CardContent className="p-4">
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-600 flex items-center justify-center mb-3 shadow-md">
-                <Clock className="w-5 h-5 text-white" />
-              </div>
-              <p className="text-xs text-muted-foreground mb-1">In Progress</p>
-              <p className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
-                {inProgressCount}
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="overflow-hidden border-2" data-testid="card-stat-resolved-mobile">
-            <CardContent className="p-4">
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center mb-3 shadow-md">
-                <CheckCircle className="w-5 h-5 text-white" />
-              </div>
-              <p className="text-xs text-muted-foreground mb-1">Resolved</p>
-              <p className="text-2xl font-bold bg-gradient-to-r from-emerald-600 to-green-600 bg-clip-text text-transparent">
-                {resolvedCount}
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="overflow-hidden border-2" data-testid="card-stat-high-priority-mobile">
-            <CardContent className="p-4">
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center mb-3 shadow-md">
-                <AlertTriangle className="w-5 h-5 text-white" />
-              </div>
-              <p className="text-xs text-muted-foreground mb-1">High Priority</p>
-              <p className="text-2xl font-bold bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent">
-                {highPriorityCount}
-              </p>
-            </CardContent>
-          </Card>
+          ))}
         </div>
 
         {/* Filters */}
@@ -920,7 +764,7 @@ function ComplaintsMobile() {
 
                   {complaint.status === "resolved" && complaint.resolvedAt && (
                     <div className="flex items-center gap-2 text-xs font-medium bg-gradient-to-r from-green-100 to-emerald-100 px-3 py-2 rounded-lg border border-emerald-200">
-                      <CheckCircle className="w-4 h-4 text-emerald-600" />
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                       <span className="text-emerald-700">
                         Resolved {format(new Date(complaint.resolvedAt), "MMM d, yyyy")}
                       </span>
@@ -934,18 +778,18 @@ function ComplaintsMobile() {
 
         {/* Update Dialog */}
         <Dialog open={isUpdateDialogOpen} onOpenChange={setIsUpdateDialogOpen}>
-          <DialogContent className="max-w-[95vw]">
+          <DialogContent className="max-w-[95vw] rounded-2xl">
             <DialogHeader>
               <DialogTitle>Update Complaint</DialogTitle>
             </DialogHeader>
             {selectedComplaint && (
               <form onSubmit={handleUpdateComplaint}>
-                <div className="space-y-4">
-                  <div>
-                    <Label className="text-sm">Issue</Label>
-                    <p className="text-sm text-muted-foreground">{selectedComplaint.title}</p>
+                <div className="space-y-4 pt-2">
+                  <div className="space-y-1">
+                    <Label className="text-sm font-semibold text-gray-700">Issue</Label>
+                    <p className="text-sm text-muted-foreground bg-slate-50 p-3 rounded-lg border border-slate-100">{selectedComplaint.title}</p>
                   </div>
-                  <div>
+                  <div className="space-y-1">
                     <Label htmlFor="status-mobile" className="text-sm">Status</Label>
                     <Select name="status" defaultValue={selectedComplaint.status} required>
                       <SelectTrigger data-testid="select-update-status-mobile">
@@ -958,7 +802,7 @@ function ComplaintsMobile() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div>
+                  <div className="space-y-1">
                     <Label htmlFor="resolutionNotes-mobile" className="text-sm">Resolution Notes</Label>
                     <Textarea
                       id="resolutionNotes-mobile"
@@ -970,8 +814,11 @@ function ComplaintsMobile() {
                     />
                   </div>
                 </div>
-                <DialogFooter className="mt-4 flex-col gap-2">
-                  <Button type="submit" disabled={updateComplaintMutation.isPending} className="w-full" data-testid="button-submit-update-mobile">
+                <DialogFooter className="mt-6 flex flex-row gap-2 pt-4 border-t">
+                  <Button variant="outline" type="button" onClick={() => setIsUpdateDialogOpen(false)} className="flex-1">
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={updateComplaintMutation.isPending} className="flex-1 bg-gradient-to-r from-purple-600 to-blue-600" data-testid="button-submit-update-mobile">
                     {updateComplaintMutation.isPending ? "Updating..." : "Update"}
                   </Button>
                 </DialogFooter>
