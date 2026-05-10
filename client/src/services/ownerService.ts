@@ -466,4 +466,21 @@ export const ownerService = {
     const response = await api.put<ApiResponse<ComplaintResponse> | ComplaintResponse>(`/api/complaints/${id}`, payload);
     return (response.data as any).data !== undefined ? (response.data as any).data : response.data;
   },
+
+  async getReportSummary(): Promise<any> {
+    const response = await api.get<ApiResponse<any> | any>('/api/reports/summary');
+    return (response.data as any).data !== undefined ? (response.data as any).data : response.data;
+  },
+
+  async getReportByType(type: string, startDate?: string, endDate?: string): Promise<any> {
+    const params = new URLSearchParams();
+    if (startDate) params.append('startDate', startDate);
+    if (endDate) params.append('endDate', endDate);
+    
+    const queryString = params.toString();
+    const url = `/api/reports/${type}${queryString ? `?${queryString}` : ''}`;
+    
+    const response = await api.get<ApiResponse<any> | any>(url);
+    return (response.data as any).data !== undefined ? (response.data as any).data : response.data;
+  },
 };

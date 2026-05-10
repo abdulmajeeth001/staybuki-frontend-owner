@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { api } from "@/apiClient";
+import { ownerService } from "@/services/ownerService";
 
 type ReportType = 'revenue' | 'payment-history' | 'occupancy' | 'tenant-details';
 
@@ -77,97 +78,71 @@ function ReportsDesktop() {
   const [selectedReport, setSelectedReport] = useState<ReportType>('revenue');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const [downloadingPDF, setDownloadingPDF] = useState(false);
+  const [downloadingReport, setDownloadingReport] = useState(false);
   const { toast } = useToast();
 
   // Fetch report summary
   const { data: summary, isLoading: summaryLoading } = useQuery<ReportSummary>({
     queryKey: ['report-summary'],
-    queryFn: async () => {
-      try {
-        const res = await api.get('/api/reports/summary');
-        return res.data;
-      } catch (error: any) {
-        throw new Error(error.response?.data?.error || error.message || 'Failed to fetch report summary');
-      }
-    },
+    queryFn: () => ownerService.getReportSummary(),
   });
 
   // Fetch revenue data
   const { data: revenueData, isLoading: revenueLoading } = useQuery<RevenueData[]>({
     queryKey: ['report', 'revenue'],
     queryFn: async () => {
-      try {
-        const res = await api.get('/api/reports/revenue');
-        return res.data;
-      } catch (error: any) {
-        throw new Error(error.response?.data?.error || error.message || 'Failed to fetch revenue report');
-      }
+      const data = await ownerService.getReportByType('revenue');
+      return Array.isArray(data) ? data : [];
     },
   });
 
   // Fetch occupancy data
   const { data: occupancyData } = useQuery<OccupancyData>({
     queryKey: ['report', 'occupancy'],
-    queryFn: async () => {
-      try {
-        const res = await api.get('/api/reports/occupancy');
-        return res.data;
-      } catch (error: any) {
-        throw new Error(error.response?.data?.error || error.message || 'Failed to fetch occupancy report');
-      }
-    },
+    queryFn: () => ownerService.getReportByType('occupancy'),
   });
 
-  const handleDownloadPDF = async () => {
-    setDownloadingPDF(true);
+  const handleDownloadReport = async () => {
+    setDownloadingReport(true);
     try {
-      const params = new URLSearchParams();
-      if (startDate) params.append('startDate', startDate);
-      if (endDate) params.append('endDate', endDate);
+      const reportData = await ownerService.getReportByType(selectedReport, startDate, endDate);
       
-      const queryString = params.toString();
-      const url = `/api/reports/${selectedReport}/pdf${queryString ? `?${queryString}` : ''}`;
-      
-      const res = await api.get(url, {
-        responseType: 'blob',
-      });
-      
-      const blob = res.data;
+      const blob = new Blob([JSON.stringify(reportData, null, 2)], { type: 'application/json' });
       const downloadUrl = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = downloadUrl;
-      a.download = `${selectedReport}-report-${Date.now()}.pdf`;
+      a.download = `${selectedReport}-report-${Date.now()}.json`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(downloadUrl);
       document.body.removeChild(a);
 
       toast({
-        title: "PDF Downloaded",
+        title: "Report Downloaded",
         description: "Report has been downloaded successfully.",
       });
     } catch (error: any) {
       toast({
         title: "Download Failed",
-        description: error.response?.data?.error || error.message || "Failed to download PDF report. Please try again.",
+        description: error.response?.data?.error || error.message || "Failed to download report. Please try again.",
         variant: "destructive",
       });
     } finally {
-      setDownloadingPDF(false);
+      setDownloadingReport(false);
     }
   };
 
   // Calculate revenue trend for last 6 months
-  const revenueChartData = revenueData?.slice(-6).map((item) => {
-    const maxAmount = Math.max(...(revenueData?.map(d => d.totalAmount) || [1]));
+  const safeRevenueData = Array.isArray(revenueData) ? revenueData : [];
+  const revenueChartData = safeRevenueData.slice(-6).map((item) => {
+    const maxAmount = Math.max(...(safeRevenueData.map(d => d.totalAmount) || [1]));
     const percentage = (item.totalAmount / maxAmount) * 100;
     return {
-      month: item.month.split('-')[1],
+      month: item.month?.split('-')[1] || '',
       value: item.totalAmount,
       percentage: Math.min(percentage, 100),
     };
-  }) || [];
+  });
 
   return (
     <DesktopLayout title="Reports & Analytics" showNav>
@@ -374,19 +349,19 @@ function ReportsDesktop() {
                   </div>
                   <Button 
                     className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white gap-2"
-                    onClick={handleDownloadPDF}
-                    disabled={downloadingPDF}
+                    onClick={handleDownloadReport}
+                    disabled={downloadingReport}
                     data-testid="button-generate"
                   >
-                    {downloadingPDF ? (
+                    {downloadingReport ? (
                       <>
                         <Loader2 className="w-4 h-4 animate-spin" />
-                        Generating PDF...
+                        Generating Report...
                       </>
                     ) : (
                       <>
                         <Download className="w-4 h-4" />
-                        Download PDF Report
+                        Download Report Data
                       </>
                     )}
                   </Button>
@@ -492,71 +467,48 @@ function ReportsMobile() {
   const [selectedReport, setSelectedReport] = useState<ReportType>('revenue');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const [downloadingPDF, setDownloadingPDF] = useState(false);
+  const [downloadingReport, setDownloadingReport] = useState(false);
   const { toast } = useToast();
 
   // Fetch report summary
   const { data: summary, isLoading: summaryLoading } = useQuery<ReportSummary>({
     queryKey: ['report-summary'],
-    queryFn: async () => {
-      try {
-        const res = await api.get('/api/reports/summary');
-        return res.data;
-      } catch (error: any) {
-        throw new Error(error.response?.data?.error || error.message || 'Failed to fetch report summary');
-      }
-    },
+    queryFn: () => ownerService.getReportSummary(),
   });
 
   // Fetch occupancy data
   const { data: occupancyData } = useQuery<OccupancyData>({
     queryKey: ['report', 'occupancy'],
-    queryFn: async () => {
-      try {
-        const res = await api.get('/api/reports/occupancy');
-        return res.data;
-      } catch (error: any) {
-        throw new Error(error.response?.data?.error || error.message || 'Failed to fetch occupancy report');
-      }
-    },
+    queryFn: () => ownerService.getReportByType('occupancy'),
   });
 
-  const handleDownloadPDF = async () => {
-    setDownloadingPDF(true);
+  const handleDownloadReport = async () => {
+    setDownloadingReport(true);
     try {
-      const params = new URLSearchParams();
-      if (startDate) params.append('startDate', startDate);
-      if (endDate) params.append('endDate', endDate);
+      const reportData = await ownerService.getReportByType(selectedReport, startDate, endDate);
       
-      const queryString = params.toString();
-      const url = `/api/reports/${selectedReport}/pdf${queryString ? `?${queryString}` : ''}`;
-      
-      const res = await api.get(url, {
-        responseType: 'blob',
-      });
-      
-      const blob = res.data;
+      const blob = new Blob([JSON.stringify(reportData, null, 2)], { type: 'application/json' });
       const downloadUrl = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = downloadUrl;
-      a.download = `${selectedReport}-report-${Date.now()}.pdf`;
+      a.download = `${selectedReport}-report-${Date.now()}.json`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(downloadUrl);
       document.body.removeChild(a);
 
       toast({
-        title: "PDF Downloaded",
+        title: "Report Downloaded",
         description: "Report has been downloaded successfully.",
       });
     } catch (error: any) {
       toast({
         title: "Download Failed",
-        description: error.response?.data?.error || error.message || "Failed to download PDF report. Please try again.",
+        description: error.response?.data?.error || error.message || "Failed to download report. Please try again.",
         variant: "destructive",
       });
     } finally {
-      setDownloadingPDF(false);
+      setDownloadingReport(false);
     }
   };
 
@@ -567,11 +519,11 @@ function ReportsMobile() {
         <Button 
           size="sm"
           className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white h-9"
-          onClick={handleDownloadPDF}
-          disabled={downloadingPDF}
+          onClick={handleDownloadReport}
+          disabled={downloadingReport}
           data-testid="button-export-mobile"
         >
-          {downloadingPDF ? (
+          {downloadingReport ? (
             <Loader2 className="w-4 h-4 mr-2 animate-spin" />
           ) : (
             <Download className="w-4 h-4 mr-2" />
@@ -709,11 +661,11 @@ function ReportsMobile() {
                 </div>
                 <Button 
                   className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white gap-2"
-                  onClick={handleDownloadPDF}
-                  disabled={downloadingPDF}
+                  onClick={handleDownloadReport}
+                  disabled={downloadingReport}
                   data-testid="button-generate-mobile"
                 >
-                  {downloadingPDF ? (
+                  {downloadingReport ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
                       Generating...
@@ -721,7 +673,7 @@ function ReportsMobile() {
                   ) : (
                     <>
                       <Download className="w-4 h-4" />
-                      Download PDF
+                      Download Data
                     </>
                   )}
                 </Button>
