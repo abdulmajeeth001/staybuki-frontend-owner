@@ -32,6 +32,7 @@ import {
   PgProfileRequest,
   ComplaintResponse,
   ComplaintRequest,
+  ReportSummaryResponse,
 } from "@/types/owner";
 
 export const ownerService = {
@@ -467,8 +468,8 @@ export const ownerService = {
     return (response.data as any).data !== undefined ? (response.data as any).data : response.data;
   },
 
-  async getReportSummary(): Promise<any> {
-    const response = await api.get<ApiResponse<any> | any>('/api/reports/summary');
+  async getReportSummary(): Promise<ReportSummaryResponse> {
+    const response = await api.get<ApiResponse<ReportSummaryResponse> | ReportSummaryResponse>('/api/reports/summary');
     return (response.data as any).data !== undefined ? (response.data as any).data : response.data;
   },
 

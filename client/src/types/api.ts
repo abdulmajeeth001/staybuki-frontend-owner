@@ -1340,6 +1340,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/reports/{type}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get specific report by type (revenue, payment-history, occupancy, tenant-details) */
+        get: operations["getReportByType"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/reports/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get overall report summary for the selected PG */
+        get: operations["getReportSummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/pgAmenities/{id}": {
         parameters: {
             query?: never;
@@ -2887,6 +2921,50 @@ export interface components {
             monthlyRent?: number;
             status?: string;
             onboardingStatus?: string;
+        };
+        ApiResponseObject: {
+            success?: boolean;
+            message?: string;
+            data?: Record<string, never>;
+            /** Format: date-time */
+            timestamp?: string;
+            errorCode?: string;
+        };
+        ApiResponseReportSummaryDto: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["ReportSummaryDto"];
+            /** Format: date-time */
+            timestamp?: string;
+            errorCode?: string;
+        };
+        ReportSummaryDto: {
+            totalRevenue?: number;
+            pendingDues?: number;
+            /** Format: int32 */
+            totalRooms?: number;
+            /** Format: int32 */
+            occupiedRooms?: number;
+            occupancyRate?: number;
+            averageRent?: number;
+            /** Format: int32 */
+            totalTenants?: number;
+            /** Format: int32 */
+            paidTenants?: number;
+            /** Format: int32 */
+            pendingTenants?: number;
+            /** Format: int32 */
+            overdueTenants?: number;
+            /** Format: int32 */
+            newTenantsThisMonth?: number;
+            /** Format: int32 */
+            leavingTenantsThisMonth?: number;
+            /** Format: int32 */
+            complaintsThisMonth?: number;
+            /** Format: int32 */
+            totalBeds?: number;
+            /** Format: int64 */
+            occupiedBeds?: number;
         };
         ApiResponsePgStatusResponseDto: {
             success?: boolean;
@@ -5612,6 +5690,51 @@ export interface operations {
                 };
                 content: {
                     "*/*": string;
+                };
+            };
+        };
+    };
+    getReportByType: {
+        parameters: {
+            query?: {
+                startDate?: string;
+                endDate?: string;
+            };
+            header?: never;
+            path: {
+                type: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseObject"];
+                };
+            };
+        };
+    };
+    getReportSummary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseReportSummaryDto"];
                 };
             };
         };

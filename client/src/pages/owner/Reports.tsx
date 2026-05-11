@@ -12,38 +12,25 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { 
-  BarChart3, 
-  Users, 
-  DollarSign, 
-  TrendingUp, 
-  Calendar, 
+import {
+  BarChart3,
+  Users,
+  DollarSign,
+  TrendingUp,
+  Calendar,
   Download,
   FileText,
   IndianRupee,
   Home,
   Loader2,
 } from "lucide-react";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import { useToast } from "@/hooks/use-toast";
-import { api } from "@/apiClient";
 import { ownerService } from "@/services/ownerService";
+import type { ReportSummaryResponse } from "@/types/owner";
 
-type ReportType = 'revenue' | 'payment-history' | 'occupancy' | 'tenant-details';
-
-interface ReportSummary {
-  totalRevenue: number;
-  occupancyRate: number;
-  averageRent: number;
-  pendingDues: number;
-  totalRooms: number;
-  occupiedRooms: number;
-  totalTenants: number;
-  paidTenants: number;
-  pendingTenants: number;
-  newTenantsThisMonth: number;
-  leavingTenantsThisMonth: number;
-  complaintsThisMonth: number;
-}
+type ReportType = "revenue" | "payment-history" | "occupancy" | "tenant-details";
 
 interface RevenueData {
   month: string;
@@ -54,7 +41,12 @@ interface RevenueData {
 }
 
 interface OccupancyData {
-  roomsBySharing: { sharing: number; totalRooms: number; occupiedRooms: number; vacantRooms: number; }[];
+  roomsBySharing: {
+    sharing: number;
+    totalRooms: number;
+    occupiedRooms: number;
+    vacantRooms: number;
+  }[];
   totalRooms: number;
   occupiedRooms: number;
   vacantRooms: number;
@@ -75,47 +67,75 @@ export default function Reports() {
 }
 
 function ReportsDesktop() {
-  const [selectedReport, setSelectedReport] = useState<ReportType>('revenue');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const [selectedReport, setSelectedReport] = useState<ReportType>("revenue");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [downloadingReport, setDownloadingReport] = useState(false);
   const { toast } = useToast();
 
-  // Fetch report summary
-  const { data: summary, isLoading: summaryLoading } = useQuery<ReportSummary>({
-    queryKey: ['report-summary'],
+  const { data: summary, isLoading: summaryLoading } = useQuery<ReportSummaryResponse>({
+    queryKey: ["report-summary"],
     queryFn: () => ownerService.getReportSummary(),
   });
 
-  // Fetch revenue data
   const { data: revenueData, isLoading: revenueLoading } = useQuery<RevenueData[]>({
-    queryKey: ['report', 'revenue'],
+    queryKey: ["report", "revenue"],
     queryFn: async () => {
-      const data = await ownerService.getReportByType('revenue');
+      const data = await ownerService.getReportByType("revenue");
       return Array.isArray(data) ? data : [];
     },
   });
 
-  // Fetch occupancy data
   const { data: occupancyData } = useQuery<OccupancyData>({
-    queryKey: ['report', 'occupancy'],
-    queryFn: () => ownerService.getReportByType('occupancy'),
+    queryKey: ["report", "occupancy"],
+    queryFn: () => ownerService.getReportByType("occupancy"),
   });
 
   const handleDownloadReport = async () => {
     setDownloadingReport(true);
     try {
       const reportData = await ownerService.getReportByType(selectedReport, startDate, endDate);
-      
-      const blob = new Blob([JSON.stringify(reportData, null, 2)], { type: 'application/json' });
-      const downloadUrl = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = downloadUrl;
-      a.download = `${selectedReport}-report-${Date.now()}.json`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(downloadUrl);
-      document.body.removeChild(a);
+
+      const doc = new jsPDF({ orientation: "landscape" });
+      doc.text(`${selectedReport.toUpperCase()} REPORT`, 14, 15);
+      let startY = 25;
+
+      const tableStyles = {
+        fontSize: 8,
+        cellPadding: 3,
+        overflow: 'linebreak' as const,
+      };
+      const headStyles = { fillColor: [147, 51, 234] };
+
+      if (Array.isArray(reportData) && reportData.length > 0) {
+        const headers = Object.keys(reportData[0]);
+        const body = reportData.map((obj: any) => headers.map((h) => String(obj[h] ?? "")));
+        autoTable(doc, { head: [headers], body, startY, styles: tableStyles, headStyles });
+      } else if (typeof reportData === "object" && reportData !== null) {
+        const data = reportData as any;
+        if (data.roomsBySharing) {
+          const headers = ["Sharing", "Total Rooms", "Occupied", "Vacant"];
+          const body = data.roomsBySharing.map((r: any) => [
+            String(r.sharing),
+            String(r.totalRooms),
+            String(r.occupiedRooms),
+            String(r.vacantRooms),
+          ]);
+          autoTable(doc, { head: [headers], body, startY, styles: tableStyles, headStyles });
+          startY = (doc as any).lastAutoTable.finalY + 10;
+        }
+
+        const summaryHeaders = ["Metric", "Value"];
+        const summaryBody = Object.entries(reportData)
+          .filter(([_, val]) => typeof val !== "object")
+          .map(([key, val]) => [key, String(val ?? "")]);
+
+        autoTable(doc, { head: [summaryHeaders], body: summaryBody, startY, styles: tableStyles, headStyles });
+      } else {
+        doc.text("No data available for this report.", 14, startY);
+      }
+
+      doc.save(`${selectedReport}-report-${Date.now()}.pdf`);
 
       toast({
         title: "Report Downloaded",
@@ -124,7 +144,10 @@ function ReportsDesktop() {
     } catch (error: any) {
       toast({
         title: "Download Failed",
-        description: error.response?.data?.error || error.message || "Failed to download report. Please try again.",
+        description:
+          error.response?.data?.error ||
+          error.message ||
+          "Failed to download report. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -132,13 +155,12 @@ function ReportsDesktop() {
     }
   };
 
-  // Calculate revenue trend for last 6 months
   const safeRevenueData = Array.isArray(revenueData) ? revenueData : [];
   const revenueChartData = safeRevenueData.slice(-6).map((item) => {
-    const maxAmount = Math.max(...(safeRevenueData.map(d => d.totalAmount) || [1]));
+    const maxAmount = Math.max(...safeRevenueData.map((d) => d.totalAmount), 1);
     const percentage = (item.totalAmount / maxAmount) * 100;
     return {
-      month: item.month?.split('-')[1] || '',
+      month: item.month?.split("-")[1] || "",
       value: item.totalAmount,
       percentage: Math.min(percentage, 100),
     };
@@ -172,7 +194,10 @@ function ReportsDesktop() {
           <>
             {/* Stat Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <Card className="group hover:shadow-lg transition-all duration-300 border-2 border-transparent hover:border-purple-200 overflow-hidden relative" data-testid="card-stat-revenue">
+              <Card
+                className="group hover:shadow-lg transition-all duration-300 border-2 border-transparent hover:border-purple-200 overflow-hidden relative"
+                data-testid="card-stat-revenue"
+              >
                 <div className="absolute inset-0 bg-gradient-to-br from-purple-50 to-blue-50 opacity-0 group-hover:opacity-100 transition-opacity" />
                 <CardContent className="p-6 relative">
                   <div className="flex items-start justify-between mb-4">
@@ -182,14 +207,20 @@ function ReportsDesktop() {
                   </div>
                   <div>
                     <p className="text-sm font-medium text-muted-foreground mb-1">Total Revenue</p>
-                    <p className="text-3xl font-bold bg-gradient-to-r from-emerald-600 to-green-600 bg-clip-text text-transparent mb-1" data-testid="stat-revenue">
-                      ₹{summary?.totalRevenue.toLocaleString() || '0'}
+                    <p
+                      className="text-3xl font-bold bg-gradient-to-r from-emerald-600 to-green-600 bg-clip-text text-transparent mb-1"
+                      data-testid="stat-revenue"
+                    >
+                      ₹{(summary?.totalRevenue || 0).toLocaleString()}
                     </p>
                   </div>
                 </CardContent>
               </Card>
 
-              <Card className="group hover:shadow-lg transition-all duration-300 border-2 border-transparent hover:border-purple-200 overflow-hidden relative" data-testid="card-stat-occupancy">
+              <Card
+                className="group hover:shadow-lg transition-all duration-300 border-2 border-transparent hover:border-purple-200 overflow-hidden relative"
+                data-testid="card-stat-occupancy"
+              >
                 <div className="absolute inset-0 bg-gradient-to-br from-purple-50 to-blue-50 opacity-0 group-hover:opacity-100 transition-opacity" />
                 <CardContent className="p-6 relative">
                   <div className="flex items-start justify-between mb-4">
@@ -199,15 +230,23 @@ function ReportsDesktop() {
                   </div>
                   <div>
                     <p className="text-sm font-medium text-muted-foreground mb-1">Occupancy Rate</p>
-                    <p className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent mb-1" data-testid="stat-occupancy">
-                      {summary?.occupancyRate.toFixed(0)}%
+                    <p
+                      className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent mb-1"
+                      data-testid="stat-occupancy"
+                    >
+                      {summary?.occupancyRate?.toFixed(0) || 0}%
                     </p>
-                    <p className="text-xs text-muted-foreground">{summary?.occupiedRooms} of {summary?.totalRooms} rooms</p>
+                    <p className="text-xs text-muted-foreground">
+                      {summary?.occupiedRooms || 0} of {summary?.totalRooms || 0} rooms
+                    </p>
                   </div>
                 </CardContent>
               </Card>
 
-              <Card className="group hover:shadow-lg transition-all duration-300 border-2 border-transparent hover:border-purple-200 overflow-hidden relative" data-testid="card-stat-avg-rent">
+              <Card
+                className="group hover:shadow-lg transition-all duration-300 border-2 border-transparent hover:border-purple-200 overflow-hidden relative"
+                data-testid="card-stat-avg-rent"
+              >
                 <div className="absolute inset-0 bg-gradient-to-br from-purple-50 to-blue-50 opacity-0 group-hover:opacity-100 transition-opacity" />
                 <CardContent className="p-6 relative">
                   <div className="flex items-start justify-between mb-4">
@@ -217,15 +256,21 @@ function ReportsDesktop() {
                   </div>
                   <div>
                     <p className="text-sm font-medium text-muted-foreground mb-1">Avg. Rent</p>
-                    <p className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-1" data-testid="stat-avg-rent">
-                      ₹{summary?.averageRent.toFixed(0) || '0'}
+                    <p
+                      className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-1"
+                      data-testid="stat-avg-rent"
+                    >
+                      ₹{summary?.averageRent?.toFixed(0) || "0"}
                     </p>
                     <p className="text-xs text-muted-foreground">Per room/month</p>
                   </div>
                 </CardContent>
               </Card>
 
-              <Card className="group hover:shadow-lg transition-all duration-300 border-2 border-transparent hover:border-purple-200 overflow-hidden relative" data-testid="card-stat-dues">
+              <Card
+                className="group hover:shadow-lg transition-all duration-300 border-2 border-transparent hover:border-purple-200 overflow-hidden relative"
+                data-testid="card-stat-dues"
+              >
                 <div className="absolute inset-0 bg-gradient-to-br from-purple-50 to-blue-50 opacity-0 group-hover:opacity-100 transition-opacity" />
                 <CardContent className="p-6 relative">
                   <div className="flex items-start justify-between mb-4">
@@ -235,10 +280,15 @@ function ReportsDesktop() {
                   </div>
                   <div>
                     <p className="text-sm font-medium text-muted-foreground mb-1">Pending Dues</p>
-                    <p className="text-3xl font-bold bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent mb-1" data-testid="stat-dues">
-                      ₹{summary?.pendingDues.toLocaleString() || '0'}
+                    <p
+                      className="text-3xl font-bold bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent mb-1"
+                      data-testid="stat-dues"
+                    >
+                      ₹{(summary?.pendingDues || 0).toLocaleString()}
                     </p>
-                    <p className="text-xs text-muted-foreground">From {summary?.pendingTenants || 0} tenants</p>
+                    <p className="text-xs text-muted-foreground">
+                      From {summary?.pendingTenants || 0} tenants
+                    </p>
                   </div>
                 </CardContent>
               </Card>
@@ -247,7 +297,10 @@ function ReportsDesktop() {
             {/* Charts and Report Generator */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Revenue Trend Chart */}
-              <Card className="group hover:shadow-lg transition-all duration-300 border-2 border-transparent hover:border-purple-200 overflow-hidden relative" data-testid="card-revenue-chart">
+              <Card
+                className="group hover:shadow-lg transition-all duration-300 border-2 border-transparent hover:border-purple-200 overflow-hidden relative"
+                data-testid="card-revenue-chart"
+              >
                 <div className="absolute inset-0 bg-gradient-to-br from-purple-50 to-blue-50 opacity-0 group-hover:opacity-100 transition-opacity" />
                 <CardHeader className="relative">
                   <div className="flex items-center gap-3">
@@ -264,21 +317,33 @@ function ReportsDesktop() {
                     </div>
                   ) : (
                     <div className="space-y-4 pt-2">
-                      {revenueChartData.length > 0 ? revenueChartData.map((item) => (
-                        <div key={item.month} className="space-y-1" data-testid={`chart-bar-${item.month}`}>
-                          <div className="flex items-center justify-between text-sm">
-                            <span className="font-medium text-muted-foreground">Month {item.month}</span>
-                            <span className="font-semibold">₹{(item.value / 1000).toFixed(0)}k</span>
+                      {revenueChartData.length > 0 ? (
+                        revenueChartData.map((item) => (
+                          <div
+                            key={item.month}
+                            className="space-y-1"
+                            data-testid={`chart-bar-${item.month}`}
+                          >
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="font-medium text-muted-foreground">
+                                Month {item.month}
+                              </span>
+                              <span className="font-semibold">
+                                ₹{(item.value / 1000).toFixed(0)}k
+                              </span>
+                            </div>
+                            <div className="relative h-3 bg-secondary rounded-full overflow-hidden">
+                              <div
+                                className="absolute inset-y-0 left-0 bg-gradient-to-r from-blue-500 to-cyan-600 rounded-full transition-all duration-500"
+                                style={{ width: `${item.percentage}%` }}
+                              />
+                            </div>
                           </div>
-                          <div className="relative h-3 bg-secondary rounded-full overflow-hidden">
-                            <div 
-                              className="absolute inset-y-0 left-0 bg-gradient-to-r from-blue-500 to-cyan-600 rounded-full transition-all duration-500"
-                              style={{ width: `${item.percentage}%` }}
-                            />
-                          </div>
-                        </div>
-                      )) : (
-                        <p className="text-center text-muted-foreground py-6">No revenue data available</p>
+                        ))
+                      ) : (
+                        <p className="text-center text-muted-foreground py-6">
+                          No revenue data available
+                        </p>
                       )}
                     </div>
                   )}
@@ -286,7 +351,10 @@ function ReportsDesktop() {
               </Card>
 
               {/* Report Generator */}
-              <Card className="group hover:shadow-lg transition-all duration-300 border-2 border-transparent hover:border-purple-200 overflow-hidden relative" data-testid="card-report-generator">
+              <Card
+                className="group hover:shadow-lg transition-all duration-300 border-2 border-transparent hover:border-purple-200 overflow-hidden relative"
+                data-testid="card-report-generator"
+              >
                 <div className="absolute inset-0 bg-gradient-to-br from-purple-50 to-blue-50 opacity-0 group-hover:opacity-100 transition-opacity" />
                 <CardHeader className="relative">
                   <div className="flex items-center gap-3">
@@ -301,7 +369,10 @@ function ReportsDesktop() {
                     <label className="text-sm font-medium" htmlFor="report-type">
                       Select Report Type
                     </label>
-                    <Select value={selectedReport} onValueChange={(value: ReportType) => setSelectedReport(value)}>
+                    <Select
+                      value={selectedReport}
+                      onValueChange={(value: ReportType) => setSelectedReport(value)}
+                    >
                       <SelectTrigger id="report-type" data-testid="select-report-type">
                         <SelectValue />
                       </SelectTrigger>
@@ -347,7 +418,7 @@ function ReportsDesktop() {
                       />
                     </div>
                   </div>
-                  <Button 
+                  <Button
                     className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white gap-2"
                     onClick={handleDownloadReport}
                     disabled={downloadingReport}
@@ -371,7 +442,10 @@ function ReportsDesktop() {
 
             {/* Additional Analytics Cards */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <Card className="group hover:shadow-lg transition-all duration-300 border-2 border-transparent hover:border-purple-200 overflow-hidden relative" data-testid="card-room-types">
+              <Card
+                className="group hover:shadow-lg transition-all duration-300 border-2 border-transparent hover:border-purple-200 overflow-hidden relative"
+                data-testid="card-room-types"
+              >
                 <div className="absolute inset-0 bg-gradient-to-br from-purple-50 to-blue-50 opacity-0 group-hover:opacity-100 transition-opacity" />
                 <CardHeader className="relative">
                   <div className="flex items-center gap-3">
@@ -383,9 +457,12 @@ function ReportsDesktop() {
                 </CardHeader>
                 <CardContent className="space-y-3 relative">
                   {occupancyData?.roomsBySharing?.map((room, index) => (
-                    <div key={`room-${room.sharing}-${index}`} className="flex items-center justify-between text-sm">
+                    <div
+                      key={`room-${room.sharing}-${index}`}
+                      className="flex items-center justify-between text-sm"
+                    >
                       <span className="text-muted-foreground">
-                        {room.sharing === 1 ? 'Single' : `${room.sharing}-Sharing`}
+                        {room.sharing === 1 ? "Single" : `${room.sharing}-Sharing`}
                       </span>
                       <span className="font-semibold">{room.totalRooms} rooms</span>
                     </div>
@@ -401,10 +478,19 @@ function ReportsDesktop() {
                       </div>
                     </>
                   )}
+                  <div className="pt-3 mt-3 border-t border-slate-100 flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground font-medium">Total Beds</span>
+                    <span className="font-semibold text-purple-700">
+                      {summary?.occupiedBeds || 0} / {summary?.totalBeds || 0} occupied
+                    </span>
+                  </div>
                 </CardContent>
               </Card>
 
-              <Card className="group hover:shadow-lg transition-all duration-300 border-2 border-transparent hover:border-purple-200 overflow-hidden relative" data-testid="card-payment-status">
+              <Card
+                className="group hover:shadow-lg transition-all duration-300 border-2 border-transparent hover:border-purple-200 overflow-hidden relative"
+                data-testid="card-payment-status"
+              >
                 <div className="absolute inset-0 bg-gradient-to-br from-purple-50 to-blue-50 opacity-0 group-hover:opacity-100 transition-opacity" />
                 <CardHeader className="relative">
                   <div className="flex items-center gap-3">
@@ -417,20 +503,29 @@ function ReportsDesktop() {
                 <CardContent className="space-y-3 relative">
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">Paid</span>
-                    <span className="font-semibold text-green-600">{summary?.paidTenants || 0} tenants</span>
+                    <span className="font-semibold text-green-600">
+                      {summary?.paidTenants || 0} tenants
+                    </span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">Pending</span>
-                    <span className="font-semibold text-orange-600">{summary?.pendingTenants || 0} tenants</span>
+                    <span className="font-semibold text-orange-600">
+                      {summary?.pendingTenants || 0} tenants
+                    </span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">Overdue</span>
-                    <span className="font-semibold text-red-600">0 tenants</span>
+                    <span className="font-semibold text-red-600">
+                      {summary?.overdueTenants || 0} tenants
+                    </span>
                   </div>
                 </CardContent>
               </Card>
 
-              <Card className="group hover:shadow-lg transition-all duration-300 border-2 border-transparent hover:border-purple-200 overflow-hidden relative" data-testid="card-recent-activity">
+              <Card
+                className="group hover:shadow-lg transition-all duration-300 border-2 border-transparent hover:border-purple-200 overflow-hidden relative"
+                data-testid="card-recent-activity"
+              >
                 <div className="absolute inset-0 bg-gradient-to-br from-purple-50 to-blue-50 opacity-0 group-hover:opacity-100 transition-opacity" />
                 <CardHeader className="relative">
                   <div className="flex items-center gap-3">
@@ -464,38 +559,67 @@ function ReportsDesktop() {
 }
 
 function ReportsMobile() {
-  const [selectedReport, setSelectedReport] = useState<ReportType>('revenue');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const [selectedReport, setSelectedReport] = useState<ReportType>("revenue");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [downloadingReport, setDownloadingReport] = useState(false);
   const { toast } = useToast();
 
-  // Fetch report summary
-  const { data: summary, isLoading: summaryLoading } = useQuery<ReportSummary>({
-    queryKey: ['report-summary'],
+  const { data: summary, isLoading: summaryLoading } = useQuery<ReportSummaryResponse>({
+    queryKey: ["report-summary"],
     queryFn: () => ownerService.getReportSummary(),
   });
 
-  // Fetch occupancy data
   const { data: occupancyData } = useQuery<OccupancyData>({
-    queryKey: ['report', 'occupancy'],
-    queryFn: () => ownerService.getReportByType('occupancy'),
+    queryKey: ["report", "occupancy"],
+    queryFn: () => ownerService.getReportByType("occupancy"),
   });
 
   const handleDownloadReport = async () => {
     setDownloadingReport(true);
     try {
       const reportData = await ownerService.getReportByType(selectedReport, startDate, endDate);
-      
-      const blob = new Blob([JSON.stringify(reportData, null, 2)], { type: 'application/json' });
-      const downloadUrl = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = downloadUrl;
-      a.download = `${selectedReport}-report-${Date.now()}.json`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(downloadUrl);
-      document.body.removeChild(a);
+
+      const doc = new jsPDF({ orientation: "landscape" });
+      doc.text(`${selectedReport.toUpperCase()} REPORT`, 14, 15);
+      let startY = 25;
+
+      const tableStyles = {
+        fontSize: 8,
+        cellPadding: 3,
+        overflow: 'linebreak' as const,
+      };
+      const headStyles = { fillColor: [147, 51, 234] };
+
+      if (Array.isArray(reportData) && reportData.length > 0) {
+        const headers = Object.keys(reportData[0]);
+        const body = reportData.map((obj: any) => headers.map((h) => String(obj[h] ?? "")));
+        autoTable(doc, { head: [headers], body, startY, styles: tableStyles, headStyles });
+      } else if (typeof reportData === "object" && reportData !== null) {
+        const data = reportData as any;
+        if (data.roomsBySharing) {
+          const headers = ["Sharing", "Total Rooms", "Occupied", "Vacant"];
+          const body = data.roomsBySharing.map((r: any) => [
+            String(r.sharing),
+            String(r.totalRooms),
+            String(r.occupiedRooms),
+            String(r.vacantRooms),
+          ]);
+          autoTable(doc, { head: [headers], body, startY, styles: tableStyles, headStyles });
+          startY = (doc as any).lastAutoTable.finalY + 10;
+        }
+
+        const summaryHeaders = ["Metric", "Value"];
+        const summaryBody = Object.entries(reportData)
+          .filter(([_, val]) => typeof val !== "object")
+          .map(([key, val]) => [key, String(val ?? "")]);
+
+        autoTable(doc, { head: [summaryHeaders], body: summaryBody, startY, styles: tableStyles, headStyles });
+      } else {
+        doc.text("No data available for this report.", 14, startY);
+      }
+
+      doc.save(`${selectedReport}-report-${Date.now()}.pdf`);
 
       toast({
         title: "Report Downloaded",
@@ -504,7 +628,10 @@ function ReportsMobile() {
     } catch (error: any) {
       toast({
         title: "Download Failed",
-        description: error.response?.data?.error || error.message || "Failed to download report. Please try again.",
+        description:
+          error.response?.data?.error ||
+          error.message ||
+          "Failed to download report. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -513,10 +640,10 @@ function ReportsMobile() {
   };
 
   return (
-    <MobileLayout 
+    <MobileLayout
       title="Reports"
       action={
-        <Button 
+        <Button
           size="sm"
           className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white h-9"
           onClick={handleDownloadReport}
@@ -540,7 +667,10 @@ function ReportsMobile() {
         ) : (
           <>
             <div className="grid grid-cols-2 gap-3">
-              <Card className="group hover:shadow-lg transition-all duration-300 border-2 border-transparent hover:border-purple-200 overflow-hidden relative" data-testid="card-stat-revenue-mobile">
+              <Card
+                className="group hover:shadow-lg transition-all duration-300 border-2 border-transparent hover:border-purple-200 overflow-hidden relative"
+                data-testid="card-stat-revenue-mobile"
+              >
                 <div className="absolute inset-0 bg-gradient-to-br from-purple-50 to-blue-50 opacity-0 group-hover:opacity-100 transition-opacity" />
                 <CardContent className="p-4 relative">
                   <div className="flex flex-col items-center justify-center text-center space-y-2">
@@ -549,7 +679,10 @@ function ReportsMobile() {
                     </div>
                     <div className="w-full">
                       <p className="text-xs font-medium text-muted-foreground mb-1">Total Revenue</p>
-                      <p className="text-xl font-bold bg-gradient-to-r from-emerald-600 to-green-600 bg-clip-text text-transparent" data-testid="stat-revenue-mobile">
+                      <p
+                        className="text-xl font-bold bg-gradient-to-r from-emerald-600 to-green-600 bg-clip-text text-transparent"
+                        data-testid="stat-revenue-mobile"
+                      >
                         ₹{((summary?.totalRevenue || 0) / 100000).toFixed(1)}L
                       </p>
                     </div>
@@ -557,7 +690,10 @@ function ReportsMobile() {
                 </CardContent>
               </Card>
 
-              <Card className="group hover:shadow-lg transition-all duration-300 border-2 border-transparent hover:border-purple-200 overflow-hidden relative" data-testid="card-stat-occupancy-mobile">
+              <Card
+                className="group hover:shadow-lg transition-all duration-300 border-2 border-transparent hover:border-purple-200 overflow-hidden relative"
+                data-testid="card-stat-occupancy-mobile"
+              >
                 <div className="absolute inset-0 bg-gradient-to-br from-purple-50 to-blue-50 opacity-0 group-hover:opacity-100 transition-opacity" />
                 <CardContent className="p-4 relative">
                   <div className="flex flex-col items-center justify-center text-center space-y-2">
@@ -566,16 +702,24 @@ function ReportsMobile() {
                     </div>
                     <div className="w-full">
                       <p className="text-xs font-medium text-muted-foreground mb-1">Occupancy</p>
-                      <p className="text-xl font-bold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent" data-testid="stat-occupancy-mobile">
-                        {summary?.occupancyRate.toFixed(0)}%
+                      <p
+                        className="text-xl font-bold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent"
+                        data-testid="stat-occupancy-mobile"
+                      >
+                        {summary?.occupancyRate?.toFixed(0) || 0}%
                       </p>
-                      <p className="text-[10px] text-muted-foreground">{summary?.occupiedRooms}/{summary?.totalRooms} rooms</p>
+                      <p className="text-[10px] text-muted-foreground">
+                        {summary?.occupiedRooms || 0}/{summary?.totalRooms || 0} rooms
+                      </p>
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
-              <Card className="group hover:shadow-lg transition-all duration-300 border-2 border-transparent hover:border-purple-200 overflow-hidden relative" data-testid="card-stat-avg-rent-mobile">
+              <Card
+                className="group hover:shadow-lg transition-all duration-300 border-2 border-transparent hover:border-purple-200 overflow-hidden relative"
+                data-testid="card-stat-avg-rent-mobile"
+              >
                 <div className="absolute inset-0 bg-gradient-to-br from-purple-50 to-blue-50 opacity-0 group-hover:opacity-100 transition-opacity" />
                 <CardContent className="p-4 relative">
                   <div className="flex flex-col items-center justify-center text-center space-y-2">
@@ -584,8 +728,11 @@ function ReportsMobile() {
                     </div>
                     <div className="w-full">
                       <p className="text-xs font-medium text-muted-foreground mb-1">Avg. Rent</p>
-                      <p className="text-xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent" data-testid="stat-avg-rent-mobile">
-                        ₹{summary?.averageRent.toFixed(0) || '0'}
+                      <p
+                        className="text-xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent"
+                        data-testid="stat-avg-rent-mobile"
+                      >
+                        ₹{summary?.averageRent?.toFixed(0) || "0"}
                       </p>
                       <p className="text-[10px] text-muted-foreground">Per room</p>
                     </div>
@@ -593,7 +740,10 @@ function ReportsMobile() {
                 </CardContent>
               </Card>
 
-              <Card className="group hover:shadow-lg transition-all duration-300 border-2 border-transparent hover:border-purple-200 overflow-hidden relative" data-testid="card-stat-dues-mobile">
+              <Card
+                className="group hover:shadow-lg transition-all duration-300 border-2 border-transparent hover:border-purple-200 overflow-hidden relative"
+                data-testid="card-stat-dues-mobile"
+              >
                 <div className="absolute inset-0 bg-gradient-to-br from-purple-50 to-blue-50 opacity-0 group-hover:opacity-100 transition-opacity" />
                 <CardContent className="p-4 relative">
                   <div className="flex flex-col items-center justify-center text-center space-y-2">
@@ -602,17 +752,26 @@ function ReportsMobile() {
                     </div>
                     <div className="w-full">
                       <p className="text-xs font-medium text-muted-foreground mb-1">Pending Dues</p>
-                      <p className="text-xl font-bold bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent" data-testid="stat-dues-mobile">
+                      <p
+                        className="text-xl font-bold bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent"
+                        data-testid="stat-dues-mobile"
+                      >
                         ₹{((summary?.pendingDues || 0) / 1000).toFixed(0)}K
                       </p>
-                      <p className="text-[10px] text-muted-foreground">{summary?.pendingTenants || 0} tenants</p>
+                      <p className="text-[10px] text-muted-foreground">
+                        {summary?.pendingTenants || 0} tenants
+                      </p>
                     </div>
                   </div>
                 </CardContent>
               </Card>
             </div>
 
-            <Card className="group hover:shadow-lg transition-all duration-300 border-2 border-transparent hover:border-purple-200 overflow-hidden relative" data-testid="card-report-generator-mobile">
+            {/* Report Generator */}
+            <Card
+              className="group hover:shadow-lg transition-all duration-300 border-2 border-transparent hover:border-purple-200 overflow-hidden relative"
+              data-testid="card-report-generator-mobile"
+            >
               <div className="absolute inset-0 bg-gradient-to-br from-purple-50 to-blue-50 opacity-0 group-hover:opacity-100 transition-opacity" />
               <CardHeader className="relative pb-3">
                 <div className="flex items-center gap-3">
@@ -625,7 +784,10 @@ function ReportsMobile() {
               <CardContent className="space-y-3 relative">
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Report Type</label>
-                  <Select value={selectedReport} onValueChange={(value: ReportType) => setSelectedReport(value)}>
+                  <Select
+                    value={selectedReport}
+                    onValueChange={(value: ReportType) => setSelectedReport(value)}
+                  >
                     <SelectTrigger data-testid="select-report-type-mobile">
                       <SelectValue />
                     </SelectTrigger>
@@ -659,7 +821,7 @@ function ReportsMobile() {
                     />
                   </div>
                 </div>
-                <Button 
+                <Button
                   className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white gap-2"
                   onClick={handleDownloadReport}
                   disabled={downloadingReport}
@@ -681,7 +843,10 @@ function ReportsMobile() {
             </Card>
 
             {/* Room Types */}
-            <Card className="group hover:shadow-lg transition-all duration-300 border-2 border-transparent hover:border-purple-200 overflow-hidden relative" data-testid="card-room-types-mobile">
+            <Card
+              className="group hover:shadow-lg transition-all duration-300 border-2 border-transparent hover:border-purple-200 overflow-hidden relative"
+              data-testid="card-room-types-mobile"
+            >
               <div className="absolute inset-0 bg-gradient-to-br from-purple-50 to-blue-50 opacity-0 group-hover:opacity-100 transition-opacity" />
               <CardHeader className="relative pb-3">
                 <div className="flex items-center gap-3">
@@ -693,20 +858,32 @@ function ReportsMobile() {
               </CardHeader>
               <CardContent className="space-y-2 relative">
                 {occupancyData?.roomsBySharing?.map((room, index) => (
-                  <div key={`room-mobile-${room.sharing}-${index}`} className="flex items-center justify-between text-sm">
+                  <div
+                    key={`room-mobile-${room.sharing}-${index}`}
+                    className="flex items-center justify-between text-sm"
+                  >
                     <span className="text-muted-foreground">
-                      {room.sharing === 1 ? 'Single' : `${room.sharing}-Sharing`}
+                      {room.sharing === 1 ? "Single" : `${room.sharing}-Sharing`}
                     </span>
                     <span className="font-semibold">{room.totalRooms} rooms</span>
                   </div>
                 )) || (
                   <p className="text-center text-muted-foreground text-sm py-2">No room data</p>
                 )}
+                <div className="pt-2 mt-2 border-t border-slate-100 flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground font-medium">Total Beds</span>
+                  <span className="font-semibold text-purple-700">
+                    {summary?.occupiedBeds || 0} / {summary?.totalBeds || 0} occupied
+                  </span>
+                </div>
               </CardContent>
             </Card>
 
             {/* Payment Status */}
-            <Card className="group hover:shadow-lg transition-all duration-300 border-2 border-transparent hover:border-purple-200 overflow-hidden relative" data-testid="card-payment-status-mobile">
+            <Card
+              className="group hover:shadow-lg transition-all duration-300 border-2 border-transparent hover:border-purple-200 overflow-hidden relative"
+              data-testid="card-payment-status-mobile"
+            >
               <div className="absolute inset-0 bg-gradient-to-br from-purple-50 to-blue-50 opacity-0 group-hover:opacity-100 transition-opacity" />
               <CardHeader className="relative pb-3">
                 <div className="flex items-center gap-3">
@@ -719,21 +896,30 @@ function ReportsMobile() {
               <CardContent className="space-y-2 relative">
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Paid</span>
-                  <span className="font-semibold text-green-600">{summary?.paidTenants || 0} tenants</span>
+                  <span className="font-semibold text-green-600">
+                    {summary?.paidTenants || 0} tenants
+                  </span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Pending</span>
-                  <span className="font-semibold text-orange-600">{summary?.pendingTenants || 0} tenants</span>
+                  <span className="font-semibold text-orange-600">
+                    {summary?.pendingTenants || 0} tenants
+                  </span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Overdue</span>
-                  <span className="font-semibold text-red-600">0 tenants</span>
+                  <span className="font-semibold text-red-600">
+                    {summary?.overdueTenants || 0} tenants
+                  </span>
                 </div>
               </CardContent>
             </Card>
 
             {/* This Month */}
-            <Card className="group hover:shadow-lg transition-all duration-300 border-2 border-transparent hover:border-purple-200 overflow-hidden relative" data-testid="card-this-month-mobile">
+            <Card
+              className="group hover:shadow-lg transition-all duration-300 border-2 border-transparent hover:border-purple-200 overflow-hidden relative"
+              data-testid="card-this-month-mobile"
+            >
               <div className="absolute inset-0 bg-gradient-to-br from-purple-50 to-blue-50 opacity-0 group-hover:opacity-100 transition-opacity" />
               <CardHeader className="relative pb-3">
                 <div className="flex items-center gap-3">
