@@ -3,7 +3,7 @@ import { useLocation } from "wouter";
 import { Users, Building2, TrendingUp, Lock, Download } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query"; // Added
-import { api } from "@/apiClient"; // Added
+import { authService } from "@/services/authService";
 
 export default function Home() {
   const [, navigate] = useLocation();
@@ -14,8 +14,8 @@ export default function Home() {
     queryKey: ["/api/auth/me"],
     queryFn: async () => {
       try {
-        const res = await api.get("/api/auth/me");
-        return res.data;
+        const data = await authService.getCurrentUser();
+        return data;
       } catch (err) {
         return null; // Return null if not logged in (401 error)
       }

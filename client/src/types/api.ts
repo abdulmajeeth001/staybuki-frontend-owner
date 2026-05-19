@@ -857,6 +857,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auth/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["refreshToken"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/auth/logout": {
         parameters: {
             query?: never;
@@ -2536,6 +2552,14 @@ export interface components {
             endpoint?: string;
             keys?: components["schemas"]["Keys"];
         };
+        ApiResponsePushSubscriptionResponseDto: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["PushSubscriptionResponseDto"];
+            /** Format: date-time */
+            timestamp?: string;
+            errorCode?: string;
+        };
         PushSubscriptionResponseDto: {
             /** Format: int64 */
             id?: number;
@@ -3075,6 +3099,14 @@ export interface components {
             /** Format: int32 */
             occupancyRate?: number;
         };
+        ApiResponseListNotificationPayload: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["NotificationPayload"][];
+            /** Format: date-time */
+            timestamp?: string;
+            errorCode?: string;
+        };
         NotificationPayload: {
             /** Format: int32 */
             id?: number;
@@ -3090,6 +3122,26 @@ export interface components {
             url?: string;
             /** Format: date-time */
             createdAt?: string;
+        };
+        ApiResponseMapStringString: {
+            success?: boolean;
+            message?: string;
+            data?: {
+                [key: string]: string;
+            };
+            /** Format: date-time */
+            timestamp?: string;
+            errorCode?: string;
+        };
+        ApiResponseMapStringLong: {
+            success?: boolean;
+            message?: string;
+            data?: {
+                [key: string]: number;
+            };
+            /** Format: date-time */
+            timestamp?: string;
+            errorCode?: string;
         };
         ApiResponseListFoodMenuResponseDto: {
             success?: boolean;
@@ -4607,7 +4659,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "*/*": components["schemas"]["ApiResponseVoid"];
+                };
             };
         };
     };
@@ -4630,7 +4684,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["PushSubscriptionResponseDto"];
+                    "*/*": components["schemas"]["ApiResponsePushSubscriptionResponseDto"];
                 };
             };
         };
@@ -4649,7 +4703,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "*/*": components["schemas"]["ApiResponseVoid"];
+                };
             };
         };
     };
@@ -4957,6 +5013,28 @@ export interface operations {
                 };
             };
         };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": Record<string, never>;
+                };
+            };
+        };
+    };
+    refreshToken: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                refreshToken?: string;
+            };
+        };
+        requestBody?: never;
         responses: {
             /** @description OK */
             200: {
@@ -5952,7 +6030,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["NotificationPayload"][];
+                    "*/*": components["schemas"]["ApiResponseListNotificationPayload"];
                 };
             };
         };
@@ -5972,9 +6050,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": {
-                        [key: string]: string;
-                    };
+                    "*/*": components["schemas"]["ApiResponseMapStringString"];
                 };
             };
         };
@@ -5994,9 +6070,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": {
-                        [key: string]: number;
-                    };
+                    "*/*": components["schemas"]["ApiResponseMapStringLong"];
                 };
             };
         };

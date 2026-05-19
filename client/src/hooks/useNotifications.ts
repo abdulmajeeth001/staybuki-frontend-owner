@@ -1,18 +1,8 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { api } from "@/apiClient";
-
-export type Notification = {
-  id: number;
-  userId: number;
-  title: string;
-  message: string;
-  type: string;
-  referenceId: number | null;
-  isRead: boolean;
-  createdAt: string;
-};
+import { ownerService } from "@/services/ownerService";
+import type { NotificationResponse } from "@/types/owner";
 
 export function useNotifications() {
   const queryClient = useQueryClient();
@@ -31,15 +21,15 @@ export function useNotifications() {
   });
 
   // Fetch notifications
-  const { data: notifications = [], isLoading } = useQuery<Notification[]>({
+  const { data: notifications = [], isLoading } = useQuery<NotificationResponse[]>({
     queryKey: ["notifications"],
     queryFn: async () => {
       try {
-        const response = await api.get("/api/notifications");
+        const data = await ownerService.getNotifications();
         // Normalize notification type to lowercase
-        return response.data.map((n: any) => ({ ...n, type: n.type.toLowerCase() }));
+        return data.map((n: any) => ({ ...n, type: n.type?.toLowerCase() || "" }));
       } catch (err: any) {
-        throw new Error(err.response?.data?.error || err.message || "Failed to fetch notifications");
+        throw new Error(err.message || "Failed to fetch notifications");
       }
     },
     staleTime: 30000, // Data stays fresh for 30 seconds
@@ -51,10 +41,9 @@ export function useNotifications() {
     queryKey: ["notifications", "unread-count"],
     queryFn: async () => {
       try {
-        const response = await api.get("/api/notifications/unread-count");
-        return response.data;
+        return await ownerService.getUnreadNotificationCount();
       } catch (err: any) {
-        throw new Error(err.response?.data?.error || err.message || "Failed to fetch unread count");
+        throw new Error(err.message || "Failed to fetch unread count");
       }
     },
     staleTime: 30000, // Data stays fresh for 30 seconds
@@ -145,7 +134,7 @@ export function useNotifications() {
   // Mark notification as read
   const markAsRead = useCallback(async (id: number) => {
     try {
-      await api.post(`/api/notifications/${id}/read`);
+      await ownerService.markNotificationAsRead(id);
       
       queryClient.invalidateQueries({ queryKey: ["notifications"] });
       queryClient.invalidateQueries({ queryKey: ["notifications", "unread-count"] });
@@ -160,15 +149,15 @@ export function useNotifications() {
 
     // Initialize on first load
     if (lastNotificationId === null) {
-      const latestId = Math.max(...notifications.map(n => n.id));
+      const latestId = notifications.length > 0 ? Math.max(...notifications.map(n => n.id || 0)) : 0;
       setLastNotificationId(latestId);
       return;
     }
 
     // Find all new notifications (not just the first one)
     const newNotifications = notifications
-      .filter(n => n.id > lastNotificationId)
-      .sort((a, b) => a.id - b.id); // Show oldest new notification first
+      .filter(n => (n.id || 0) > lastNotificationId)
+      .sort((a, b) => (a.id || 0) - (b.id || 0)); // Show oldest new notification first
 
     if (newNotifications.length > 0) {
       // Show toast for each new notification
@@ -180,7 +169,7 @@ export function useNotifications() {
       });
 
       // Update last seen ID to the newest
-      const latestId = Math.max(...newNotifications.map(n => n.id));
+      const latestId = Math.max(...newNotifications.map(n => n.id || 0));
       setLastNotificationId(Math.max(lastNotificationId, latestId));
     }
   }, [notifications, lastNotificationId]);
@@ -237,8 +226,8 @@ export function useNotifications() {
       // Fetch VAPID public key from server
       let publicKey;
       try {
-        const vapidResponse = await api.get("/api/notifications/vapid-public-key");
-        publicKey = vapidResponse.data.publicKey;
+        const vapidResponse = await ownerService.getVapidPublicKey();
+        publicKey = vapidResponse.publicKey;
       } catch (error) {
         console.log("[Push Subscribe] VAPID key not available from server");
         toast.error("Push notifications are not enabled on this server.");
@@ -262,7 +251,7 @@ export function useNotifications() {
 
         // Send subscription to server
         try {
-          await api.post("/api/notifications/subscribe", {
+          await ownerService.subscribeToPushNotifications({
             endpoint: subscription.endpoint,
             keys: {
               p256dh: arrayBufferToBase64(subscription.getKey("p256dh")),

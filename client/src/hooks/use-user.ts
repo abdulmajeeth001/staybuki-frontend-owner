@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { api } from "@/apiClient";
+import { authService } from "@/services/authService";
 
 export interface TenantProfile {
   tenantId: number | null;
@@ -23,10 +23,10 @@ export function useUser() {
     queryKey: ["current-user"],
     queryFn: async () => {
       try {
-        const res = await api.get("/api/auth/me");
-        return res.data;
+        const data = await authService.getCurrentUser();
+        return data;
       } catch (err: any) {
-        if (err.response?.status === 401) {
+        if (err.response?.status === 401 || err.response?.status === 403) {
           return null;
         }
         throw new Error(err.response?.data?.error || err.message || "Failed to fetch user");

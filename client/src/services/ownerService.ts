@@ -33,6 +33,9 @@ import {
   ComplaintResponse,
   ComplaintRequest,
   ReportSummaryResponse,
+  NotificationResponse,
+  PushSubscriptionRequest,
+  PushSubscriptionResponse,
 } from "@/types/owner";
 
 export const ownerService = {
@@ -482,6 +485,46 @@ export const ownerService = {
     const url = `/api/reports/${type}${queryString ? `?${queryString}` : ''}`;
     
     const response = await api.get<ApiResponse<any> | any>(url);
+    return (response.data as any).data !== undefined ? (response.data as any).data : response.data;
+  },
+
+  async getNotifications(): Promise<NotificationResponse[]> {
+    const response = await api.get<ApiResponse<NotificationResponse[]> | NotificationResponse[]>("/api/notifications");
+    const data = (response.data as any).data !== undefined ? (response.data as any).data : response.data;
+    return Array.isArray(data) ? data : [];
+  },
+
+  async markNotificationAsRead(id: number): Promise<void> {
+    const response = await api.post<ApiResponse<void>>(`/api/notifications/${id}/read`);
+    if (response.data && (response.data as any).success === false) {
+      throw new Error((response.data as any).error || (response.data as any).message || "Failed to mark notification as read");
+    }
+  },
+
+  async markAllNotificationsAsRead(): Promise<void> {
+    const response = await api.post<ApiResponse<void>>("/api/notifications/mark-all-read");
+    if (response.data && (response.data as any).success === false) {
+      throw new Error((response.data as any).error || (response.data as any).message || "Failed to mark all notifications as read");
+    }
+  },
+
+  async getUnreadNotificationCount(): Promise<{ count: number }> {
+    const response = await api.get<ApiResponse<{ count: number }> | { count: number }>("/api/notifications/unread-count");
+    const data = (response.data as any).data !== undefined ? (response.data as any).data : response.data;
+    return { count: typeof data === "number" ? data : (data.count || 0) };
+  },
+
+  async getVapidPublicKey(): Promise<{ publicKey: string }> {
+    const response = await api.get<ApiResponse<{ publicKey: string }> | { publicKey: string }>("/api/notifications/vapid-public-key");
+    const data = (response.data as any).data !== undefined ? (response.data as any).data : response.data;
+    return { publicKey: data.publicKey || data };
+  },
+
+  async subscribeToPushNotifications(payload: PushSubscriptionRequest): Promise<PushSubscriptionResponse> {
+    const response = await api.post<ApiResponse<PushSubscriptionResponse> | PushSubscriptionResponse>("/api/notifications/subscribe", payload);
+    if (response.data && (response.data as any).success === false) {
+      throw new Error((response.data as any).error || (response.data as any).message || "Failed to subscribe to push notifications");
+    }
     return (response.data as any).data !== undefined ? (response.data as any).data : response.data;
   },
 };

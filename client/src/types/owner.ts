@@ -28,6 +28,9 @@ export type PgProfileRequest = components["schemas"]["PgProfileRequestDto"];
 export type ComplaintResponse = components["schemas"]["ComplaintResponseDto"];
 export type ComplaintRequest = components["schemas"]["ComplaintRequestDto"];
 export type ReportSummaryResponse = components["schemas"]["ReportSummaryDto"];
+export type NotificationResponse = components["schemas"]["NotificationPayload"] & { isRead?: boolean };
+export type PushSubscriptionRequest = components["schemas"]["PushSubscriptionRequestDto"];
+export type PushSubscriptionResponse = components["schemas"]["PushSubscriptionResponseDto"];
 
 // Payloads for mutations
 export type ApproveOnboardingRequestPayload = {

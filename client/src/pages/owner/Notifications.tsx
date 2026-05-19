@@ -21,19 +21,8 @@ import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from "date-fns";
 import { useLocation } from "wouter";
 import { useUser } from "@/hooks/use-user";
-import { api } from "@/apiClient";
-
-interface Notification {
-  id: number;
-  userId: number;
-  pgId: number | null;
-  title: string;
-  message: string;
-  type: string;
-  referenceId: number | null;
-  isRead: boolean;
-  createdAt: string;
-}
+import { ownerService } from "@/services/ownerService";
+import type { NotificationResponse } from "@/types/owner";
 
 export default function Notifications() {
   return (
@@ -56,15 +45,10 @@ function NotificationsDesktop() {
   const { user } = useUser();
 
   // Fetch notifications with real-time updates
-  const { data: notifications = [], isLoading } = useQuery<Notification[]>({
+  const { data: notifications = [], isLoading } = useQuery<NotificationResponse[]>({
     queryKey: ["notifications"],
     queryFn: async () => {
-      try {
-        const response = await api.get("/api/notifications");
-        return response.data;
-      } catch (error: any) {
-        throw new Error(error.response?.data?.error || error.message || "Failed to fetch notifications");
-      }
+      return await ownerService.getNotifications();
     },
     staleTime: 15000, // Data stays fresh for 15 seconds
     refetchInterval: 30000, // Refresh every 30 seconds for near real-time data
@@ -73,8 +57,7 @@ function NotificationsDesktop() {
   // Mark single notification as read
   const markAsReadMutation = useMutation({
     mutationFn: async (notificationId: number) => {
-      const response = await api.post(`/api/notifications/${notificationId}/read`);
-      return response.data;
+      await ownerService.markNotificationAsRead(notificationId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["notifications"] });
@@ -85,8 +68,7 @@ function NotificationsDesktop() {
   // Mark all notifications as read
   const markAllAsReadMutation = useMutation({
     mutationFn: async () => {
-      const response = await api.post("/api/notifications/mark-all-read");
-      return response.data;
+      await ownerService.markAllNotificationsAsRead();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["notifications"] });
@@ -129,7 +111,7 @@ function NotificationsDesktop() {
     markAllAsReadMutation.mutate();
   };
 
-  const handleNotificationClick = (notification: Notification) => {
+  const handleNotificationClick = (notification: NotificationResponse) => {
     // Mark as read if not already read
     if (!notification.isRead) {
       markAsRead(notification.id);
@@ -439,15 +421,10 @@ function NotificationsMobile() {
   const { user } = useUser();
 
   // Fetch notifications with real-time updates
-  const { data: notifications = [], isLoading } = useQuery<Notification[]>({
+  const { data: notifications = [], isLoading } = useQuery<NotificationResponse[]>({
     queryKey: ["notifications"],
     queryFn: async () => {
-      try {
-        const response = await api.get("/api/notifications");
-        return response.data;
-      } catch (error: any) {
-        throw new Error(error.response?.data?.error || error.message || "Failed to fetch notifications");
-      }
+      return await ownerService.getNotifications();
     },
     staleTime: 15000, // Data stays fresh for 15 seconds
     refetchInterval: 30000, // Refresh every 30 seconds for near real-time data
@@ -456,8 +433,7 @@ function NotificationsMobile() {
   // Mark single notification as read
   const markAsReadMutation = useMutation({
     mutationFn: async (notificationId: number) => {
-      const response = await api.post(`/api/notifications/${notificationId}/read`);
-      return response.data;
+      await ownerService.markNotificationAsRead(notificationId);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["notifications"] });
@@ -468,8 +444,7 @@ function NotificationsMobile() {
   // Mark all notifications as read
   const markAllAsReadMutation = useMutation({
     mutationFn: async () => {
-      const response = await api.post("/api/notifications/mark-all-read");
-      return response.data;
+      await ownerService.markAllNotificationsAsRead();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["notifications"] });
@@ -511,7 +486,7 @@ function NotificationsMobile() {
     markAllAsReadMutation.mutate();
   };
 
-  const handleNotificationClick = (notification: Notification) => {
+  const handleNotificationClick = (notification: NotificationResponse) => {
     // Mark as read if not already read
     if (!notification.isRead) {
       markAsRead(notification.id);

@@ -25,6 +25,14 @@ export const authService = {
   },
 
   /**
+   * Get current authenticated user
+   */
+  getCurrentUser: async (config?: any) => {
+    const { data } = await api.get("/api/auth/me", config);
+    return data;
+  },
+
+  /**
    * Refresh access token
    */
   refreshToken: async () => {

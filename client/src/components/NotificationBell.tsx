@@ -16,7 +16,7 @@ import { formatDistanceToNow } from "date-fns";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useUser } from "@/hooks/use-user";
-import { api } from "@/apiClient";
+import { ownerService } from "@/services/ownerService";
 
 export function NotificationBell() {
   const { notifications, unreadCount, markAsRead, requestPermission, hasActiveSubscription, isPushAvailable, debugInfo } = useNotifications();
@@ -85,8 +85,7 @@ export function NotificationBell() {
   // Mark all notifications as read
   const markAllAsReadMutation = useMutation({
     mutationFn: async () => {
-      const response = await api.post("/api/notifications/mark-all-read");
-      return response.data;
+      await ownerService.markAllNotificationsAsRead();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["notifications"] });
