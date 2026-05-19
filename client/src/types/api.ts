@@ -2922,13 +2922,26 @@ export interface components {
             status?: string;
             onboardingStatus?: string;
         };
-        ApiResponseObject: {
+        ApiResponseDynamicReportResponseDto: {
             success?: boolean;
             message?: string;
-            data?: Record<string, never>;
+            data?: components["schemas"]["DynamicReportResponseDto"];
             /** Format: date-time */
             timestamp?: string;
             errorCode?: string;
+        };
+        DynamicReportResponseDto: {
+            title?: string;
+            reportData?: {
+                [key: string]: Record<string, never>;
+            };
+            reportHeaders?: {
+                [key: string]: components["schemas"]["ReportColumnDto"][];
+            };
+        };
+        ReportColumnDto: {
+            key?: string;
+            label?: string;
         };
         ApiResponseReportSummaryDto: {
             success?: boolean;
@@ -5714,7 +5727,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseObject"];
+                    "*/*": components["schemas"]["ApiResponseDynamicReportResponseDto"];
                 };
             };
         };

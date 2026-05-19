@@ -75,20 +75,29 @@ function ReportsDesktop() {
 
   const { data: summary, isLoading: summaryLoading } = useQuery<ReportSummaryResponse>({
     queryKey: ["report-summary"],
-    queryFn: () => ownerService.getReportSummary(),
+    queryFn: async () => {
+      const res = await ownerService.getReportSummary();
+      return res?.success !== undefined && res?.data !== undefined ? res.data : res;
+    },
   });
 
   const { data: revenueData, isLoading: revenueLoading } = useQuery<RevenueData[]>({
     queryKey: ["report", "revenue"],
     queryFn: async () => {
-      const data = await ownerService.getReportByType("revenue");
+      const response = await ownerService.getReportByType("revenue");
+      let data = response?.success !== undefined && response?.data !== undefined ? response.data : response;
+      data = data?.reportData?.["revenue"] ?? data?.data ?? data;
       return Array.isArray(data) ? data : [];
     },
   });
 
   const { data: occupancyData } = useQuery<OccupancyData>({
     queryKey: ["report", "occupancy"],
-    queryFn: () => ownerService.getReportByType("occupancy"),
+    queryFn: async () => {
+      const response = await ownerService.getReportByType("occupancy");
+      let data = response?.success !== undefined && response?.data !== undefined ? response.data : response;
+      return data?.reportData?.["occupancy"] ?? data?.data ?? data;
+    },
   });
 
   const handleDownloadReport = async () => {
@@ -97,7 +106,50 @@ function ReportsDesktop() {
       const reportData = await ownerService.getReportByType(selectedReport, startDate, endDate);
 
       const doc = new jsPDF({ orientation: "landscape" });
-      doc.text(`${selectedReport.toUpperCase()} REPORT`, 14, 15);
+
+      let reportTitleStr = `${selectedReport.toUpperCase().replace("-", " ")} REPORT`;
+      let isDynamic = false;
+      let dynamicHeaders: string[] = [];
+      let dynamicBody: any[][] = [];
+      
+      let rawData = reportData;
+      if (rawData?.success !== undefined && rawData?.data) {
+        rawData = rawData.data;
+      }
+      let actualData = rawData;
+
+      // Check if response matches the DynamicReportResponseDto structure
+      if (rawData && typeof rawData === 'object' && !Array.isArray(rawData)) {
+          if (rawData.reportTitle || rawData.title) {
+              reportTitleStr = rawData.reportTitle || rawData.title;
+          }
+          if (rawData.reportData) {
+             actualData = rawData.reportData[selectedReport] ?? rawData.reportData;
+          } else if (rawData.data !== undefined) {
+             actualData = rawData.data;
+          }
+          
+          const headersData = rawData.reportHeaders?.[selectedReport] ?? rawData.reportHeaders ?? rawData.columns;
+          if (headersData && Array.isArray(headersData) && headersData.length > 0) {
+              isDynamic = true;
+              dynamicHeaders = headersData.map((c: any) => c.label || c.title || c.headerName || c.header || c.name || "Column");
+              const keys = headersData.map((c: any) => c.key || c.field || c.id || c.name);
+              
+              const rowData = Array.isArray(actualData) ? actualData : [];
+              dynamicBody = rowData.map((row: any) => 
+                  keys.map((k: string) => {
+                      const val = row[k];
+                      if (val === null || val === undefined) return "-";
+                      if ((k.toLowerCase().includes("date") || k.toLowerCase().includes("at")) && typeof val === "string" && val.includes("T")) {
+                          try { return new Date(val).toLocaleDateString(); } catch (e) {}
+                      }
+                      return String(val);
+                  })
+              );
+          }
+      }
+
+      doc.text(reportTitleStr, 14, 15);
       let startY = 25;
 
       const tableStyles = {
@@ -107,32 +159,42 @@ function ReportsDesktop() {
       };
       const headStyles = { fillColor: [147, 51, 234] };
 
-      if (Array.isArray(reportData) && reportData.length > 0) {
-        const headers = Object.keys(reportData[0]);
-        const body = reportData.map((obj: any) => headers.map((h) => String(obj[h] ?? "")));
-        autoTable(doc, { head: [headers], body, startY, styles: tableStyles, headStyles });
-      } else if (typeof reportData === "object" && reportData !== null) {
-        const data = reportData as any;
+      let headers: string[] = isDynamic ? dynamicHeaders : [];
+      let body: any[][] = isDynamic ? dynamicBody : [];
+
+      if (selectedReport === "occupancy" && !isDynamic) {
+        const data = actualData as any;
         if (data.roomsBySharing) {
-          const headers = ["Sharing", "Total Rooms", "Occupied", "Vacant"];
-          const body = data.roomsBySharing.map((r: any) => [
+          const occHeaders = ["Sharing", "Total Rooms", "Occupied", "Vacant"];
+          const occBody = data.roomsBySharing.map((r: any) => [
             String(r.sharing),
             String(r.totalRooms),
             String(r.occupiedRooms),
             String(r.vacantRooms),
           ]);
-          autoTable(doc, { head: [headers], body, startY, styles: tableStyles, headStyles });
+          autoTable(doc, { head: [occHeaders], body: occBody, startY, styles: tableStyles, headStyles });
           startY = (doc as any).lastAutoTable.finalY + 10;
         }
 
-        const summaryHeaders = ["Metric", "Value"];
-        const summaryBody = Object.entries(reportData)
-          .filter(([_, val]) => typeof val !== "object")
-          .map(([key, val]) => [key, String(val ?? "")]);
-
-        autoTable(doc, { head: [summaryHeaders], body: summaryBody, startY, styles: tableStyles, headStyles });
+        if (data) {
+          const summaryHeaders = ["Metric", "Value"];
+          const summaryBody = Object.entries(data)
+            .filter(([_, val]) => typeof val !== "object" && !Array.isArray(val))
+            .map(([key, val]) => {
+              const formattedKey = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+              return [formattedKey, String(val ?? "")];
+            });
+  
+          autoTable(doc, { head: [summaryHeaders], body: summaryBody, startY, styles: tableStyles, headStyles });
+        } else {
+           doc.text("No data available for this report.", 14, startY);
+        }
       } else {
-        doc.text("No data available for this report.", 14, startY);
+        if (body.length > 0) {
+          autoTable(doc, { head: [headers], body, startY, styles: tableStyles, headStyles });
+        } else {
+          doc.text("No data available for this report.", 14, startY);
+        }
       }
 
       doc.save(`${selectedReport}-report-${Date.now()}.pdf`);
@@ -157,11 +219,22 @@ function ReportsDesktop() {
 
   const safeRevenueData = Array.isArray(revenueData) ? revenueData : [];
   const revenueChartData = safeRevenueData.slice(-6).map((item) => {
-    const maxAmount = Math.max(...safeRevenueData.map((d) => d.totalAmount), 1);
-    const percentage = (item.totalAmount / maxAmount) * 100;
+    const maxAmount = Math.max(...safeRevenueData.map((d) => d.totalAmount ?? d.totalRevenue ?? 0), 1);
+    const amount = item.totalAmount ?? item.totalRevenue ?? 0;
+    const percentage = (amount / maxAmount) * 100;
+    const monthStr = item.month ?? item.paymentMonth ?? "";
+    
+    let monthLabel = monthStr.split("-")[1] || monthStr;
+    try {
+      if (monthStr.includes("-")) {
+        const date = new Date(monthStr + "-01T00:00:00");
+        monthLabel = date.toLocaleDateString("en-US", { month: "short" });
+      }
+    } catch (e) {}
+
     return {
-      month: item.month?.split("-")[1] || "",
-      value: item.totalAmount,
+      month: monthLabel,
+      value: amount,
       percentage: Math.min(percentage, 100),
     };
   });
@@ -567,12 +640,19 @@ function ReportsMobile() {
 
   const { data: summary, isLoading: summaryLoading } = useQuery<ReportSummaryResponse>({
     queryKey: ["report-summary"],
-    queryFn: () => ownerService.getReportSummary(),
+    queryFn: async () => {
+      const res = await ownerService.getReportSummary();
+      return res?.success !== undefined && res?.data !== undefined ? res.data : res;
+    },
   });
 
   const { data: occupancyData } = useQuery<OccupancyData>({
     queryKey: ["report", "occupancy"],
-    queryFn: () => ownerService.getReportByType("occupancy"),
+    queryFn: async () => {
+      const response = await ownerService.getReportByType("occupancy");
+      let data = response?.success !== undefined && response?.data !== undefined ? response.data : response;
+      return data?.reportData?.["occupancy"] ?? data?.data ?? data;
+    },
   });
 
   const handleDownloadReport = async () => {
@@ -581,7 +661,50 @@ function ReportsMobile() {
       const reportData = await ownerService.getReportByType(selectedReport, startDate, endDate);
 
       const doc = new jsPDF({ orientation: "landscape" });
-      doc.text(`${selectedReport.toUpperCase()} REPORT`, 14, 15);
+
+      let reportTitleStr = `${selectedReport.toUpperCase().replace("-", " ")} REPORT`;
+      let isDynamic = false;
+      let dynamicHeaders: string[] = [];
+      let dynamicBody: any[][] = [];
+      
+      let rawData = reportData;
+      if (rawData?.success !== undefined && rawData?.data) {
+        rawData = rawData.data;
+      }
+      let actualData = rawData;
+
+      // Check if response matches the DynamicReportResponseDto structure
+      if (rawData && typeof rawData === 'object' && !Array.isArray(rawData)) {
+          if (rawData.reportTitle || rawData.title) {
+              reportTitleStr = rawData.reportTitle || rawData.title;
+          }
+          if (rawData.reportData) {
+             actualData = rawData.reportData[selectedReport] ?? rawData.reportData;
+          } else if (rawData.data !== undefined) {
+             actualData = rawData.data;
+          }
+          
+          const headersData = rawData.reportHeaders?.[selectedReport] ?? rawData.reportHeaders ?? rawData.columns;
+          if (headersData && Array.isArray(headersData) && headersData.length > 0) {
+              isDynamic = true;
+              dynamicHeaders = headersData.map((c: any) => c.label || c.title || c.headerName || c.header || c.name || "Column");
+              const keys = headersData.map((c: any) => c.key || c.field || c.id || c.name);
+              
+              const rowData = Array.isArray(actualData) ? actualData : [];
+              dynamicBody = rowData.map((row: any) => 
+                  keys.map((k: string) => {
+                      const val = row[k];
+                      if (val === null || val === undefined) return "-";
+                      if ((k.toLowerCase().includes("date") || k.toLowerCase().includes("at")) && typeof val === "string" && val.includes("T")) {
+                          try { return new Date(val).toLocaleDateString(); } catch (e) {}
+                      }
+                      return String(val);
+                  })
+              );
+          }
+      }
+
+      doc.text(reportTitleStr, 14, 15);
       let startY = 25;
 
       const tableStyles = {
@@ -591,32 +714,42 @@ function ReportsMobile() {
       };
       const headStyles = { fillColor: [147, 51, 234] };
 
-      if (Array.isArray(reportData) && reportData.length > 0) {
-        const headers = Object.keys(reportData[0]);
-        const body = reportData.map((obj: any) => headers.map((h) => String(obj[h] ?? "")));
-        autoTable(doc, { head: [headers], body, startY, styles: tableStyles, headStyles });
-      } else if (typeof reportData === "object" && reportData !== null) {
-        const data = reportData as any;
+      let headers: string[] = isDynamic ? dynamicHeaders : [];
+      let body: any[][] = isDynamic ? dynamicBody : [];
+
+      if (selectedReport === "occupancy" && !isDynamic) {
+        const data = actualData as any;
         if (data.roomsBySharing) {
-          const headers = ["Sharing", "Total Rooms", "Occupied", "Vacant"];
-          const body = data.roomsBySharing.map((r: any) => [
+          const occHeaders = ["Sharing", "Total Rooms", "Occupied", "Vacant"];
+          const occBody = data.roomsBySharing.map((r: any) => [
             String(r.sharing),
             String(r.totalRooms),
             String(r.occupiedRooms),
             String(r.vacantRooms),
           ]);
-          autoTable(doc, { head: [headers], body, startY, styles: tableStyles, headStyles });
+          autoTable(doc, { head: [occHeaders], body: occBody, startY, styles: tableStyles, headStyles });
           startY = (doc as any).lastAutoTable.finalY + 10;
         }
 
-        const summaryHeaders = ["Metric", "Value"];
-        const summaryBody = Object.entries(reportData)
-          .filter(([_, val]) => typeof val !== "object")
-          .map(([key, val]) => [key, String(val ?? "")]);
-
-        autoTable(doc, { head: [summaryHeaders], body: summaryBody, startY, styles: tableStyles, headStyles });
+        if (data) {
+          const summaryHeaders = ["Metric", "Value"];
+          const summaryBody = Object.entries(data)
+            .filter(([_, val]) => typeof val !== "object" && !Array.isArray(val))
+            .map(([key, val]) => {
+              const formattedKey = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+              return [formattedKey, String(val ?? "")];
+            });
+  
+          autoTable(doc, { head: [summaryHeaders], body: summaryBody, startY, styles: tableStyles, headStyles });
+        } else {
+           doc.text("No data available for this report.", 14, startY);
+        }
       } else {
-        doc.text("No data available for this report.", 14, startY);
+        if (body.length > 0) {
+          autoTable(doc, { head: [headers], body, startY, styles: tableStyles, headStyles });
+        } else {
+          doc.text("No data available for this report.", 14, startY);
+        }
       }
 
       doc.save(`${selectedReport}-report-${Date.now()}.pdf`);
