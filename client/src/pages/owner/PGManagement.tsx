@@ -37,15 +37,10 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { api } from "@/apiClient";
-
-interface Amenity {
-  id: number;
-  name: string;
-  category: string;
-  requiresCertificate: boolean;
-  isActive: boolean;
-}
+import { useQuery } from "@tanstack/react-query";
+import { applicantService } from "@/services/applicantService";
+import { ownerService } from "@/services/ownerService";
+import type { AmenityResponse } from "@/types/applicant";
 
 export default function PGManagement() {
   const { pg: currentPg, allPgs, selectPG, createPG, updatePG, deletePG, setPrimaryPG, isLoading, isAllPgsLoading } = usePG();
@@ -54,12 +49,11 @@ export default function PGManagement() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedPg, setSelectedPg] = useState<PG | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [amenities, setAmenities] = useState<Amenity[]>([]);
   const [registrationFile, setRegistrationFile] = useState<File | null>(null);
   const [fssaiFile, setFssaiFile] = useState<File | null>(null);
   const [pgImageFile, setPgImageFile] = useState<File | string | null>(null);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
-  const [detailsPgAmenities, setDetailsPgAmenities] = useState<Amenity[]>([]);
+  const [detailsPgAmenities, setDetailsPgAmenities] = useState<AmenityResponse[]>([]);
 
   const [formData, setFormData] = useState({
     pgName: "",
@@ -76,19 +70,14 @@ export default function PGManagement() {
     amenityIds: [] as number[],
   });
 
-  // Fetch amenities on mount
-  useEffect(() => {
-    const fetchAmenities = async () => {
-      try {
-        const response = await api.get("api/amenities");
-        setAmenities(response.data.filter((a: Amenity) => a.isActive));
-      } catch (error: any) {
-        console.error("Failed to fetch amenities:", error);
-        toast.error(error.response?.data?.error || "Failed to load amenities");
-      }
-    };
-    fetchAmenities();
-  }, []);
+  const { data: amenities = [] } = useQuery<AmenityResponse[]>({
+    queryKey: ["amenities", "active"],
+    queryFn: async () => {
+      const data = await applicantService.getAmenities(true);
+      return data;
+    },
+    staleTime: 1000 * 60 * 30, // 30 minutes
+  });
 
   const resetForm = () => {
     setFormData({
@@ -193,8 +182,7 @@ export default function PGManagement() {
     
     // Fetch amenities for this PG
     try {
-      const response = await api.get(`/api/pgAmenities/${pg.id}`);
-      const pgAmenities = response.data;
+      const pgAmenities = await ownerService.getPgAmenities(pg.id);
       const amenityIds = pgAmenities.map((a: any) => Number(a.amenityId || a.id));
       const selectedAmenities = amenities.filter(a => amenityIds.includes(a.id));
       setDetailsPgAmenities(selectedAmenities);
@@ -301,8 +289,7 @@ export default function PGManagement() {
     // Fetch current amenities for this PG
     let currentAmenityIds: number[] = [];
     try {
-      const response = await api.get(`/api/pgAmenities/${pg.id}`);
-      const pgAmenitiesData = response.data;
+      const pgAmenitiesData = await ownerService.getPgAmenities(pg.id);
       currentAmenityIds = pgAmenitiesData.map((a: any) => Number(a.amenityId || a.id));
     } catch (error: any) {
       console.error("Failed to fetch PG amenities:", error);

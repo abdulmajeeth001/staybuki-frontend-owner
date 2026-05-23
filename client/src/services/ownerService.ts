@@ -36,6 +36,7 @@ import {
   NotificationResponse,
   PushSubscriptionRequest,
   PushSubscriptionResponse,
+  PgAmenityResponse,
 } from "@/types/owner";
 
 export const ownerService = {
@@ -526,5 +527,14 @@ export const ownerService = {
       throw new Error((response.data as any).error || (response.data as any).message || "Failed to subscribe to push notifications");
     }
     return (response.data as any).data !== undefined ? (response.data as any).data : response.data;
+  },
+
+  async getPgAmenities(pgId: number): Promise<PgAmenityResponse[]> {
+    const response = await api.get<ApiResponse<PgAmenityResponse[]> | PgAmenityResponse[]>(`/api/pgAmenities/${pgId}`);
+    if (response.data && (response.data as any).success === false) {
+      throw new Error((response.data as any).error || (response.data as any).message || "Failed to fetch PG amenities");
+    }
+    const data = (response.data as any).data !== undefined ? (response.data as any).data : response.data;
+    return Array.isArray(data) ? data : [];
   },
 };

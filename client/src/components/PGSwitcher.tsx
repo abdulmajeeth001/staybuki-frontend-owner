@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useLocation } from "wouter";
 import { usePG, PG } from "@/hooks/use-pg";
 import { Building2, ChevronDown, Plus, Check, Settings, Star } from "lucide-react";
@@ -20,49 +19,41 @@ interface PGSwitcherProps {
 
 export function PGSwitcher({ variant = "sidebar", className = "" }: PGSwitcherProps) {
   const { pg, allPgs, selectPG, setPrimaryPG, isLoading } = usePG();
-  const [isOpen, setIsOpen] = useState(false);
-  const [isSwitching, setIsSwitching] = useState(false);
   const [, navigate] = useLocation();
 
   const handleSelectPG = async (selectedPg: PG) => {
-    if (selectedPg.id === pg?.id) {
-      setIsOpen(false);
-      return;
-    }
-
-    setIsSwitching(true);
-    try {
-      await selectPG(selectedPg.id);
-      toast.success(`Switched to ${selectedPg.pgName}`);
-      setIsOpen(false);
-    } catch (error) {
-      toast.error("Failed to switch PG");
-    } finally {
-      setIsSwitching(false);
-    }
+    if (selectedPg.id === pg?.id) return;
+    
+    toast.promise(selectPG(selectedPg.id), {
+      loading: `Switching to ${selectedPg.pgName}...`,
+      success: () => {
+        // Force a hard reload to ensure all local component states are wiped clean 
+        setTimeout(() => window.location.reload(), 500);
+        return `Switched to ${selectedPg.pgName}`;
+      },
+      error: "Failed to switch PG"
+    });
   };
 
   const handleSetPrimary = async (pgId: number, pgName: string, e: React.MouseEvent) => {
+    e.preventDefault();
     e.stopPropagation(); // Prevent dropdown from switching PG
-    setIsSwitching(true);
-    try {
-      await setPrimaryPG(pgId);
-      toast.success(`${pgName} set as primary PG`);
-      setIsOpen(false); // Close the menu after setting primary
-    } catch (error) {
-      toast.error("Failed to set primary PG");
-    } finally {
-      setIsSwitching(false);
-    }
+    
+    toast.promise(setPrimaryPG(pgId), {
+      loading: `Setting ${pgName} as primary...`,
+      success: () => {
+        setTimeout(() => window.location.reload(), 500);
+        return `${pgName} set as primary PG`;
+      },
+      error: "Failed to set primary PG"
+    });
   };
 
   const handleAddPG = () => {
-    setIsOpen(false);
     navigate("/pg-management");
   };
 
   const handleManagePGs = () => {
-    setIsOpen(false);
     navigate("/pg-management");
   };
 
@@ -92,13 +83,12 @@ export function PGSwitcher({ variant = "sidebar", className = "" }: PGSwitcherPr
 
   if (variant === "header") {
     return (
-      <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
+      <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button 
             variant="ghost" 
             size="sm" 
             className={`gap-2 font-medium ${className}`}
-            disabled={isSwitching}
             data-testid="dropdown-pg-switcher"
           >
             <Building2 className="h-4 w-4 text-primary" />
@@ -114,7 +104,7 @@ export function PGSwitcher({ variant = "sidebar", className = "" }: PGSwitcherPr
           {allPgs.map((item) => (
             <DropdownMenuItem
               key={item.id}
-              onClick={() => handleSelectPG(item)}
+              onSelect={() => handleSelectPG(item)}
               className="flex items-center gap-2 cursor-pointer"
               data-testid={`menuitem-pg-${item.id}`}
             >
@@ -131,10 +121,11 @@ export function PGSwitcher({ variant = "sidebar", className = "" }: PGSwitcherPr
               {!item.isPrimary && (
                 <button
                   onClick={(e) => handleSetPrimary(item.id, item.pgName, e)}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onPointerUp={(e) => e.stopPropagation()}
                   className="text-xs text-muted-foreground hover:text-amber-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   data-testid={`button-set-primary-${item.id}`}
                   title="Set as primary"
-                  disabled={isSwitching}
                 >
                   <Star className="h-3.5 w-3.5" />
                 </button>
@@ -146,7 +137,7 @@ export function PGSwitcher({ variant = "sidebar", className = "" }: PGSwitcherPr
           ))}
           <DropdownMenuSeparator />
           <DropdownMenuItem 
-            onClick={handleAddPG} 
+            onSelect={() => handleAddPG()}
             className="gap-2 cursor-pointer"
             data-testid="menuitem-add-pg"
           >
@@ -154,7 +145,7 @@ export function PGSwitcher({ variant = "sidebar", className = "" }: PGSwitcherPr
             Add New PG
           </DropdownMenuItem>
           <DropdownMenuItem 
-            onClick={handleManagePGs} 
+            onSelect={() => handleManagePGs()}
             className="gap-2 cursor-pointer"
             data-testid="menuitem-manage-pgs"
           >
@@ -168,11 +159,10 @@ export function PGSwitcher({ variant = "sidebar", className = "" }: PGSwitcherPr
 
   // Sidebar variant
   return (
-    <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
+    <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button 
           className={`w-full flex items-center gap-3 p-3 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 hover:from-primary/15 hover:to-primary/10 transition-all border border-primary/20 ${className}`}
-          disabled={isSwitching}
           data-testid="button-pg-switcher-sidebar"
         >
           <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-sm">
@@ -193,7 +183,7 @@ export function PGSwitcher({ variant = "sidebar", className = "" }: PGSwitcherPr
         {allPgs.map((item) => (
           <DropdownMenuItem
             key={item.id}
-            onClick={() => handleSelectPG(item)}
+            onSelect={() => handleSelectPG(item)}
             className="flex items-center gap-3 py-3 cursor-pointer"
             data-testid={`menuitem-sidebar-pg-${item.id}`}
           >
@@ -218,10 +208,11 @@ export function PGSwitcher({ variant = "sidebar", className = "" }: PGSwitcherPr
             {!item.isPrimary && (
               <button
                 onClick={(e) => handleSetPrimary(item.id, item.pgName, e)}
+                onPointerDown={(e) => e.stopPropagation()}
+                onPointerUp={(e) => e.stopPropagation()}
                 className="text-xs text-muted-foreground hover:text-amber-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 data-testid={`button-sidebar-set-primary-${item.id}`}
                 title="Set as primary"
-                disabled={isSwitching}
               >
                 <Star className="h-4 w-4" />
               </button>
@@ -233,7 +224,7 @@ export function PGSwitcher({ variant = "sidebar", className = "" }: PGSwitcherPr
         ))}
         <DropdownMenuSeparator />
         <DropdownMenuItem 
-          onClick={handleAddPG} 
+          onSelect={() => handleAddPG()}
           className="gap-2 py-2 cursor-pointer"
           data-testid="menuitem-sidebar-add-pg"
         >
@@ -243,7 +234,7 @@ export function PGSwitcher({ variant = "sidebar", className = "" }: PGSwitcherPr
           <span>Add New PG</span>
         </DropdownMenuItem>
         <DropdownMenuItem 
-          onClick={handleManagePGs} 
+          onSelect={() => handleManagePGs()}
           className="gap-2 py-2 cursor-pointer"
           data-testid="menuitem-sidebar-manage-pgs"
         >

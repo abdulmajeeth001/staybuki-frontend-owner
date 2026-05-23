@@ -62,21 +62,26 @@ export function usePG(enabled: boolean = true) {
   const selectPG = useCallback(async (pgId: number) => {
     try {
       const data = await ownerService.selectPg(pgId);
+      const actualPg = (data as any).pg || data;
       
-      // Update cache immediately
-      queryClient.setQueryData(["current-pg"], data.pg);
+      // 1. Forcefully remove old PG's component data from cache to trigger loading states
+      queryClient.removeQueries({
+        predicate: (query) => {
+          const key = typeof query.queryKey[0] === "string" ? query.queryKey[0] : "";
+          // Preserve global application states
+          return !["current-pg", "all-pgs", "current-user", "amenities"].includes(key);
+        }
+      });
+
+      // 2. Update the active PG which will trigger re-renders
+      if (actualPg) {
+        queryClient.setQueryData(["current-pg"], actualPg);
+      }
       
-      // Invalidate queries to refresh data for new PG context
-      const keysToInvalidate = [
-        "tenants", "rooms", "payments", "notifications", "dashboard",
-        "available-tenants", "active-rooms", "/api/visit-requests", "/api/owner/onboarding-requests"
-      ];
+      // 3. Ensure global synchronization
+      await queryClient.invalidateQueries();
       
-      await Promise.all(keysToInvalidate.map(key => 
-        queryClient.invalidateQueries({ queryKey: [key] })
-      ));
-      
-      return data.pg;
+      return actualPg;
     } catch (err) {
       console.error("Error selecting PG:", err);
       throw err;
@@ -198,8 +203,18 @@ export function usePG(enabled: boolean = true) {
     try {
       const data = await ownerService.deletePg(pgId);
       
-      if (data.newActivePg) {
-        queryClient.setQueryData(["current-pg"], data.newActivePg);
+      const newActivePg = (data as any).newActivePg;
+      
+      // Forcefully remove old PG's component data from cache
+      queryClient.removeQueries({
+        predicate: (query) => {
+          const key = typeof query.queryKey[0] === "string" ? query.queryKey[0] : "";
+          return !["current-pg", "all-pgs", "current-user", "amenities"].includes(key);
+        }
+      });
+
+      if (newActivePg) {
+        queryClient.setQueryData(["current-pg"], newActivePg);
       } else {
         const currentPg = queryClient.getQueryData<PG>(["current-pg"]);
         if (currentPg?.id === pgId) {
@@ -207,7 +222,7 @@ export function usePG(enabled: boolean = true) {
         }
       }
       
-      queryClient.invalidateQueries({ queryKey: ["all-pgs"] });
+      await queryClient.invalidateQueries();
       
       return true;
     } catch (err: any) {
@@ -219,19 +234,23 @@ export function usePG(enabled: boolean = true) {
   const setPrimaryPG = useCallback(async (pgId: number) => {
     try {
       const data = await ownerService.setPrimaryPg(pgId);
+      const actualPg = (data as any).pg || data;
       
-      queryClient.setQueryData(["current-pg"], data.pg);
-      queryClient.invalidateQueries({ queryKey: ["all-pgs"] });
+      // Forcefully remove old PG's component data from cache
+      queryClient.removeQueries({
+        predicate: (query) => {
+          const key = typeof query.queryKey[0] === "string" ? query.queryKey[0] : "";
+          return !["current-pg", "all-pgs", "current-user", "amenities"].includes(key);
+        }
+      });
 
-      // Invalidate queries to refresh data for new PG context
-      const keysToInvalidate = [
-        "tenants", "rooms", "payments", "notifications", "dashboard"
-      ];
-      await Promise.all(keysToInvalidate.map(key => 
-        queryClient.invalidateQueries({ queryKey: [key] })
-      ));
+      if (actualPg) {
+        queryClient.setQueryData(["current-pg"], actualPg);
+      }
       
-      return data.pg;
+      await queryClient.invalidateQueries();
+
+      return actualPg;
     } catch (err: any) {
       console.error("Error setting primary PG:", err);
       throw new Error(err.response?.data?.error || "Failed to set primary PG");

@@ -31,6 +31,7 @@ export type ReportSummaryResponse = components["schemas"]["ReportSummaryDto"];
 export type NotificationResponse = components["schemas"]["NotificationPayload"] & { isRead?: boolean };
 export type PushSubscriptionRequest = components["schemas"]["PushSubscriptionRequestDto"];
 export type PushSubscriptionResponse = components["schemas"]["PushSubscriptionResponseDto"];
+export type PgAmenityResponse = components["schemas"]["PgAmenityResponseDto"];
 
 // Payloads for mutations
 export type ApproveOnboardingRequestPayload = {

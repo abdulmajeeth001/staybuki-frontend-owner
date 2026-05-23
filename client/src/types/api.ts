@@ -3003,6 +3003,14 @@ export interface components {
             /** Format: int64 */
             occupiedBeds?: number;
         };
+        ApiResponseListAmenityResponseDto: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["AmenityResponseDto"][];
+            /** Format: date-time */
+            timestamp?: string;
+            errorCode?: string;
+        };
         ApiResponsePgStatusResponseDto: {
             success?: boolean;
             message?: string;
@@ -5847,7 +5855,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["AmenityResponseDto"][];
+                    "*/*": components["schemas"]["ApiResponseListAmenityResponseDto"];
                 };
             };
         };
