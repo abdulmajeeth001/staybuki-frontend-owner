@@ -24,40 +24,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import { BulkUploadModal } from "@/components/BulkUploadModal";
 import { cn } from "@/lib/utils";
-import { api } from "@/apiClient";
 import { toast } from "sonner";
-
-interface Tenant {
-  id: number;
-  name: string;
-  phone: string;
-}
-
-interface BedData {
-  id: number;
-  position: string;
-  displayOrder: number;
-  status: string;
-  tenantId: number | null;
-  tenant?: Tenant | null;
-}
-
-interface RoomData {
-  room: {
-    id: number;
-    roomNumber: string;
-    monthlyRent: string;
-    sharing: number;
-    floor: number;
-    hasAttachedBathroom: boolean;
-    hasAC: boolean;
-    tenantIds: number[];
-    status: string;
-    amenities: string[];
-  };
-  tenants: Tenant[];
-  beds?: BedData[];
-}
+import { ownerService } from "@/services/ownerService";
+import type { RoomLegacyResponse } from "@/types/owner";
 
 export default function Rooms() {
   return (
@@ -74,7 +43,7 @@ export default function Rooms() {
 
 function RoomsDesktop() {
   const [, setLocation] = useLocation();
-  const [roomsData, setRoomsData] = useState<RoomData[]>([]);
+  const [roomsData, setRoomsData] = useState<RoomLegacyResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -98,13 +67,12 @@ function RoomsDesktop() {
   const fetchRooms = async () => {
     try {
       setLoading(true);
-      const response = await api.get("/api/rooms");
-      const responseData = response.data?.data !== undefined ? response.data.data : response.data;
-      setRoomsData(Array.isArray(responseData) ? responseData : []);
+      const responseData = await ownerService.getRoomsWithDetails();
+      setRoomsData(responseData);
       setError(null);
     } catch (err: any) {
       console.error("Error fetching rooms:", err);
-      setError(err.response?.data?.error || "Failed to load rooms");
+      setError(err.response?.data?.error || err.message || "Failed to load rooms");
     } finally {
       setLoading(false);
     }
@@ -121,11 +89,11 @@ function RoomsDesktop() {
   const handleSeedRooms = async () => {
     try {
       setLoading(true);
-      await api.post("/api/rooms/seed");
+      await ownerService.seedRooms();
       await fetchRooms();
     } catch (err: any) {
       console.error("Error seeding rooms:", err);
-      setError(err.response?.data?.error || "Failed to seed rooms");
+      setError(err.response?.data?.error || err.message || "Failed to seed rooms");
       setLoading(false);
     }
   };
@@ -134,12 +102,12 @@ function RoomsDesktop() {
     if (!roomToDelete) return;
     try {
       setLoading(true);
-      await api.delete(`/api/rooms/${roomToDelete}`);
+      await ownerService.deleteRoom(roomToDelete);
       toast.success("Room deleted successfully");
       await fetchRooms();
     } catch (err: any) {
       console.error("Error deleting room:", err);
-      toast.error(err.response?.data?.error || "Failed to delete room");
+      toast.error(err.response?.data?.error || err.message || "Failed to delete room");
       setLoading(false);
     } finally {
       setRoomToDelete(null);
@@ -623,7 +591,7 @@ function RoomsDesktop() {
 
 function RoomsMobile() {
   const [, setLocation] = useLocation();
-  const [roomsData, setRoomsData] = useState<RoomData[]>([]);
+  const [roomsData, setRoomsData] = useState<RoomLegacyResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -647,13 +615,12 @@ function RoomsMobile() {
   const fetchRooms = async () => {
     try {
       setLoading(true);
-      const response = await api.get("/api/rooms");
-      const responseData = response.data?.data !== undefined ? response.data.data : response.data;
-      setRoomsData(Array.isArray(responseData) ? responseData : []);
+      const responseData = await ownerService.getRoomsWithDetails();
+      setRoomsData(responseData);
       setError(null);
     } catch (err: any) {
       console.error("Error fetching rooms:", err);
-      setError(err.response?.data?.error || "Failed to load rooms");
+      setError(err.response?.data?.error || err.message || "Failed to load rooms");
     } finally {
       setLoading(false);
     }
@@ -670,11 +637,11 @@ function RoomsMobile() {
   const handleSeedRooms = async () => {
     try {
       setLoading(true);
-      await api.post("/api/rooms/seed");
+      await ownerService.seedRooms();
       await fetchRooms();
     } catch (err: any) {
       console.error("Error seeding rooms:", err);
-      setError(err.response?.data?.error || "Failed to seed rooms");
+      setError(err.response?.data?.error || err.message || "Failed to seed rooms");
       setLoading(false);
     }
   };
@@ -683,12 +650,12 @@ function RoomsMobile() {
     if (!roomToDelete) return;
     try {
       setLoading(true);
-      await api.delete(`/api/rooms/${roomToDelete}`);
+      await ownerService.deleteRoom(roomToDelete);
       toast.success("Room deleted successfully");
       await fetchRooms();
     } catch (err: any) {
       console.error("Error deleting room:", err);
-      toast.error(err.response?.data?.error || "Failed to delete room");
+      toast.error(err.response?.data?.error || err.message || "Failed to delete room");
       setLoading(false);
     } finally {
       setRoomToDelete(null);

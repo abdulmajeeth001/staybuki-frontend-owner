@@ -32,11 +32,13 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    // If the error is 401 (Unauthorized) and we haven't already retried this request
-    if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
-      // Prevent an infinite loop if the /refresh endpoint itself returns a 401
-      if (originalRequest.url.includes("/api/auth/refresh")) {
-        window.location.href = "/login";
+    // If the error is 401 (Unauthorized) or 403 (Forbidden) and we haven't already retried this request
+    if ((error.response?.status === 401 || error.response?.status === 403) && originalRequest && !originalRequest._retry) {
+      // Prevent an infinite loop if the /refresh or /login endpoint itself returns an error
+      if (originalRequest.url.includes("/api/auth/refresh") || originalRequest.url.includes("/api/auth/login")) {
+        if (originalRequest.url.includes("/api/auth/refresh")) {
+          window.location.href = "/login";
+        }
         return Promise.reject(error);
       }
 

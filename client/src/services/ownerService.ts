@@ -133,6 +133,25 @@ export const ownerService = {
   },
 
   /**
+   * Fetches a list of all rooms including nested tenants and beds data (Legacy).
+   */
+  async getRoomsWithDetails(): Promise<RoomLegacyResponse[]> {
+    const response = await api.get<ApiResponse<RoomLegacyResponse[]> | RoomLegacyResponse[]>("/api/rooms");
+    const data = (response.data as any).data || response.data;
+    return Array.isArray(data) ? data : [];
+  },
+
+  /**
+   * Seeds demo rooms for testing.
+   */
+  async seedRooms(): Promise<void> {
+    const response = await api.post<ApiResponse<void>>("/api/rooms/seed");
+    if (response.data && (response.data as any).success === false) {
+      throw new Error((response.data as any).message || "Failed to seed rooms");
+    }
+  },
+
+  /**
    * Fetches available beds for a given room (using v1 API path).
    */
   async getBedsByRoom(roomId: number): Promise<BedResponse[]> {
