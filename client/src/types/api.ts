@@ -768,7 +768,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        get: operations["getComplaints"];
         put?: never;
         post: operations["create_2"];
         delete?: never;
@@ -1324,22 +1324,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/tenant/complaints": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["getTenantComplaints"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/rooms/bulk-upload-template": {
         parameters: {
             query?: never;
@@ -1511,22 +1495,6 @@ export interface paths {
             cookie?: never;
         };
         get: operations["getDashboardStats"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/owner/complaints": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get: operations["getOwnerComplaints"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2028,6 +1996,7 @@ export interface components {
             transactionId?: string;
             rejectionReason?: string;
             paymentMonth?: string;
+            paymentScreenshot?: string;
             /** Format: date-time */
             generatedAt?: string;
             /** Format: date-time */
@@ -2900,14 +2869,6 @@ export interface components {
             roomDetails?: components["schemas"]["RoomInfoDto"];
             paymentSummary?: components["schemas"]["PaymentSummaryDto"];
         };
-        ApiResponseListComplaintResponseDto: {
-            success?: boolean;
-            message?: string;
-            data?: components["schemas"]["ComplaintResponseDto"][];
-            /** Format: date-time */
-            timestamp?: string;
-            errorCode?: string;
-        };
         ApiResponseListRoomLegacyResponseDto: {
             success?: boolean;
             message?: string;
@@ -3155,6 +3116,14 @@ export interface components {
             success?: boolean;
             message?: string;
             data?: components["schemas"]["FoodMenuResponseDto"][];
+            /** Format: date-time */
+            timestamp?: string;
+            errorCode?: string;
+        };
+        ApiResponseListComplaintResponseDto: {
+            success?: boolean;
+            message?: string;
+            data?: components["schemas"]["ComplaintResponseDto"][];
             /** Format: date-time */
             timestamp?: string;
             errorCode?: string;
@@ -4544,9 +4513,13 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody: {
+        requestBody?: {
             content: {
-                "application/json": components["schemas"]["PaymentUpdateRequestDto"];
+                "multipart/form-data": {
+                    req: components["schemas"]["PaymentUpdateRequestDto"];
+                    /** Format: binary */
+                    paymentProof?: string;
+                };
             };
         };
         responses: {
@@ -4879,6 +4852,26 @@ export interface operations {
                 };
                 content: {
                     "*/*": Record<string, never>;
+                };
+            };
+        };
+    };
+    getComplaints: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListComplaintResponseDto"];
                 };
             };
         };
@@ -5753,26 +5746,6 @@ export interface operations {
             };
         };
     };
-    getTenantComplaints: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiResponseListComplaintResponseDto"];
-                };
-            };
-        };
-    };
     getFields: {
         parameters: {
             query?: never;
@@ -5999,26 +5972,6 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["OwnerDashboardStatsResponseDto"];
-                };
-            };
-        };
-    };
-    getOwnerComplaints: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiResponseListComplaintResponseDto"];
                 };
             };
         };

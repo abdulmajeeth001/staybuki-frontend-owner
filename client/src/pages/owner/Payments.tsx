@@ -31,6 +31,7 @@ export default function Payments() {
       </div>
     </>
   );
+  
 }
 
 function PaymentsDesktop() {
@@ -52,7 +53,7 @@ function PaymentsDesktop() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deletingPaymentId, setDeletingPaymentId] = useState<number | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
-  const [autoGenResult, setAutoGenResult] = useState<{show: boolean, message: string}>({show: false, message: ""});
+  const [autoGenResult, setAutoGenResult] = useState<{ show: boolean, message: string }>({ show: false, message: "" });
   const [selectedMonth, setSelectedMonth] = useState(format(new Date(), "yyyy-MM"));
 
   useEffect(() => {
@@ -67,10 +68,10 @@ function PaymentsDesktop() {
         ownerService.getPaymentsByMonthAndYear(year, month),
         ownerService.getAllTenants(),
       ]);
-      
+
       const activePayments = paymentsRes.filter((p: any) => p.status !== "deleted");
       setPayments(activePayments as any);
-      
+
       setTenants(tenantsRes as any);
     } catch (error: any) {
       console.error("Failed to fetch data:", error);
@@ -210,7 +211,7 @@ function PaymentsDesktop() {
       const tenantObj = payment.tenant || tenants.find((t: any) => t.id === payment.tenantId);
       return {
         ...payment,
-        name: tenantObj?.name 
+        name: tenantObj?.name
           ? `${tenantObj.name}${tenantObj.roomNumber ? ` - Room ${tenantObj.roomNumber}` : ''}`
           : `Tenant #${payment.tenantId}`,
         paymentType: payment.type || 'rent',
@@ -221,31 +222,31 @@ function PaymentsDesktop() {
   const transactions = getFilteredTransactions();
 
   const cashflowStats = [
-    { 
-      label: "Total Revenue", 
-      value: `₹${totalRevenue.toLocaleString()}`, 
-      icon: DollarSign, 
+    {
+      label: "Total Revenue",
+      value: `₹${totalRevenue.toLocaleString()}`,
+      icon: DollarSign,
       gradient: "from-purple-500 to-pink-600",
       description: format(new Date(selectedMonth + "-01"), "MMMM yyyy")
     },
-    { 
-      label: "Received", 
-      value: `₹${income.toLocaleString()}`, 
-      icon: ArrowDownLeft, 
+    {
+      label: "Received",
+      value: `₹${income.toLocaleString()}`,
+      icon: ArrowDownLeft,
       gradient: "from-emerald-500 to-green-600",
       description: "Paid"
     },
-    { 
-      label: "Pending", 
-      value: `₹${expense.toLocaleString()}`, 
-      icon: ArrowUpRight, 
+    {
+      label: "Pending",
+      value: `₹${expense.toLocaleString()}`,
+      icon: ArrowUpRight,
       gradient: "from-orange-500 to-red-600",
       description: "Outstanding"
     },
-    { 
-      label: "Transactions", 
-      value: payments.length.toString(), 
-      icon: TrendingUp, 
+    {
+      label: "Transactions",
+      value: payments.length.toString(),
+      icon: TrendingUp,
       gradient: "from-blue-500 to-cyan-600",
       description: "Selected month"
     },
@@ -259,7 +260,7 @@ function PaymentsDesktop() {
       <div className="relative -mx-6 -mt-6 mb-8 overflow-hidden rounded-b-3xl">
         <div className="absolute inset-0 bg-gradient-to-br from-purple-600 via-blue-600 to-purple-700" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_120%,rgba(120,119,198,0.3),rgba(255,255,255,0))]" />
-        
+
         <div className="relative px-8 py-10 text-white">
           <div className="flex items-center justify-between mb-6">
             <div>
@@ -267,8 +268,8 @@ function PaymentsDesktop() {
               <p className="text-white/80 text-sm">Track rent payments and manage tenant dues</p>
             </div>
             <div className="flex gap-3">
-              <Button 
-                size="sm" 
+              <Button
+                size="sm"
                 variant="outline"
                 className="bg-white/20 backdrop-blur-sm border-white/30 hover:bg-white/30 text-white"
                 onClick={handleAutoGeneratePayments}
@@ -277,8 +278,8 @@ function PaymentsDesktop() {
               >
                 Auto Generate
               </Button>
-              <Button 
-                size="sm" 
+              <Button
+                size="sm"
                 variant="outline"
                 className="bg-white/20 backdrop-blur-sm border-white/30 hover:bg-white/30 text-white"
                 onClick={() => navigate("/electricity-history")}
@@ -287,8 +288,8 @@ function PaymentsDesktop() {
                 <History className="w-4 h-4 mr-2" />
                 EB History
               </Button>
-              <Button 
-                size="sm" 
+              <Button
+                size="sm"
                 variant="outline"
                 className="bg-white/20 backdrop-blur-sm border-white/30 hover:bg-white/30 text-white"
                 onClick={() => setEbDialogOpen(true)}
@@ -299,7 +300,7 @@ function PaymentsDesktop() {
               </Button>
               <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
                 <DialogTrigger asChild>
-                  <Button 
+                  <Button
                     className="bg-white/20 backdrop-blur-sm border-white/30 hover:bg-white/30 text-white transition-all duration-300"
                     data-testid="button-create-payment"
                   >
@@ -314,7 +315,7 @@ function PaymentsDesktop() {
                   <div className="space-y-4 pt-4">
                     <div className="space-y-2">
                       <Label htmlFor="tenant">Tenant</Label>
-                      <Select value={formData.tenantId} onValueChange={(val) => setFormData({...formData, tenantId: val})}>
+                      <Select value={formData.tenantId} onValueChange={(val) => setFormData({ ...formData, tenantId: val })}>
                         <SelectTrigger id="tenant" data-testid="select-tenant">
                           <SelectValue placeholder="Select tenant" />
                         </SelectTrigger>
@@ -329,7 +330,7 @@ function PaymentsDesktop() {
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="type">Payment Type</Label>
-                      <Select value={formData.type} onValueChange={(val) => setFormData({...formData, type: val})}>
+                      <Select value={formData.type} onValueChange={(val) => setFormData({ ...formData, type: val })}>
                         <SelectTrigger id="type" data-testid="select-type">
                           <SelectValue placeholder="Select type" />
                         </SelectTrigger>
@@ -342,22 +343,22 @@ function PaymentsDesktop() {
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="amount">Amount (₹)</Label>
-                      <Input 
-                        id="amount" 
-                        type="number" 
+                      <Input
+                        id="amount"
+                        type="number"
                         placeholder="0"
                         value={formData.amount}
-                        onChange={(e) => setFormData({...formData, amount: e.target.value})}
+                        onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
                         data-testid="input-amount"
                       />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="dueDate">Due Date</Label>
-                      <Input 
-                        id="dueDate" 
+                      <Input
+                        id="dueDate"
                         type="date"
                         value={formData.dueDate}
-                        onChange={(e) => setFormData({...formData, dueDate: e.target.value})}
+                        onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
                         data-testid="input-due-date"
                       />
                     </div>
@@ -430,36 +431,36 @@ function PaymentsDesktop() {
       {/* Filters */}
       <div className="flex flex-col sm:flex-row justify-between gap-4 mb-6 items-start sm:items-center">
         <div className="flex gap-2 items-center flex-wrap">
-          <Button 
-            variant={filter === "all" ? "default" : "outline"} 
-            size="sm" 
+          <Button
+            variant={filter === "all" ? "default" : "outline"}
+            size="sm"
             className="rounded-full px-4"
             onClick={() => setFilter("all")}
             data-testid="button-filter-all"
           >
             All
           </Button>
-          <Button 
-            variant={filter === "income" ? "default" : "outline"} 
-            size="sm" 
+          <Button
+            variant={filter === "income" ? "default" : "outline"}
+            size="sm"
             className="rounded-full px-4"
             onClick={() => setFilter("income")}
             data-testid="button-filter-income"
           >
             Received
           </Button>
-          <Button 
-            variant={filter === "expense" ? "default" : "outline"} 
-            size="sm" 
+          <Button
+            variant={filter === "expense" ? "default" : "outline"}
+            size="sm"
             className="rounded-full px-4"
             onClick={() => setFilter("expense")}
             data-testid="button-filter-pending"
           >
             Pending
           </Button>
-          <Button 
-            variant={filter === "pending_approval" ? "default" : "outline"} 
-            size="sm" 
+          <Button
+            variant={filter === "pending_approval" ? "default" : "outline"}
+            size="sm"
             className="rounded-full px-4"
             onClick={() => setFilter("pending_approval")}
             data-testid="button-filter-pending-approval"
@@ -470,8 +471,8 @@ function PaymentsDesktop() {
         <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border shadow-sm">
           <Calendar className="w-4 h-4 text-muted-foreground" />
           <Label className="whitespace-nowrap text-sm font-medium text-slate-700">Month:</Label>
-          <Input 
-            type="month" 
+          <Input
+            type="month"
             value={selectedMonth}
             onChange={(e) => setSelectedMonth(e.target.value)}
             className="w-auto border-0 bg-transparent shadow-none focus-visible:ring-0 px-1"
@@ -506,26 +507,26 @@ function PaymentsDesktop() {
               </div>
               <h3 className="text-lg font-semibold mb-2">No payments found</h3>
               <p className="text-sm text-muted-foreground" data-testid="text-no-payments">
-                {filter !== "all" 
-                  ? "Try adjusting your filters to see more results" 
+                {filter !== "all"
+                  ? "Try adjusting your filters to see more results"
                   : "Create your first payment request to get started"}
               </p>
             </div>
           ) : (
             <div className="space-y-3">
               {transactions.map((tx) => (
-                <div 
-                  key={tx.id} 
+                <div
+                  key={tx.id}
                   className="group flex items-center gap-4 p-4 bg-gradient-to-r from-white to-gray-50 hover:from-purple-50 hover:to-blue-50 rounded-xl border-2 border-transparent hover:border-purple-200 transition-all duration-300"
                   data-testid={`payment-row-${tx.id}`}
                 >
                   <div className={cn(
                     "w-12 h-12 rounded-xl flex items-center justify-center shrink-0 shadow-md transition-transform duration-300 group-hover:scale-110",
-                    tx.status === 'paid' 
+                    tx.status === 'paid'
                       ? 'bg-gradient-to-br from-emerald-500 to-green-600'
                       : tx.status === 'pending_approval'
-                      ? 'bg-gradient-to-br from-orange-500 to-yellow-600'
-                      : 'bg-gradient-to-br from-gray-400 to-gray-600'
+                        ? 'bg-gradient-to-br from-orange-500 to-yellow-600'
+                        : 'bg-gradient-to-br from-gray-400 to-gray-600'
                   )}>
                     {tx.status === 'paid' ? (
                       <ArrowDownLeft className="w-6 h-6 text-white" />
@@ -543,20 +544,20 @@ function PaymentsDesktop() {
                         tx.paymentType === "rent"
                           ? "bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-700"
                           : tx.paymentType === "electricity"
-                          ? "bg-gradient-to-r from-yellow-100 to-amber-100 text-yellow-700"
-                          : tx.paymentType === "maintenance"
-                          ? "bg-gradient-to-r from-purple-100 to-pink-100 text-purple-700"
-                          : "bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700"
+                            ? "bg-gradient-to-r from-yellow-100 to-amber-100 text-yellow-700"
+                            : tx.paymentType === "maintenance"
+                              ? "bg-gradient-to-r from-purple-100 to-pink-100 text-purple-700"
+                              : "bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700"
                       )} data-testid={`text-payment-type-${tx.id}`}>
                         {tx.paymentType === "rent" ? "Rent" : tx.paymentType === "electricity" ? "Electricity" : tx.paymentType === "maintenance" ? "Maintenance" : tx.paymentType}
                       </span>
                       <span className={cn(
                         "text-xs px-2 py-0.5 rounded-full font-bold",
-                        tx.status === "paid" 
+                        tx.status === "paid"
                           ? "bg-gradient-to-r from-emerald-100 to-green-100 text-green-700"
                           : tx.status === "pending_approval"
-                          ? "bg-gradient-to-r from-orange-100 to-yellow-100 text-orange-700"
-                          : "bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700"
+                            ? "bg-gradient-to-r from-orange-100 to-yellow-100 text-orange-700"
+                            : "bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700"
                       )} data-testid={`text-status-${tx.id}`}>
                         {tx.status === "paid" ? "Paid" : tx.status === "pending_approval" ? "Pending Approval" : "Pending"}
                       </span>
@@ -571,8 +572,8 @@ function PaymentsDesktop() {
                     <div className="text-right">
                       <p className={cn(
                         "font-bold text-lg",
-                        tx.status === 'paid' 
-                          ? 'bg-gradient-to-r from-emerald-600 to-green-600 bg-clip-text text-transparent' 
+                        tx.status === 'paid'
+                          ? 'bg-gradient-to-r from-emerald-600 to-green-600 bg-clip-text text-transparent'
                           : 'text-foreground'
                       )} data-testid={`text-amount-${tx.id}`}>
                         {tx.status === 'paid' ? '+' : ''}₹{tx.amount.toLocaleString()}
@@ -597,6 +598,7 @@ function PaymentsDesktop() {
                             </>
                           )}
                         </Button>
+
                         <Button
                           size="sm"
                           variant="outline"
@@ -659,8 +661,8 @@ function PaymentsDesktop() {
               )}
             </div>
             <div className="flex gap-2 justify-end pt-4">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={() => {
                   setRejectDialogOpen(false);
                   setRejectionReason("");
@@ -670,7 +672,7 @@ function PaymentsDesktop() {
               >
                 Cancel
               </Button>
-              <Button 
+              <Button
                 onClick={confirmReject}
                 disabled={rejectingId !== null || !rejectionReason || rejectionReason.trim().length < 10}
                 className="bg-red-600 hover:bg-red-700 text-white"
@@ -694,8 +696,8 @@ function PaymentsDesktop() {
               Are you sure you want to delete this payment? This action cannot be undone.
             </p>
             <div className="flex gap-2 justify-end pt-4">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={() => {
                   setDeleteDialogOpen(false);
                   setDeletingPaymentId(null);
@@ -735,8 +737,8 @@ function PaymentsDesktop() {
             <p className="text-muted-foreground text-center text-sm px-4">
               {autoGenResult.message}
             </p>
-            <Button 
-              className="w-full mt-4 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white" 
+            <Button
+              className="w-full mt-4 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white"
               onClick={() => setAutoGenResult({ show: false, message: "" })}
             >
               Continue
@@ -769,7 +771,7 @@ function PaymentsMobile() {
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [showScreenshot, setShowScreenshot] = useState(false);
   const [selectedScreenshot, setSelectedScreenshot] = useState<string | null>(null);
-  const [autoGenResult, setAutoGenResult] = useState<{show: boolean, message: string}>({show: false, message: ""});
+  const [autoGenResult, setAutoGenResult] = useState<{ show: boolean, message: string }>({ show: false, message: "" });
   const [selectedMonth, setSelectedMonth] = useState(format(new Date(), "yyyy-MM"));
 
   useEffect(() => {
@@ -784,10 +786,10 @@ function PaymentsMobile() {
         ownerService.getPaymentsByMonthAndYear(year, month),
         ownerService.getAllTenants(),
       ]);
-      
+
       const activePayments = paymentsRes.filter((p: any) => p.status !== "deleted");
       setPayments(activePayments as any);
-      
+
       setTenants(tenantsRes as any);
     } catch (error: any) {
       console.error("Failed to fetch data:", error);
@@ -925,7 +927,7 @@ function PaymentsMobile() {
       const tenantObj = payment.tenant || tenants.find((t: any) => t.id === payment.tenantId);
       return {
         ...payment,
-        name: tenantObj?.name 
+        name: tenantObj?.name
           ? `${tenantObj.name}${tenantObj.roomNumber ? ` - Room ${tenantObj.roomNumber}` : ''}`
           : `Tenant #${payment.tenantId}`,
         paymentType: payment.type || 'rent',
@@ -951,10 +953,10 @@ function PaymentsMobile() {
   }
 
   return (
-    <MobileLayout 
+    <MobileLayout
       title="Payments"
       action={
-        <Button 
+        <Button
           size="sm"
           onClick={() => setDialogOpen(true)}
           className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white"
@@ -1018,7 +1020,7 @@ function PaymentsMobile() {
 
         {/* Action Buttons */}
         <div className="grid grid-cols-3 gap-2">
-          <Button 
+          <Button
             variant="outline"
             size="sm"
             onClick={handleAutoGeneratePayments}
@@ -1027,7 +1029,7 @@ function PaymentsMobile() {
           >
             <span className="text-xs">Auto Gen</span>
           </Button>
-          <Button 
+          <Button
             variant="outline"
             size="sm"
             onClick={() => navigate("/electricity-history")}
@@ -1036,7 +1038,7 @@ function PaymentsMobile() {
             <History className="w-4 h-4 mr-1" />
             <span className="text-xs">History</span>
           </Button>
-          <Button 
+          <Button
             variant="outline"
             size="sm"
             onClick={() => setEbDialogOpen(true)}
@@ -1053,8 +1055,8 @@ function PaymentsMobile() {
             <Calendar className="w-4 h-4 text-muted-foreground" />
             <Label className="text-sm font-medium text-slate-700">Month</Label>
           </div>
-          <Input 
-            type="month" 
+          <Input
+            type="month"
             value={selectedMonth}
             onChange={(e) => setSelectedMonth(e.target.value)}
             className="w-auto border-0 bg-transparent shadow-none focus-visible:ring-0 text-right p-0 h-auto"
@@ -1063,36 +1065,36 @@ function PaymentsMobile() {
 
         {/* Filters - Scrollable on mobile */}
         <div className="flex gap-2 overflow-x-auto pb-2">
-          <Button 
-            variant={filter === "all" ? "default" : "outline"} 
-            size="sm" 
+          <Button
+            variant={filter === "all" ? "default" : "outline"}
+            size="sm"
             className="rounded-full flex-shrink-0"
             onClick={() => setFilter("all")}
             data-testid="button-filter-all-mobile"
           >
             All
           </Button>
-          <Button 
-            variant={filter === "income" ? "default" : "outline"} 
-            size="sm" 
+          <Button
+            variant={filter === "income" ? "default" : "outline"}
+            size="sm"
             className="rounded-full flex-shrink-0"
             onClick={() => setFilter("income")}
             data-testid="button-filter-income-mobile"
           >
             Received
           </Button>
-          <Button 
-            variant={filter === "expense" ? "default" : "outline"} 
-            size="sm" 
+          <Button
+            variant={filter === "expense" ? "default" : "outline"}
+            size="sm"
             className="rounded-full flex-shrink-0"
             onClick={() => setFilter("expense")}
             data-testid="button-filter-pending-mobile"
           >
             Pending
           </Button>
-          <Button 
-            variant={filter === "pending_approval" ? "default" : "outline"} 
-            size="sm" 
+          <Button
+            variant={filter === "pending_approval" ? "default" : "outline"}
+            size="sm"
             className="rounded-full flex-shrink-0"
             onClick={() => setFilter("pending_approval")}
             data-testid="button-filter-pending-approval-mobile"
@@ -1110,15 +1112,15 @@ function PaymentsMobile() {
                   <Wallet className="w-6 h-6 text-purple-600" />
                 </div>
                 <p className="text-sm text-muted-foreground" data-testid="text-no-payments-mobile">
-                  {filter !== "all" 
-                    ? "No payments match your filter" 
+                  {filter !== "all"
+                    ? "No payments match your filter"
                     : "No payments yet"}
                 </p>
               </CardContent>
             </Card>
           ) : (
             transactions.map((tx) => (
-              <Card 
+              <Card
                 key={tx.id}
                 className="border-2 hover:border-purple-200 transition-colors"
                 data-testid={`payment-row-mobile-${tx.id}`}
@@ -1127,11 +1129,11 @@ function PaymentsMobile() {
                   <div className="flex items-center gap-3 mb-3">
                     <div className={cn(
                       "w-12 h-12 rounded-xl flex items-center justify-center shrink-0",
-                      tx.status === 'paid' 
+                      tx.status === 'paid'
                         ? 'bg-gradient-to-br from-emerald-500 to-green-600'
                         : tx.status === 'pending_approval'
-                        ? 'bg-gradient-to-br from-orange-500 to-yellow-600'
-                        : 'bg-gradient-to-br from-gray-400 to-gray-600'
+                          ? 'bg-gradient-to-br from-orange-500 to-yellow-600'
+                          : 'bg-gradient-to-br from-gray-400 to-gray-600'
                     )}>
                       {tx.status === 'paid' ? (
                         <ArrowDownLeft className="w-6 h-6 text-white" />
@@ -1149,10 +1151,10 @@ function PaymentsMobile() {
                           tx.paymentType === "rent"
                             ? "bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-700"
                             : tx.paymentType === "electricity"
-                            ? "bg-gradient-to-r from-yellow-100 to-amber-100 text-yellow-700"
-                            : tx.paymentType === "maintenance"
-                            ? "bg-gradient-to-r from-purple-100 to-pink-100 text-purple-700"
-                            : "bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700"
+                              ? "bg-gradient-to-r from-yellow-100 to-amber-100 text-yellow-700"
+                              : tx.paymentType === "maintenance"
+                                ? "bg-gradient-to-r from-purple-100 to-pink-100 text-purple-700"
+                                : "bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700"
                         )} data-testid={`text-payment-type-mobile-${tx.id}`}>
                           {tx.paymentType === "rent" ? "Rent" : tx.paymentType === "electricity" ? "Electricity" : tx.paymentType === "maintenance" ? "Maintenance" : tx.paymentType}
                         </span>
@@ -1161,19 +1163,19 @@ function PaymentsMobile() {
                     <div className="text-right">
                       <p className={cn(
                         "font-bold text-lg",
-                        tx.status === 'paid' 
-                          ? 'bg-gradient-to-r from-emerald-600 to-green-600 bg-clip-text text-transparent' 
+                        tx.status === 'paid'
+                          ? 'bg-gradient-to-r from-emerald-600 to-green-600 bg-clip-text text-transparent'
                           : 'text-foreground'
                       )} data-testid={`text-amount-mobile-${tx.id}`}>
                         {tx.status === 'paid' ? '+' : ''}₹{tx.amount.toLocaleString()}
                       </p>
                       <span className={cn(
                         "text-xs px-2 py-0.5 rounded-full font-bold inline-block",
-                        tx.status === "paid" 
+                        tx.status === "paid"
                           ? "bg-gradient-to-r from-emerald-100 to-green-100 text-green-700"
                           : tx.status === "pending_approval"
-                          ? "bg-gradient-to-r from-orange-100 to-yellow-100 text-orange-700"
-                          : "bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700"
+                            ? "bg-gradient-to-r from-orange-100 to-yellow-100 text-orange-700"
+                            : "bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700"
                       )} data-testid={`text-status-mobile-${tx.id}`}>
                         {tx.status === "paid" ? "Paid" : tx.status === "pending_approval" ? "Pending Approval" : "Pending"}
                       </span>
@@ -1258,7 +1260,6 @@ function PaymentsMobile() {
           )}
         </div>
       </div>
-
       {/* Create Payment Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
@@ -1268,7 +1269,7 @@ function PaymentsMobile() {
           <div className="space-y-4 pt-4">
             <div className="space-y-2">
               <Label htmlFor="tenant-mobile">Tenant</Label>
-              <Select value={formData.tenantId} onValueChange={(val) => setFormData({...formData, tenantId: val})}>
+              <Select value={formData.tenantId} onValueChange={(val) => setFormData({ ...formData, tenantId: val })}>
                 <SelectTrigger id="tenant-mobile" data-testid="select-tenant-mobile">
                   <SelectValue placeholder="Select tenant" />
                 </SelectTrigger>
@@ -1283,7 +1284,7 @@ function PaymentsMobile() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="type-mobile">Payment Type</Label>
-              <Select value={formData.type} onValueChange={(val) => setFormData({...formData, type: val})}>
+              <Select value={formData.type} onValueChange={(val) => setFormData({ ...formData, type: val })}>
                 <SelectTrigger id="type-mobile" data-testid="select-payment-type-mobile">
                   <SelectValue placeholder="Select type" />
                 </SelectTrigger>
@@ -1296,22 +1297,22 @@ function PaymentsMobile() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="amount-mobile">Amount (₹)</Label>
-              <Input 
-                id="amount-mobile" 
-                type="number" 
+              <Input
+                id="amount-mobile"
+                type="number"
                 placeholder="0"
                 value={formData.amount}
-                onChange={(e) => setFormData({...formData, amount: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
                 data-testid="input-amount-mobile"
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="dueDate-mobile">Due Date</Label>
-              <Input 
-                id="dueDate-mobile" 
+              <Input
+                id="dueDate-mobile"
                 type="date"
                 value={formData.dueDate}
-                onChange={(e) => setFormData({...formData, dueDate: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
                 data-testid="input-due-date-mobile"
               />
             </div>
@@ -1351,8 +1352,8 @@ function PaymentsMobile() {
               )}
             </div>
             <div className="flex gap-2 justify-end pt-4">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={() => {
                   setRejectDialogOpen(false);
                   setRejectionReason("");
@@ -1362,7 +1363,7 @@ function PaymentsMobile() {
               >
                 Cancel
               </Button>
-              <Button 
+              <Button
                 onClick={confirmReject}
                 disabled={rejectingId !== null || !rejectionReason || rejectionReason.trim().length < 10}
                 className="bg-red-600 hover:bg-red-700 text-white"
@@ -1386,8 +1387,8 @@ function PaymentsMobile() {
               Are you sure you want to delete this payment? This action cannot be undone.
             </p>
             <div className="flex gap-2 justify-end pt-4">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={() => {
                   setDeleteDialogOpen(false);
                   setDeletingPaymentId(null);
@@ -1445,8 +1446,8 @@ function PaymentsMobile() {
             <p className="text-muted-foreground text-center text-sm px-4">
               {autoGenResult.message}
             </p>
-            <Button 
-              className="w-full mt-4 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white" 
+            <Button
+              className="w-full mt-4 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white"
               onClick={() => setAutoGenResult({ show: false, message: "" })}
             >
               Continue

@@ -223,7 +223,7 @@ function TenantPaymentsContent({
 
       {/* Payment Dialog */}
       <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md p-0 border-none bg-transparent shadow-none">
           {selectedPayment && (
             <TenantPaymentFlow
               payment={selectedPayment}

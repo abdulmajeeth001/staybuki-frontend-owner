@@ -77,13 +77,44 @@ export const tenantService = {
     return data;
   },
 
+  // submitUpiPayment: async (
+  //   id: number,
+  //   payload: PaymentUpdateRequest,
+  // ): Promise<PaymentResponse> => {
+  //   const { data } = await api.post<PaymentResponse>(`/api/payments/${id}/submit-upi`, payload);
+  //   return data;
+  // },
+
   submitUpiPayment: async (
-    id: number,
-    payload: PaymentUpdateRequest
-  ): Promise<PaymentResponse> => {
-    const { data } = await api.post<PaymentResponse>(`/api/payments/${id}/submit-upi`, payload);
-    return data;
-  },
+  id: number,
+  payload: PaymentUpdateRequest,
+  screenshot: File
+): Promise<PaymentResponse> => {
+  const formData = new FormData();
+
+  formData.append(
+    "req",
+    new Blob(
+      [
+        JSON.stringify({
+          transactionId: payload.transactionId,
+          paymentMethod: payload.paymentMethod,
+        }),
+      ],
+      {
+        type: "application/json",
+      }
+    )
+  );
+
+  formData.append("paymentProof", screenshot);
+  const { data } = await api.post<PaymentResponse>(
+    `/api/payments/${id}/submit-upi`,
+    formData
+  );
+
+  return data;
+},
 
   getFacilities: async (): Promise<FacilityResponse[]> => {
     const { data } = await api.get<FacilityApiResponse>("/api/tenant/facilities");

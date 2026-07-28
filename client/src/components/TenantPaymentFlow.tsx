@@ -3,7 +3,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Banknote, Upload, Check, X, Copy, Smartphone } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { tenantService } from "@/services/tenantService";
@@ -19,7 +18,8 @@ export function TenantPaymentFlow({ payment, ownerUpiId, onSuccess }: TenantPaym
   const { toast } = useToast();
   const [paymentMethod, setPaymentMethod] = useState<"upi" | "cash" | null>(null);
   const [transactionId, setTransactionId] = useState("");
-  const [screenshot, setScreenshot] = useState<string | null>(null);
+  const [screenshotFile, setScreenshotFile] = useState<File | null>(null);
+  const [screenshotPreview, setScreenshotPreview] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
 
@@ -113,15 +113,16 @@ export function TenantPaymentFlow({ payment, ownerUpiId, onSuccess }: TenantPaym
     }
 
     // Convert to base64
+    setScreenshotFile(file);
     const reader = new FileReader();
     reader.onloadend = () => {
-      setScreenshot(reader.result as string);
+      setScreenshotPreview(reader.result as string);
     };
     reader.readAsDataURL(file);
   };
 
   const handleSubmitUpiPayment = async () => {
-    if (!screenshot) {
+    if (!screenshotFile) {
       toast({
         title: "Screenshot Required",
         description: "Please upload payment screenshot to proceed",
@@ -139,10 +140,9 @@ export function TenantPaymentFlow({ payment, ownerUpiId, onSuccess }: TenantPaym
     try {
       const payload: PaymentUpdateRequest = {
         transactionId: transactionId.trim() || undefined,
-        paymentScreenshot: screenshot,
         paymentMethod: "UPI",
       };
-      await tenantService.submitUpiPayment(payment.id, payload);
+      await tenantService.submitUpiPayment(payment.id, payload, screenshotFile);
 
       toast({
         title: "Payment Submitted",
@@ -202,14 +202,14 @@ export function TenantPaymentFlow({ payment, ownerUpiId, onSuccess }: TenantPaym
   // UPI Payment screen
   if (paymentMethod === "upi") {
     return (
-      <Card className="w-full max-w-2xl mx-auto">
-        <CardHeader className="pb-3 md:pb-4">
+      <Card className="w-full max-w-2xl mx-auto flex flex-col max-h-[90vh]">
+        <CardHeader className="pb-3 md:pb-4 shrink-0">
           <CardTitle className="text-xl md:text-2xl">Pay ₹{payment.amount} via UPI</CardTitle>
           <CardDescription className="text-sm md:text-base">
             Choose Quick Pay or copy UPI ID manually
           </CardDescription>
         </CardHeader>
-        <ScrollArea className="h-[calc(100vh-12rem)] md:h-auto md:max-h-[70vh]">
+        <div className="flex-1 overflow-y-auto min-h-0 w-full">
           <CardContent className="space-y-4 md:space-y-6 px-4 md:px-6 pb-6">
             {/* Quick Pay Buttons */}
             <div className="bg-gradient-to-r from-green-50 to-blue-50 border-2 border-green-200 rounded-lg p-3 md:p-4 space-y-3">
@@ -319,16 +319,16 @@ export function TenantPaymentFlow({ payment, ownerUpiId, onSuccess }: TenantPaym
                   Payment Screenshot <span className="text-red-500">*</span>
                 </Label>
                 <div className="border-2 border-dashed border-purple-300 rounded-lg p-3 md:p-4 text-center bg-purple-50/30">
-                  {screenshot ? (
+                  {screenshotPreview ? (
                     <div className="space-y-2">
                       <img
-                        src={screenshot}
+                        src={screenshotPreview}
                         alt="Payment screenshot"
                         className="max-w-full h-32 md:h-40 mx-auto object-contain rounded"
                       />
                       <Button
                         variant="ghost"
-                        onClick={() => setScreenshot(null)}
+                        onClick={() => { setScreenshotFile(null); setScreenshotPreview(null); }}
                         className="text-xs md:text-sm h-11"
                         data-testid="button-remove-screenshot"
                       >
@@ -364,7 +364,7 @@ export function TenantPaymentFlow({ payment, ownerUpiId, onSuccess }: TenantPaym
               <Button
                 onClick={() => {
                   setPaymentMethod(null);
-                  setScreenshot(null);
+                  setScreenshotFile(null); setScreenshotPreview(null);
                   setTransactionId("");
                   setIsCopied(false);
                 }}
@@ -377,7 +377,7 @@ export function TenantPaymentFlow({ payment, ownerUpiId, onSuccess }: TenantPaym
               </Button>
               <Button
                 onClick={handleSubmitUpiPayment}
-                disabled={!screenshot || isSubmitting}
+                disabled={!screenshotFile || isSubmitting}
                 size="lg"
                 className="flex-1 h-11 md:h-12 text-sm md:text-base"
                 data-testid="button-submit-payment"
@@ -387,7 +387,7 @@ export function TenantPaymentFlow({ payment, ownerUpiId, onSuccess }: TenantPaym
               </Button>
             </div>
           </CardContent>
-        </ScrollArea>
+        </div>
       </Card>
     );
   }
