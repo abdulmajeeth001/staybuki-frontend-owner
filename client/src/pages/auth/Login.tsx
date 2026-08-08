@@ -51,7 +51,7 @@ export default function Login() {
 
       // 2. Switch based on the "Action" code from Java
       switch (data.action) {
-        
+
         case LOGIN_ACTIONS.RESET_PASSWORD:
           setLocation(ROUTES.AUTH.TENANT_RESET_PASSWORD);
           return;
@@ -59,9 +59,9 @@ export default function Login() {
         case LOGIN_ACTIONS.COMPLETE_ONBOARDING:
           // Route to specific setup pages based on role
           if (data.user.userType === USER_TYPES.TENANT) {
-             setLocation(ROUTES.TENANT.SETUP_PROFILE);
+            setLocation(ROUTES.TENANT.SETUP_PROFILE);
           } else {
-             setLocation(ROUTES.OWNER.ONBOARDING);
+            setLocation(ROUTES.OWNER.ONBOARDING);
           }
           return;
 
@@ -82,7 +82,7 @@ export default function Login() {
 
         case LOGIN_ACTIONS.GO_TO_DASHBOARD:
           // 3. Handle Successful Login Routing
-          const userType = (data.user?.userType || "").toLowerCase().trim(); 
+          const userType = (data.user?.userType || "").toLowerCase().trim();
           console.log("Normalized User Type:", userType); // Debugging line
           if (userType === USER_TYPES.TENANT) {
             setLocation(ROUTES.TENANT.DASHBOARD);
@@ -106,12 +106,12 @@ export default function Login() {
       console.error("Login failed", err);
 
       // Handle actual Network/Server errors (401, 500)
-      const errorMessage = 
-        err.response?.data?.message || 
-        err.response?.data?.error || 
-        err.message || 
+      const errorMessage =
+        err.response?.data?.message ||
+        err.response?.data?.error ||
+        err.message ||
         "Login failed. Please check your credentials.";
-        
+
       setError(errorMessage);
     } finally {
       // Loading state is handled by react-hook-form's isSubmitting
@@ -120,16 +120,16 @@ export default function Login() {
 
   return (
     <div className="min-h-[100dvh] bg-background flex flex-col items-center justify-center p-4 max-w-md mx-auto">
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
         className="w-full space-y-8"
       >
         <div className="text-center space-y-4">
-          <img 
+          <img
             src="/logo.png"
-            alt="StayBuki Logo" 
+            alt="StayBuki Logo"
             className="h-24 sm:h-32 w-auto mx-auto object-contain"
             width={128}
             height={128}
@@ -150,13 +150,12 @@ export default function Login() {
                 </div>
               )}
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input 
-                  id="email" 
-                  type="email" 
-                  placeholder="owner@example.com" 
-                  autoComplete="email"
-                  inputMode="email"
+                <Label htmlFor="email">Email or Mobile Number</Label>                <Input
+                  id="email"
+                  type="text"
+                  placeholder="Enter email or mobile number"
+                  autoComplete="username"
+                  // inputMode="email"
                   enterKeyHint="next"
                   className="h-12 bg-background/50"
                   disabled={isSubmitting}
@@ -168,10 +167,10 @@ export default function Login() {
               <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
                 <div className="relative">
-                  <Input 
-                    id="password" 
-                    type={showPassword ? "text" : "password"} 
-                    placeholder="••••••••" 
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="••••••••"
                     autoComplete="current-password"
                     enterKeyHint="go"
                     className="h-12 bg-background/50 pr-10"
@@ -179,7 +178,7 @@ export default function Login() {
                     {...register("password")}
                     data-testid="input-login-password"
                   />
-                  <button 
+                  <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
@@ -192,8 +191,8 @@ export default function Login() {
               </div>
               <div className="flex items-center justify-between text-sm">
                 <div className="flex items-center space-x-2">
-                  <Checkbox 
-                    id="rememberMe" 
+                  <Checkbox
+                    id="rememberMe"
                     checked={rememberMe}
                     onCheckedChange={(checked) => setValue("rememberMe", checked as boolean)}
                     disabled={isSubmitting}

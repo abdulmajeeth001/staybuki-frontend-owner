@@ -1,9 +1,27 @@
 import * as z from "zod";
 import { USER_TYPES } from "@/constants/routes";
 
+// export const loginSchema = z.object({
+//   email: z.string().email("Please enter a valid email address"),
+//   password: z.string().min(1, "Password is required"),
+//   rememberMe: z.boolean().default(false),
+// });
+
 export const loginSchema = z.object({
-  email: z.string().email("Please enter a valid email address"),
+  email: z
+    .string()
+    .min(1, "Email or Mobile Number is required")
+    .refine((value) => {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      const mobileRegex = /^[6-9]\d{9}$/;
+
+      return emailRegex.test(value) || mobileRegex.test(value);
+    }, {
+      message: "Please enter a valid Email or Mobile Number",
+    }),
+
   password: z.string().min(1, "Password is required"),
+
   rememberMe: z.boolean().default(false),
 });
 
